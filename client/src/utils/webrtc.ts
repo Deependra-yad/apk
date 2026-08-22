@@ -7,6 +7,9 @@ const ICE_SERVERS: RTCConfiguration = {
     { urls: 'stun:stun2.l.google.com:19302' },
     { urls: 'stun:stun3.l.google.com:19302' },
     { urls: 'stun:stun4.l.google.com:19302' },
+    { urls: 'stun:stun.cloudflare.com:3478' },
+    { urls: 'stun:stun.services.mozilla.com' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
   ],
   iceCandidatePoolSize: 10
 };
@@ -59,7 +62,7 @@ function createSyntheticStream(needVideo: boolean = true): MediaStream {
 }
 
 export class WebRTCManager {
-  private peer: RTCPeerConnection | null = null;
+  public peer: RTCPeerConnection | null = null;
   public localStream: MediaStream | null = null;
   public remoteStream: MediaStream | null = null;
   private pendingCandidates: RTCIceCandidateInit[] = [];
@@ -69,15 +72,13 @@ export class WebRTCManager {
   public onConnectionStateChange?: (state: RTCPeerConnectionState) => void;
 
   async initLocalStream(video: boolean = true, audio: boolean = true): Promise<{ stream: MediaStream; isPermissionDenied: boolean }> {
-    this.close();
-
     try {
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
         throw new Error("getUserMedia not supported");
       }
 
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: video ? { width: { ideal: 1280 }, height: { ideal: 720 } } : false,
+        video: video ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
       });
       return { stream: this.localStream, isPermissionDenied: false };
@@ -95,12 +96,11 @@ export class WebRTCManager {
   }
 
   createPeerConnection(): RTCPeerConnection {
-    if (this.peer) {
-      this.peer.close();
+    if (this.peer && this.peer.signalingState !== 'closed') {
+      return this.peer;
     }
 
     this.peer = new RTCPeerConnection(ICE_SERVERS);
-    this.pendingCandidates = [];
     this.remoteStream = new MediaStream();
 
     // Attach local tracks

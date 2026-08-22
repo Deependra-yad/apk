@@ -47,27 +47,42 @@ export default function CallModal({
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const webrtcRef = useRef<WebRTCManager | null>(null);
   const durationTimerRef = useRef<any>(null);
+  const targetIdRef = useRef<string | null>(null);
 
-  // Initialize WebRTC Manager
+  // Keep target ID updated in ref
   useEffect(() => {
-    webrtcRef.current = new WebRTCManager();
+    targetIdRef.current = activeContact?.id || incomingCallData?.from?.id || targetIdRef.current;
+  }, [activeContact, incomingCallData]);
 
-    webrtcRef.current.onRemoteStream = (stream) => {
+  // Instantiate WebRTC Manager once on mount
+  useEffect(() => {
+    const manager = new WebRTCManager();
+    webrtcRef.current = manager;
+
+    manager.onRemoteStream = (stream) => {
       setRemoteStream(stream);
+      if (remoteVideoRef.current) {
+        remoteVideoRef.current.srcObject = stream;
+        remoteVideoRef.current.play().catch(() => {});
+      }
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.srcObject = stream;
+        remoteAudioRef.current.play().catch(() => {});
+      }
     };
 
-    webrtcRef.current.onIceCandidate = (candidate) => {
-      const targetId = activeContact?.id || incomingCallData?.from?.id;
+    manager.onIceCandidate = (candidate) => {
+      const targetId = targetIdRef.current;
       if (targetId && socket) {
         socket.emit('ice_candidate', { to: targetId, candidate });
       }
     };
 
     return () => {
-      webrtcRef.current?.close();
+      manager.close();
       soundEffects.stopRinging();
     };
-  }, [socket, activeContact, incomingCallData]);
+  }, [socket]);
 
   // Bind local stream to video element
   useEffect(() => {
@@ -77,7 +92,7 @@ export default function CallModal({
     }
   }, [localStream, callState]);
 
-  // Bind remote stream to video AND audio elements
+  // Bind remote stream
   useEffect(() => {
     if (remoteStream) {
       if (remoteVideoRef.current) {
@@ -152,6 +167,7 @@ export default function CallModal({
   const startOutgoingCall = useCallback(async () => {
     if (!activeContact || !user || !socket || !webrtcRef.current) return;
     try {
+      targetIdRef.current = activeContact.id;
       soundEffects.startOutgoingRing();
       const { stream, isPermissionDenied } = await webrtcRef.current.initLocalStream(isVideoCall, true);
       setLocalStream(stream);
@@ -182,6 +198,12 @@ export default function CallModal({
     try {
       const isVideo = incomingCallData.isVideo;
       setIsVideoCall(isVideo);
+      targetIdRef.current = incomingCallData.from.id;
+
+      // Ensure audio plays
+      if (remoteAudioRef.current) {
+        remoteAudioRef.current.play().catch(() => {});
+      }
 
       const { stream, isPermissionDenied } = await webrtcRef.current.initLocalStream(isVideo, true);
       setLocalStream(stream);
@@ -203,7 +225,7 @@ export default function CallModal({
   // Log Call and Tear Down
   const endCall = (status: 'completed' | 'missed' | 'rejected' = 'completed') => {
     soundEffects.stopRinging();
-    const targetId = activeContact?.id || incomingCallData?.from?.id;
+    const targetId = targetIdRef.current || activeContact?.id || incomingCallData?.from?.id;
 
     if (token && targetId) {
       axios.post('/api/calls/log', {
@@ -228,6 +250,7 @@ export default function CallModal({
     setIsMinimized(false);
     setIsScreenSharing(false);
     setHasPermissionWarning(false);
+    targetIdRef.current = null;
   };
 
   // Controls
@@ -326,7 +349,7 @@ export default function CallModal({
               <div className="flex items-center gap-2">
                 <AlertCircle size={15} className="text-amber-400 shrink-0" />
                 <span>
-                  Microphone/Camera blocked by browser or system settings. Connected in simulated mode. Click the lock/camera icon in address bar to allow.
+                  Microphone/Camera blocked by browser. Connected in simulation mode. Click the lock icon in address bar to allow.
                 </span>
               </div>
               <button onClick={() => setHasPermissionWarning(false)} className="text-amber-300 hover:text-white font-bold ml-2">
