@@ -18,6 +18,7 @@ import SettingsPanel from '@/components/SettingsPanel';
 import ProfileDrawer from '@/components/ProfileDrawer';
 import NewGroupModal from '@/components/NewGroupModal';
 import StarredVaultPanel from '@/components/StarredVaultPanel';
+import NotificationToast from '@/components/NotificationToast';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, GroupItem } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -475,6 +476,9 @@ export default function Home() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Floating In-App Real-Time Notification Toast */}
+      <NotificationToast />
     </main>
   );
 }

@@ -74,12 +74,23 @@ const connectedUsers = new Map<string, string>();
 const socketToUser = new Map<string, string>();
 
 io.on('connection', (socket) => {
-  const userId = socket.handshake.query.userId as string;
-  if (userId) {
-    connectedUsers.set(userId, socket.id);
-    socketToUser.set(socket.id, userId);
+  const registerUser = (uid: string) => {
+    if (!uid) return;
+    connectedUsers.set(uid, socket.id);
+    socketToUser.set(socket.id, uid);
+    socket.join(`user_${uid}`);
     io.emit('online_users', Array.from(connectedUsers.keys()));
+    io.emit('user_status_changed', { userId: uid, isOnline: true });
+  };
+
+  const initialUserId = socket.handshake.query.userId as string;
+  if (initialUserId) {
+    registerUser(initialUserId);
   }
+
+  socket.on('user_connected', (uid: string) => {
+    registerUser(uid);
+  });
 
   // --- Join Group Socket Rooms ---
   socket.on('join_group', (groupId: string) => {
@@ -133,11 +144,8 @@ io.on('connection', (socket) => {
         // Broadcast to group room (including sender)
         io.to(`group_${data.groupId}`).emit('receive_group_message', msg);
       } else {
-        const receiverSocket = connectedUsers.get(data.receiverId);
-        if (receiverSocket) {
-          io.to(receiverSocket).emit('receive_message', msg);
-        }
-        socket.emit('message_sent', msg);
+        io.to(`user_${data.receiverId}`).emit('receive_message', msg);
+        io.to(`user_${data.senderId}`).emit('message_sent', msg);
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -156,10 +164,7 @@ io.on('connection', (socket) => {
       if (groupId) {
         io.to(`group_${groupId}`).emit('message_edited', updated);
       } else if (receiverId) {
-        const receiverSocket = connectedUsers.get(receiverId);
-        if (receiverSocket) {
-          io.to(receiverSocket).emit('message_edited', updated);
-        }
+        io.to(`user_${receiverId}`).emit('message_edited', updated);
         socket.emit('message_edited', updated);
       }
     } catch (e) {}
@@ -192,10 +197,7 @@ io.on('connection', (socket) => {
       if (groupId) {
         io.to(`group_${groupId}`).emit('poll_updated', updated);
       } else {
-        const receiverSocket = connectedUsers.get(receiverId);
-        if (receiverSocket) {
-          io.to(receiverSocket).emit('poll_updated', updated);
-        }
+        if (receiverId) io.to(`user_${receiverId}`).emit('poll_updated', updated);
         socket.emit('poll_updated', updated);
       }
     } catch (e) {
@@ -208,10 +210,7 @@ io.on('connection', (socket) => {
     if (groupId) {
       socket.to(`group_${groupId}`).emit('group_user_typing', { groupId, senderId, senderName });
     } else if (receiverId) {
-      const receiverSocket = connectedUsers.get(receiverId);
-      if (receiverSocket) {
-        io.to(receiverSocket).emit('user_typing', { senderId });
-      }
+      io.to(`user_${receiverId}`).emit('user_typing', { senderId });
     }
   });
 
@@ -219,10 +218,7 @@ io.on('connection', (socket) => {
     if (groupId) {
       socket.to(`group_${groupId}`).emit('group_user_stop_typing', { groupId, senderId });
     } else if (receiverId) {
-      const receiverSocket = connectedUsers.get(receiverId);
-      if (receiverSocket) {
-        io.to(receiverSocket).emit('user_stop_typing', { senderId });
-      }
+      io.to(`user_${receiverId}`).emit('user_stop_typing', { senderId });
     }
   });
 
@@ -238,10 +234,7 @@ io.on('connection', (socket) => {
         data: { isSeen: true }
       });
 
-      const senderSocket = connectedUsers.get(senderId);
-      if (senderSocket) {
-        io.to(senderSocket).emit('messages_marked_seen', { seenBy: receiverId });
-      }
+      io.to(`user_${senderId}`).emit('messages_marked_seen', { seenBy: receiverId });
     } catch (err) {
       console.error('Error marking seen:', err);
     }
@@ -252,10 +245,7 @@ io.on('connection', (socket) => {
     if (groupId) {
       io.to(`group_${groupId}`).emit('reaction_updated', { messageId, reactions });
     } else if (receiverId) {
-      const receiverSocket = connectedUsers.get(receiverId);
-      if (receiverSocket) {
-        io.to(receiverSocket).emit('reaction_updated', { messageId, reactions });
-      }
+      io.to(`user_${receiverId}`).emit('reaction_updated', { messageId, reactions });
     }
   });
 
@@ -264,10 +254,7 @@ io.on('connection', (socket) => {
     if (groupId) {
       io.to(`group_${groupId}`).emit('message_deleted', { messageId, isForEveryone });
     } else if (receiverId) {
-      const receiverSocket = connectedUsers.get(receiverId);
-      if (receiverSocket) {
-        io.to(receiverSocket).emit('message_deleted', { messageId, isForEveryone });
-      }
+      io.to(`user_${receiverId}`).emit('message_deleted', { messageId, isForEveryone });
     }
   });
 
@@ -283,42 +270,27 @@ io.on('connection', (socket) => {
 
   // --- WebRTC Calling Signaling ---
   socket.on('call_offer', ({ to, offer, fromUser, isVideo }) => {
-    const receiverSocket = connectedUsers.get(to);
-    if (receiverSocket) {
-      io.to(receiverSocket).emit('incoming_call', {
-        from: fromUser,
-        offer,
-        isVideo
-      });
-    }
+    io.to(`user_${to}`).emit('incoming_call', {
+      from: fromUser,
+      offer,
+      isVideo
+    });
   });
 
   socket.on('call_answer', ({ to, answer }) => {
-    const callerSocket = connectedUsers.get(to);
-    if (callerSocket) {
-      io.to(callerSocket).emit('call_answered', { answer });
-    }
+    io.to(`user_${to}`).emit('call_answered', { answer });
   });
 
   socket.on('ice_candidate', ({ to, candidate }) => {
-    const targetSocket = connectedUsers.get(to);
-    if (targetSocket) {
-      io.to(targetSocket).emit('ice_candidate', { candidate });
-    }
+    io.to(`user_${to}`).emit('ice_candidate', { candidate });
   });
 
   socket.on('call_rejected', ({ to }) => {
-    const callerSocket = connectedUsers.get(to);
-    if (callerSocket) {
-      io.to(callerSocket).emit('call_rejected');
-    }
+    io.to(`user_${to}`).emit('call_rejected');
   });
 
   socket.on('end_call', ({ to }) => {
-    const targetSocket = connectedUsers.get(to);
-    if (targetSocket) {
-      io.to(targetSocket).emit('call_ended');
-    }
+    io.to(`user_${to}`).emit('call_ended');
   });
 
   // --- Disconnection ---

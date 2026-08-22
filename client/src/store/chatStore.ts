@@ -2,11 +2,12 @@ import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import { soundEffects } from '@/utils/audioSynth';
 import { getApiUrl } from '@/utils/apiUrl';
+import { sendBrowserNotification, requestNotificationPermission } from '@/utils/notifications';
 
 export interface Message {
   id: string;
   text?: string;
-  type: string; // 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'system'
+  type: string; // 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'sticker' | 'system'
   fileUrl?: string;
   fileName?: string;
   fileSize?: string;
@@ -16,6 +17,7 @@ export interface Message {
   isDeleted?: boolean;
   isEdited?: boolean;
   isStarred?: boolean;
+  isPinned?: boolean;
   forwardedFrom?: string;
   reactions?: string;
   pollData?: string;
@@ -62,6 +64,7 @@ interface ChatState {
   selectedMessageIds: string[];
   searchQuery: string;
   chatMetaMap: Record<string, { isPinned: boolean; isArchived: boolean; isMuted: boolean }>;
+  incomingToast: any | null;
 
   connectSocket: (userId: string) => void;
   disconnectSocket: () => void;
@@ -84,6 +87,7 @@ interface ChatState {
   deleteMessageInStore: (messageId: string, isForEveryone?: boolean) => void;
   toggleStarMessage: (messageId: string) => void;
   markMessagesAsSeenLocally: (seenByUserId: string) => void;
+  setIncomingToast: (toast: any | null) => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -100,12 +104,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
   selectedMessageIds: [],
   searchQuery: '',
   chatMetaMap: {},
+  incomingToast: null,
 
   connectSocket: (userId) => {
     if (get().socket) return;
 
-    const socket = io(getApiUrl(), {
-      query: { userId }
+    requestNotificationPermission();
+
+    const socketUrl = getApiUrl();
+    const socket = io(socketUrl, {
+      query: { userId },
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      transports: ['websocket', 'polling']
+    });
+
+    socket.on('connect', () => {
+      socket.emit('user_connected', userId);
     });
 
     socket.on('online_users', (users: string[]) => {
@@ -118,26 +134,54 @@ export const useChatStore = create<ChatState>((set, get) => ({
       soundEffects.playMessageReceived();
 
       if (activeContact && (message.senderId === activeContact.id || message.receiverId === activeContact.id)) {
-        set((state) => ({ messages: [...state.messages, message] }));
+        set((state) => {
+          // Avoid duplicate messages
+          if (state.messages.some(m => m.id === message.id)) return state;
+          return { messages: [...state.messages, message] };
+        });
         if (message.senderId === activeContact.id) {
           socket.emit('mark_seen', { senderId: message.senderId, receiverId: userId });
         }
+      } else {
+        // Show notification toast & browser push notification
+        const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
+        set({ incomingToast: { ...message, text: preview } });
+        sendBrowserNotification(message.sender?.username || 'New Message', preview, message.sender?.avatar);
+
+        setTimeout(() => {
+          set((state) => (state.incomingToast?.id === message.id ? { incomingToast: null } : state));
+        }, 5000);
       }
     });
 
     // Group incoming message
     socket.on('receive_group_message', (message: Message) => {
-      const { activeGroup } = get();
+      const { activeGroup, groups } = get();
       soundEffects.playMessageReceived();
 
       if (activeGroup && message.groupId === activeGroup.id) {
-        set((state) => ({ messages: [...state.messages, message] }));
+        set((state) => {
+          if (state.messages.some(m => m.id === message.id)) return state;
+          return { messages: [...state.messages, message] };
+        });
+      } else {
+        const grp = groups.find(g => g.id === message.groupId);
+        const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
+        set({ incomingToast: { ...message, groupName: grp?.name || 'Group', text: preview } });
+        sendBrowserNotification(grp ? `${grp.name} (${message.sender?.username})` : 'New Group Message', preview, grp?.avatar);
+
+        setTimeout(() => {
+          set((state) => (state.incomingToast?.id === message.id ? { incomingToast: null } : state));
+        }, 5000);
       }
     });
 
     socket.on('message_sent', (message: Message) => {
       soundEffects.playMessageSent();
-      set((state) => ({ messages: [...state.messages, message] }));
+      set((state) => {
+        if (state.messages.some(m => m.id === message.id)) return state;
+        return { messages: [...state.messages, message] };
+      });
     });
 
     socket.on('message_edited', (updatedMessage: Message) => {
@@ -242,6 +286,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   setReplyingTo: (replyingTo) => set({ replyingTo }),
   setEditingMessage: (editingMessage) => set({ editingMessage }),
+  setIncomingToast: (incomingToast) => set({ incomingToast }),
 
   toggleSelectMessage: (msgId) => {
     set((state) => ({
