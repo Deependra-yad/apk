@@ -1,0 +1,13 @@
+{
+  "name": "liquid-whatsapp-suite",
+  "version": "1.0.0",
+  "description": "Next-Gen Liquid WhatsApp Fullstack Application",
+  "main": "server/dist/index.js",
+  "scripts": {
+    "build": "cd server && npm install && npx prisma generate && npx prisma db push && npm run build",
+    "start": "cd server && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
