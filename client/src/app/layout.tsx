@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import AppInitializer from '@/components/AppInitializer';
 
 export const metadata: Metadata = {
   title: 'Liquid Chat',
@@ -14,6 +15,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
+        <AppInitializer />
         {/* SVG Filter for Gooey / Liquid Drop Effects */}
         <svg style={{ position: 'absolute', width: 0, height: 0 }} aria-hidden="true">
           <defs>

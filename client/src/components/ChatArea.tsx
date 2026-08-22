@@ -25,6 +25,7 @@ import GroupInfoDrawer from './GroupInfoDrawer';
 import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
+import { resolveMediaUrl } from '@/utils/apiUrl';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -741,10 +742,10 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {msg.type === 'image' && msg.fileUrl && (
                         <div 
                           className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-black/40" 
-                          onClick={() => setSelectedLightboxMedia({ url: msg.fileUrl!, type: 'image', name: msg.fileName || 'Image' })}
+                          onClick={() => setSelectedLightboxMedia({ url: resolveMediaUrl(msg.fileUrl), type: 'image', name: msg.fileName || 'Image' })}
                         >
                           <img 
-                            src={msg.fileUrl} 
+                            src={resolveMediaUrl(msg.fileUrl)} 
                             alt="attachment" 
                             className="rounded-xl max-h-80 w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
@@ -757,7 +758,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Media: Sticker */}
                       {msg.type === 'sticker' && msg.fileUrl && (
                         <div className="p-1 mb-1">
-                          <img src={msg.fileUrl} alt="Sticker" className="w-36 h-36 object-contain drop-shadow-lg" />
+                          <img src={resolveMediaUrl(msg.fileUrl)} alt="Sticker" className="w-36 h-36 object-contain drop-shadow-lg" />
                         </div>
                       )}
 
@@ -765,7 +766,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {msg.type === 'video' && msg.fileUrl && (
                         <div className="mb-2 rounded-xl overflow-hidden relative bg-black/80 max-h-80">
                           <video 
-                            src={msg.fileUrl} 
+                            src={resolveMediaUrl(msg.fileUrl)} 
                             controls 
                             playsInline
                             preload="metadata"
@@ -776,7 +777,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                       {/* Media: Audio / Voice Note */}
                       {msg.type === 'audio' && msg.fileUrl && (
-                        <AudioBubblePlayer audioUrl={msg.fileUrl} duration={msg.duration} />
+                        <AudioBubblePlayer audioUrl={resolveMediaUrl(msg.fileUrl)} duration={msg.duration} />
                       )}
 
                       {/* Media: WhatsApp Interactive Poll */}
@@ -811,7 +812,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                           <div className="flex items-center gap-2 pt-2 border-t border-white/10">
                             <button
                               onClick={() => setSelectedDocumentForModal({
-                                url: msg.fileUrl!,
+                                url: resolveMediaUrl(msg.fileUrl),
                                 name: msg.fileName || 'Document',
                                 size: msg.fileSize,
                                 mimeType: msg.mimeType
@@ -823,7 +824,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                             </button>
 
                             <a
-                              href={msg.fileUrl}
+                              href={resolveMediaUrl(msg.fileUrl)}
                               download={msg.fileName || 'file'}
                               target="_blank"
                               rel="noreferrer"

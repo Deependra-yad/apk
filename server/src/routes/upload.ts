@@ -32,7 +32,10 @@ router.post('/', upload.single('file'), (req, res) => {
     return res.status(400).json({ error: 'No file uploaded' });
   }
 
-  const fileUrl = `http://localhost:5000/uploads/${req.file.filename}`;
+  const host = req.get('host') || 'localhost:5000';
+  const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'http';
+  const fileUrl = `${protocol}://${host}/uploads/${req.file.filename}`;
+  
   const mimeType = req.file.mimetype;
   const fileName = req.file.originalname;
   const fileSizeInBytes = req.file.size;

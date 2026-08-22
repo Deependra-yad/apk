@@ -24,3 +24,4 @@ export const sendBrowserNotification = (title: string, body: string, icon?: stri
     }
   }
 };
+

@@ -9,6 +9,7 @@ import {
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
+import { resolveMediaUrl } from '@/utils/apiUrl';
 
 interface MediaGalleryDrawerProps {
   isOpen: boolean;
@@ -150,12 +151,12 @@ export default function MediaGalleryDrawer({ isOpen, onClose, targetId, targetNa
                     {data.media.map((item) => (
                       <div key={item.id} className="relative aspect-square rounded-xl overflow-hidden bg-black/40 border border-white/10 group">
                         {item.type === 'video' ? (
-                          <video src={item.fileUrl} className="w-full h-full object-cover" />
+                          <video src={resolveMediaUrl(item.fileUrl)} className="w-full h-full object-cover" />
                         ) : (
-                          <img src={item.fileUrl} alt="media" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          <img src={resolveMediaUrl(item.fileUrl)} alt="media" className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
                         )}
                         <a
-                          href={item.fileUrl}
+                          href={resolveMediaUrl(item.fileUrl)}
                           target="_blank"
                           rel="noreferrer"
                           className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity"
@@ -187,7 +188,7 @@ export default function MediaGalleryDrawer({ isOpen, onClose, targetId, targetNa
                         </div>
 
                         <a
-                          href={doc.fileUrl}
+                          href={resolveMediaUrl(doc.fileUrl)}
                           download={doc.fileName}
                           target="_blank"
                           rel="noreferrer"
@@ -218,7 +219,8 @@ export default function MediaGalleryDrawer({ isOpen, onClose, targetId, targetNa
                             <p className="text-[10px] text-gray-400 font-mono">{format(new Date(aud.createdAt), 'MMM dd, hh:mm a')}</p>
                           </div>
                         </div>
-                        <audio src={aud.fileUrl} controls className="h-8 max-w-[140px]" />
+
+                        <audio src={resolveMediaUrl(aud.fileUrl)} controls className="h-8 max-w-[130px]" />
                       </div>
                     ))}
                   </div>
