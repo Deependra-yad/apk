@@ -128,6 +128,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set({ onlineUsers: users });
     });
 
+    socket.on('force_logout', () => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = '/auth';
+    });
+
+    socket.on('user_joined', (newUser: any) => {
+      window.dispatchEvent(new CustomEvent('new_user_joined', { detail: newUser }));
+    });
+
     // 1-on-1 incoming message
     socket.on('receive_message', (message: Message) => {
       const { activeContact } = get();

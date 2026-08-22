@@ -74,13 +74,28 @@ const connectedUsers = new Map<string, string>();
 const socketToUser = new Map<string, string>();
 
 io.on('connection', (socket) => {
-  const registerUser = (uid: string) => {
+  const registerUser = async (uid: string) => {
     if (!uid) return;
     connectedUsers.set(uid, socket.id);
     socketToUser.set(socket.id, uid);
     socket.join(`user_${uid}`);
     io.emit('online_users', Array.from(connectedUsers.keys()));
     io.emit('user_status_changed', { userId: uid, isOnline: true });
+
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: uid },
+        select: { id: true, username: true, avatar: true, about: true, lastSeen: true, stories: true }
+      });
+      if (user) {
+        io.emit('user_joined', user);
+      } else {
+        // If user is missing from DB (e.g. SQLite ephemeral wipe on server restart), force client to logout
+        socket.emit('force_logout');
+      }
+    } catch (e) {
+      console.error('Error fetching user during registration:', e);
+    }
   };
 
   const initialUserId = socket.handshake.query.userId as string;

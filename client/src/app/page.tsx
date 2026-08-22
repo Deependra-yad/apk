@@ -98,6 +98,20 @@ export default function Home() {
     }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
 
+  useEffect(() => {
+    const handleNewUser = (e: any) => {
+      const newUser = e.detail;
+      if (user && newUser.id !== user.id) {
+        setUsers(prev => {
+          if (prev.some(u => u.id === newUser.id)) return prev;
+          return [...prev, newUser];
+        });
+      }
+    };
+    window.addEventListener('new_user_joined', handleNewUser);
+    return () => window.removeEventListener('new_user_joined', handleNewUser);
+  }, [user]);
+
   // Global Incoming Call Signaling
   useEffect(() => {
     if (!socket) return;
