@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  passwordHash String
+  avatar       String?
+  about        String?   @default("Hey there! I am using Liquid Chat 🌊")
+  lastSeen     DateTime  @default(now())
+  createdAt    DateTime  @default(now())
+
+  messagesSent     Message[]     @relation("MessagesSent")
+  messagesReceived Message[]     @relation("MessagesReceived")
+  stories          Story[]
+  callsMade        CallLog[]     @relation("CallsMade")
+  callsReceived    CallLog[]     @relation("CallsReceived")
+  groupsCreated    Group[]       @relation("CreatedGroups")
+  groupMemberships GroupMember[]
+  chatMeta         ChatMeta[]
+  blocksInitiated  BlockList[]   @relation("Blocker")
+  blocksReceived   BlockList[]   @relation("Blocked")
+  settings         UserSettings?
+}
+
+model Group {
+  id                 String   @id @default(uuid())
+  name               String
+  description        String?
+  avatar             String?
+  creatorId          String
+  isAnnouncementOnly Boolean  @default(false)
+  pinnedMessageId    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  creator  User          @relation("CreatedGroups", fields: [creatorId], references: [id])
+  members  GroupMember[]
+  messages Message[]
+}
+
+model GroupMember {
+  id       String   @id @default(uuid())
+  groupId  String
+  userId   String
+  role     String   @default("member") // 'admin' | 'member'
+  joinedAt DateTime @default(now())
+
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, userId])
+}
+
+model ChatMeta {
+  id                  String   @id @default(uuid())
+  userId              String
+  targetId            String   // either contact userId or groupId
+  isPinned            Boolean  @default(false)
+  isArchived          Boolean  @default(false)
+  isMuted             Boolean  @default(false)
+  disappearingSeconds Int?     // seconds before disappearing (e.g. 86400 = 24h, null = off)
+  customWallpaper     String?
+  updatedAt           DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, targetId])
+}
+
+model BlockList {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  blocker User @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked User @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+
+model UserSettings {
+  id                String  @id @default(uuid())
+  userId            String  @unique
+  lastSeenPrivacy   String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
+  readReceipts      Boolean @default(true)
+  enterToSend       Boolean @default(true)
+  theme             String  @default("dark") // 'dark' | 'light' | 'system'
+  notificationSound Boolean @default(true)
+  wallpaper         String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Message {
+  id            String    @id @default(uuid())
+  text          String?
+  type          String    @default("text") // 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'sticker' | 'system'
+  fileUrl       String?
+  fileName      String?
+  fileSize      String?
+  mimeType      String?
+  duration      Int?      // For voice notes in seconds
+  isSeen        Boolean   @default(false)
+  isDeleted     Boolean   @default(false)
+  isEdited      Boolean   @default(false)
+  isStarred     Boolean   @default(false)
+  isPinned      Boolean   @default(false)
+  expiresAt     DateTime?
+  forwardedFrom String?   // User or group origin if forwarded
+  reactions     String?   // JSON stringified array of { userId, emoji }
+  pollData      String?   // JSON stringified { question: string, options: [{ id: number, text: string, voters: string[] }] }
+  replyToId     String?
+  replyToText   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
+
+  senderId   String
+  receiverId String? // Nullable for group chats
+  groupId    String? // Nullable for direct 1-on-1 chats
+
+  sender   User   @relation("MessagesSent", fields: [senderId], references: [id])
+  receiver User?  @relation("MessagesReceived", fields: [receiverId], references: [id])
+  group    Group? @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model Story {
+  id        String   @id @default(uuid())
+  mediaUrl  String?
+  caption   String?
+  type      String   @default("image") // 'image' | 'video' | 'text'
+  bgColor   String?  @default("#1e1e24")
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CallLog {
+  id        String   @id @default(uuid())
+  type      String   @default("video") // 'audio' | 'video'
+  status    String   @default("completed") // 'completed' | 'missed' | 'rejected'
+  duration  Int      @default(0) // in seconds
+  createdAt DateTime @default(now())
+
+  callerId   String
+  receiverId String
+
+  caller   User @relation("CallsMade", fields: [callerId], references: [id], onDelete: Cascade)
+  receiver User @relation("CallsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+}

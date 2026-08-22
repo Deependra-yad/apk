@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+@theme {
+  --color-liquid-dark: #121212;
+  --color-liquid-base: #1e1e24;
+  --color-liquid-accent: #00d2ff;
+  --color-liquid-secondary: #3a7bd5;
+}
+
+:root {
+  --background: #121212;
+  --foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden; /* Prevent scrolling for app-like feel */
+}
+
+/* Gooey filter CSS class helper */
+.gooey-container {
+  filter: url('#gooey');
+}
