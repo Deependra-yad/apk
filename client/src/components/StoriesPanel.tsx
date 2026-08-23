@@ -231,14 +231,18 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               <input
                 type="file"
                 ref={fileInputRef}
-                accept="image/*"
+                accept="image/*,video/*"
                 className="hidden"
                 onChange={(e) => setNewFile(e.target.files?.[0] || null)}
               />
 
               {newFile ? (
                 <div className="relative h-48 rounded-2xl overflow-hidden bg-background/40 border border-foreground/10">
-                  <img src={URL.createObjectURL(newFile)} alt="Preview" className="w-full h-full object-contain" />
+                  {newFile.type.startsWith('video/') ? (
+                    <video src={URL.createObjectURL(newFile)} controls className="w-full h-full object-contain" />
+                  ) : (
+                    <img src={URL.createObjectURL(newFile)} alt="Preview" className="w-full h-full object-contain" />
+                  )}
                   <button
                     onClick={() => setNewFile(null)}
                     className="absolute top-2 right-2 p-1.5 rounded-full bg-background/60 text-foreground hover:bg-background"
@@ -319,7 +323,11 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               {/* Story Media / Content */}
               <div className="flex-1 relative flex items-center justify-center my-4 overflow-hidden rounded-2xl">
                 {currentStory.mediaUrl ? (
-                  <img src={currentStory.mediaUrl} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
+                  currentStory.type === 'video' ? (
+                    <video src={currentStory.mediaUrl} autoPlay controls className="max-w-full max-h-full object-contain rounded-xl" />
+                  ) : (
+                    <img src={currentStory.mediaUrl} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
+                  )
                 ) : (
                   <div className="text-center p-8">
                     <p className="text-2xl font-semibold text-foreground leading-relaxed">{currentStory.caption}</p>

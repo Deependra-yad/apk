@@ -66,14 +66,13 @@ export default function SettingsPanel() {
     if (!token) return;
     setIsDeleting(true);
     try {
-      await axios.delete('/api/auth/account', {
+      await axios.delete('/api/users/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
       logout();
       window.location.href = '/auth';
     } catch (e) {
       console.error(e);
-    } finally {
       setIsDeleting(false);
     }
   };

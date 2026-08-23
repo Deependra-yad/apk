@@ -132,6 +132,7 @@ function AuthForm() {
 
           <div className="mt-6 flex justify-center w-full">
             <GoogleLogin
+              onSuccess={handleGoogleSuccess}
               useOneTap
               theme="filled_black"
               shape="pill"
