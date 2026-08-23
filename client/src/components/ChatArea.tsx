@@ -83,6 +83,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
+  const [messageContextMenu, setMessageContextMenu] = useState<{ msg: any; x: number; y: number } | null>(null);
 
   const [activeReactionMessageId, setActiveReactionMessageId] = useState<string | null>(null);
   const [selectedLightboxMedia, setSelectedLightboxMedia] = useState<{ url: string; type: 'image' | 'video'; name?: string } | null>(null);
@@ -706,7 +707,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 {/* Message Bubble */}
                 <div
                   onClick={() => isMultiSelectMode && toggleSelectMessage(msg.id)}
-                  className={`p-3.5 rounded-2xl relative transition-all ${
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setMessageContextMenu({ msg, x: e.clientX, y: e.clientY });
+                  }}
+                  className={`p-3.5 rounded-2xl relative transition-all select-none sm:select-text [-webkit-touch-callout:none] ${
                     isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
                   } ${
                     isMe
@@ -861,75 +866,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       </span>
                     )}
                   </div>
-
-                  {/* Hover Action Bar */}
-                  {!isMultiSelectMode && (
-                    <div className="absolute top-1 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 bg-black/60 rounded-full px-1.5 py-0.5 backdrop-blur-md z-10">
-                      <button 
-                        onClick={() => setActiveReactionMessageId(activeReactionMessageId === msg.id ? null : msg.id)}
-                        className="p-1 text-white/80 hover:text-liquid-accent transition-colors"
-                        title="React"
-                      >
-                        <Smile size={13} />
-                      </button>
-
-                      <button 
-                        onClick={() => setReplyingTo(msg)}
-                        className="p-1 text-white/80 hover:text-white transition-colors"
-                        title="Reply"
-                      >
-                        <Reply size={13} />
-                      </button>
-
-                      <button 
-                        onClick={() => {
-                          clearSelection();
-                          toggleSelectMessage(msg.id);
-                          setIsForwardModalOpen(true);
-                        }}
-                        className="p-1 text-white/80 hover:text-liquid-accent transition-colors"
-                        title="Forward"
-                      >
-                        <Forward size={13} />
-                      </button>
-
-                      {isMe && msg.text && !msg.isDeleted && (
-                        <button 
-                          onClick={() => setEditingMessage(msg)}
-                          className="p-1 text-white/80 hover:text-cyan-400 transition-colors"
-                          title="Edit Message"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                      )}
-
-                      <button 
-                        onClick={() => toggleStarMessage(msg.id)}
-                        className="p-1 text-white/80 hover:text-yellow-400 transition-colors"
-                        title="Star Message"
-                      >
-                        <Star size={13} className={msg.isStarred ? "text-yellow-400 fill-yellow-400" : ""} />
-                      </button>
-
-                      <button 
-                        onClick={() => toggleSelectMessage(msg.id)}
-                        className="p-1 text-white/80 hover:text-white transition-colors"
-                        title="Select"
-                      >
-                        <CheckSquare size={13} />
-                      </button>
-
-                      {isMe && !msg.isDeleted && (
-                        <button 
-                          onClick={() => handleDeleteMessage(msg.id, true)}
-                          className="p-1 text-white/80 hover:text-red-400 transition-colors"
-                          title="Delete for Everyone"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      )}
-                    </div>
-                  )}
 
                   {/* Reactions Popover */}
                   {activeReactionMessageId === msg.id && (
@@ -1196,6 +1132,118 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </>
         )}
       </div>
+
+      {/* Context Menu (Right Click / Long Press) */}
+      <AnimatePresence>
+        {messageContextMenu && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60]"
+              onClick={(e) => {
+                e.stopPropagation();
+                setMessageContextMenu(null);
+              }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                setMessageContextMenu(null);
+              }}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="fixed z-[70] min-w-[200px] bg-liquid-base/95 backdrop-blur-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
+              style={{
+                left: Math.min(messageContextMenu.x, window.innerWidth - 220),
+                top: Math.min(messageContextMenu.y, window.innerHeight - 300)
+              }}
+            >
+              <button 
+                onClick={() => {
+                  setActiveReactionMessageId(messageContextMenu.msg.id);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+              >
+                <Smile size={16} className="text-liquid-accent" /> Add Reaction
+              </button>
+
+              <button 
+                onClick={() => {
+                  setReplyingTo(messageContextMenu.msg);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+              >
+                <Reply size={16} /> Reply
+              </button>
+
+              <button 
+                onClick={() => {
+                  clearSelection();
+                  toggleSelectMessage(messageContextMenu.msg.id);
+                  setIsForwardModalOpen(true);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+              >
+                <Forward size={16} /> Forward
+              </button>
+
+              <button 
+                onClick={() => {
+                  toggleSelectMessage(messageContextMenu.msg.id);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+              >
+                <CheckSquare size={16} /> Select Message
+              </button>
+
+              <button 
+                onClick={() => {
+                  toggleStarMessage(messageContextMenu.msg.id);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+              >
+                <Star size={16} className={messageContextMenu.msg.isStarred ? "text-yellow-400" : ""} /> 
+                {messageContextMenu.msg.isStarred ? 'Unstar Message' : 'Star Message'}
+              </button>
+
+              {messageContextMenu.msg.senderId === user?.id && messageContextMenu.msg.text && !messageContextMenu.msg.isDeleted && (
+                <button 
+                  onClick={() => {
+                    setEditingMessage(messageContextMenu.msg);
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                >
+                  <Edit2 size={16} className="text-cyan-400" /> Edit
+                </button>
+              )}
+
+              {messageContextMenu.msg.senderId === user?.id && !messageContextMenu.msg.isDeleted && (
+                <>
+                  <div className="h-[1px] w-full bg-white/10 my-1" />
+                  <button 
+                    onClick={() => {
+                      handleDeleteMessage(messageContextMenu.msg.id, true);
+                      setMessageContextMenu(null);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:bg-red-500/20 transition-colors text-left"
+                  >
+                    <Trash2 size={16} /> Delete for Everyone
+                  </button>
+                </>
+              )}
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
 
       {/* Liquid AI Copilot Modal */}
       <LiquidAiModal
