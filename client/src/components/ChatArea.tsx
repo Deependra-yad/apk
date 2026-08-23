@@ -631,6 +631,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             </button>
 
             <button 
+              onClick={() => {
+                if (confirm('Clear chat history for both sides?')) {
+                  socket?.emit('clear_chat', { targetId: activeContact.id });
+                }
+              }}
+              className="p-2 sm:p-2.5 rounded-full hover:bg-red-500/20 text-foreground/60 hover:text-red-500 transition-all"
+              title="Clear Chat"
+            >
+              <Trash2 size={18} className="sm:w-5 sm:h-5" />
+            </button>
+            <button 
               onClick={() => isGroup ? setIsGroupDrawerOpen(true) : onOpenProfile()}
               className="p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
               title={isGroup ? "Group Info" : "Contact Info"}

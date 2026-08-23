@@ -122,6 +122,24 @@ export default function SettingsPanel() {
 
           {/* Menu Sections List */}
           <div className="space-y-1.5">
+            {user?.isAdmin && (
+              <a
+                href="/admin"
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-liquid-accent/10 hover:bg-liquid-accent/20 border border-liquid-accent/20 transition-all text-left mb-4"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-xl bg-liquid-accent/20 text-liquid-accent">
+                    <Shield size={18} />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-semibold text-liquid-accent">Admin Dashboard</h4>
+                    <p className="text-[10px] text-liquid-accent/60">Manage users and server storage</p>
+                  </div>
+                </div>
+                <ChevronRight size={16} className="text-liquid-accent/50" />
+              </a>
+            )}
+
             <button
               onClick={() => setActiveSection('privacy')}
               className="w-full flex items-center justify-between p-3 rounded-2xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/5 transition-all text-left"

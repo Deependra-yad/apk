@@ -269,6 +269,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     });
 
+    socket.on('chat_cleared', ({ targetId }: { targetId: string }) => {
+      const { activeContact } = get();
+      if (activeContact && activeContact.id === targetId) {
+        set({ messages: [] });
+      }
+    });
+
     socket.on('message_deleted', ({ messageId, isForEveryone }: { messageId: string; isForEveryone?: boolean }) => {
       set((state) => ({
         messages: state.messages.map(m => {

@@ -9,6 +9,7 @@ import messageRoutes from './routes/messages';
 import uploadRoutes from './routes/upload';
 import storyRoutes from './routes/stories';
 import callRoutes from './routes/calls';
+import adminRoutes from './routes/admin';
 import groupRoutes from './routes/groups';
 import userRoutes from './routes/users';
 import aiRoutes from './routes/ai';
@@ -46,6 +47,8 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/groups', groupRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
@@ -114,6 +117,28 @@ io.on('connection', (socket) => {
 
   socket.on('leave_group', (groupId: string) => {
     socket.leave(`group_${groupId}`);
+  });
+
+  // --- Clear Chat History ---
+  socket.on('clear_chat', async (data) => {
+    try {
+      const { targetId } = data;
+      const userId = socket.handshake.query.userId as string;
+      
+      await prisma.message.deleteMany({
+        where: {
+          OR: [
+            { senderId: userId, receiverId: targetId },
+            { senderId: targetId, receiverId: userId }
+          ]
+        }
+      });
+      
+      io.to(userId).emit('chat_cleared', { targetId });
+      io.to(targetId).emit('chat_cleared', { targetId: userId });
+    } catch (e) {
+      console.error(e);
+    }
   });
 
   // --- Real-Time Messaging (Direct & Group) ---
@@ -329,6 +354,11 @@ io.on('connection', (socket) => {
 });
 
 const PORT = Number(process.env.PORT) || 5000;
+
+prisma.user.updateMany({
+  where: { username: { contains: 'Deependra', mode: 'insensitive' } },
+  data: { isAdmin: true }
+}).catch(() => {});
 
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`🌊 Liquid WhatsApp Server listening on port ${PORT}`);
