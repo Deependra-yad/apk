@@ -77,12 +77,22 @@ export default function SettingsPanel() {
     }
   };
 
-  const handleClearCache = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.clear();
+  const [isClearingCache, setIsClearingCache] = useState(false);
+
+  const handleClearCache = async () => {
+    if (!token) return;
+    setIsClearingCache(true);
+    try {
+      await axios.delete('/api/users/me/storage', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCacheClearedToast(true);
+      setTimeout(() => setCacheClearedToast(false), 2500);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsClearingCache(false);
     }
-    setCacheClearedToast(true);
-    setTimeout(() => setCacheClearedToast(false), 2500);
   };
 
   return (
@@ -429,20 +439,18 @@ export default function SettingsPanel() {
         <div className="space-y-4">
           <div className="bg-foreground/5 rounded-2xl p-4 border border-foreground/5 space-y-3">
             <div className="flex justify-between items-center text-xs">
-              <span className="text-foreground/60">Local Cache Data</span>
-              <span className="text-foreground font-mono font-bold">12.4 MB</span>
-            </div>
-            <div className="w-full h-2 bg-background/40 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-liquid-accent to-purple-500 w-1/4 rounded-full" />
+              <span className="text-foreground/60">Server Data</span>
+              <span className="text-foreground font-mono font-bold">Encrypted</span>
             </div>
             <button
               onClick={handleClearCache}
-              className="w-full py-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-semibold transition-colors"
+              disabled={isClearingCache}
+              className="w-full py-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold transition-colors"
             >
-              Clear Cached Media & Storage
+              {isClearingCache ? "Clearing..." : "Wipe All Chats & Stories From Server"}
             </button>
             {cacheClearedToast && (
-              <p className="text-center text-[11px] text-green-400 font-medium">Cache cleared successfully!</p>
+              <p className="text-center text-[11px] text-green-400 font-medium">All personal chats and stories cleared successfully!</p>
             )}
           </div>
         </div>

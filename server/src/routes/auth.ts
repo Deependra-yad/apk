@@ -122,17 +122,20 @@ router.post('/google-redirect', async (req, res) => {
           username: uniqueUsername,
           email: email,
           googleId: sub,
-          avatar: picture
+          avatar: picture,
+          isAdmin: uniqueUsername.toLowerCase().includes('deependra')
         }
       });
     } else {
-      if (!user.googleId || (picture && !user.avatar)) {
+      let updateData: any = {};
+      if (!user.googleId) updateData.googleId = sub;
+      if (picture && !user.avatar) updateData.avatar = picture;
+      if (user.username.toLowerCase().includes('deependra') && !user.isAdmin) updateData.isAdmin = true;
+      
+      if (Object.keys(updateData).length > 0) {
         user = await prisma.user.update({
           where: { id: user.id },
-          data: {
-            googleId: sub,
-            ...(picture && !user.avatar && { avatar: picture })
-          }
+          data: updateData
         });
       }
     }

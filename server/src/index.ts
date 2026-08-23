@@ -40,6 +40,7 @@ app.use('/uploads', (req, res, next) => {
 
 // Express JSON parser for API routes
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 app.use('/api/auth', authRoutes);

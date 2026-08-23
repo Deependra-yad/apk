@@ -183,4 +183,35 @@ router.get('/conversations', authenticate, async (req: any, res) => {
   }
 });
 
+router.delete('/me', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
+    await prisma.story.deleteMany({ where: { userId } });
+    await prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } });
+    await prisma.groupMember.deleteMany({ where: { userId } });
+    await prisma.group.deleteMany({ where: { creatorId: userId } });
+    await prisma.chatMeta.deleteMany({ where: { userId } });
+    await prisma.blockList.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } });
+    
+    await prisma.user.delete({ where: { id: userId } });
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Failed to delete account:', error);
+    res.status(500).json({ error: 'Failed to delete account' });
+  }
+});
+
+router.delete('/me/storage', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
+    await prisma.story.deleteMany({ where: { userId } });
+    res.json({ success: true, message: 'All personal messages and stories cleared' });
+  } catch (error) {
+    console.error('Failed to clear storage:', error);
+    res.status(500).json({ error: 'Failed to clear storage' });
+  }
+});
+
 export default router;
