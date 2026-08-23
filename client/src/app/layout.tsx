@@ -5,6 +5,7 @@ import AppInitializer from '@/components/AppInitializer';
 export const metadata: Metadata = {
   title: 'Liquid Chat',
   description: 'A modern, dynamic liquid drop UI chat application',
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
