@@ -81,6 +81,79 @@ router.post('/google', async (req, res) => {
   }
 });
 
+router.post('/google-redirect', async (req, res) => {
+  const credential = req.body.credential;
+  if (!credential) {
+    return res.redirect('https://apk-flame.vercel.app/auth?error=MissingCredential');
+  }
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: '543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com'
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload) return res.redirect('https://apk-flame.vercel.app/auth?error=InvalidToken');
+
+    const { sub, email, name, picture } = payload;
+    
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { googleId: sub },
+          { email: email }
+        ]
+      }
+    });
+
+    if (!user) {
+      let baseUsername = (name || email?.split('@')[0] || 'user').replace(/[^a-zA-Z0-9]/g, '');
+      let uniqueUsername = baseUsername;
+      let counter = 1;
+      
+      while (await prisma.user.findUnique({ where: { username: uniqueUsername } })) {
+        uniqueUsername = baseUsername + counter;
+        counter++;
+      }
+
+      user = await prisma.user.create({
+        data: {
+          username: uniqueUsername,
+          email: email,
+          googleId: sub,
+          avatar: picture
+        }
+      });
+    } else {
+      if (!user.googleId || (picture && !user.avatar)) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: sub,
+            ...(picture && !user.avatar && { avatar: picture })
+          }
+        });
+      }
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    
+    const userStr = encodeURIComponent(JSON.stringify({
+      id: user.id,
+      username: user.username,
+      avatar: user.avatar,
+      about: user.about
+    }));
+    
+    return res.redirect(`https://apk-flame.vercel.app/auth/callback?token=${token}&user=${userStr}`);
+
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    return res.redirect('https://apk-flame.vercel.app/auth?error=AuthFailed');
+  }
+});
+
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {

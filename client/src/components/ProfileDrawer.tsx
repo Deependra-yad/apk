@@ -183,7 +183,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-background/60 backdrop-blur-sm"
           />
 
           {/* Drawer Panel */}
@@ -192,16 +192,16 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-            className="fixed top-0 left-0 bottom-0 w-80 sm:w-96 bg-liquid-base/95 border-r border-white/10 z-50 p-6 flex flex-col justify-between shadow-2xl backdrop-blur-2xl overflow-y-auto no-scrollbar"
+            className="fixed top-0 left-0 bottom-0 w-80 sm:w-96 bg-liquid-base/95 border-r border-foreground/10 z-50 p-6 flex flex-col justify-between shadow-2xl backdrop-blur-2xl overflow-y-auto no-scrollbar"
           >
             <div className="space-y-6">
               {/* Header */}
-              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center justify-between pb-4 border-b border-foreground/10">
                 <div>
-                  <h2 className="text-lg font-bold text-white tracking-wide">Edit Profile</h2>
-                  <p className="text-xs text-gray-400">Change your picture, name & status</p>
+                  <h2 className="text-lg font-bold text-foreground tracking-wide">Edit Profile</h2>
+                  <p className="text-xs text-foreground/60">Change your picture, name & status</p>
                 </div>
-                <button onClick={onClose} className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5">
+                <button onClick={onClose} className="text-foreground/60 hover:text-foreground p-2 rounded-xl hover:bg-foreground/5">
                   <X size={20} />
                 </button>
               </div>
@@ -233,7 +233,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                   <button
                     onClick={() => fileInputRef.current?.click()}
                     disabled={isUploadingAvatar}
-                    className="absolute inset-0 rounded-full bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white transition-opacity cursor-pointer"
+                    className="absolute inset-0 rounded-full bg-background/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-foreground transition-opacity cursor-pointer"
                     title="Upload Custom Photo"
                   >
                     <Camera size={24} className="text-liquid-accent" />
@@ -264,7 +264,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                 <div className="flex gap-2 mt-4">
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                    className="px-3 py-1.5 rounded-xl bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-semibold flex items-center gap-1.5 transition-colors"
                   >
                     <Upload size={14} className="text-liquid-accent" />
                     <span>Upload Photo</span>
@@ -281,14 +281,14 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
 
                 {/* Preset Avatars Carousel */}
                 <div className="w-full mt-4">
-                  <span className="text-[11px] font-semibold text-gray-400 block mb-2 px-1">Avatar Gallery</span>
+                  <span className="text-[11px] font-semibold text-foreground/60 block mb-2 px-1">Avatar Gallery</span>
                   <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                     {PRESET_AVATARS.map((av, idx) => (
                       <div
                         key={idx}
                         onClick={() => handleSelectPresetAvatar(av)}
                         className={`w-10 h-10 rounded-full p-0.5 shrink-0 cursor-pointer transition-transform hover:scale-110 ${
-                          user?.avatar === av ? 'ring-2 ring-liquid-accent bg-liquid-accent/30' : 'border border-white/10'
+                          user?.avatar === av ? 'ring-2 ring-liquid-accent bg-liquid-accent/30' : 'border border-foreground/10'
                         }`}
                       >
                         <img src={av} alt="Preset" className="w-full h-full rounded-full object-cover bg-liquid-base" />
@@ -299,8 +299,8 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
               </div>
 
               {/* Username Section */}
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-2">
-                <div className="flex justify-between items-center text-xs text-gray-400">
+              <div className="bg-foreground/5 p-4 rounded-2xl border border-foreground/5 space-y-2">
+                <div className="flex justify-between items-center text-xs text-foreground/60">
                   <span className="flex items-center gap-1.5">
                     <User size={14} className="text-liquid-accent" />
                     <span>Your Username</span>
@@ -328,7 +328,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                       type="text"
                       value={usernameText}
                       onChange={(e) => setUsernameText(e.target.value)}
-                      className="w-full bg-black/40 rounded-xl px-3 py-2 text-white text-sm outline-none border border-liquid-accent/50 focus:border-liquid-accent"
+                      className="w-full bg-background/40 rounded-xl px-3 py-2 text-foreground text-sm outline-none border border-liquid-accent/50 focus:border-liquid-accent"
                       placeholder="Username"
                       autoFocus
                     />
@@ -340,13 +340,13 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                     )}
                   </div>
                 ) : (
-                  <p className="text-sm font-semibold text-white">@{user?.username}</p>
+                  <p className="text-sm font-semibold text-foreground">@{user?.username}</p>
                 )}
               </div>
 
               {/* Bio / About Status Section */}
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/5 space-y-3">
-                <div className="flex justify-between items-center text-xs text-gray-400">
+              <div className="bg-foreground/5 p-4 rounded-2xl border border-foreground/5 space-y-3">
+                <div className="flex justify-between items-center text-xs text-foreground/60">
                   <span className="flex items-center gap-1.5">
                     <Smile size={14} className="text-liquid-accent" />
                     <span>About / Bio Status</span>
@@ -373,19 +373,19 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                     value={aboutText}
                     onChange={(e) => setAboutText(e.target.value)}
                     rows={2}
-                    className="w-full bg-black/40 rounded-xl p-2.5 text-white text-sm outline-none border border-liquid-accent/50 focus:border-liquid-accent resize-none"
+                    className="w-full bg-background/40 rounded-xl p-2.5 text-foreground text-sm outline-none border border-liquid-accent/50 focus:border-liquid-accent resize-none"
                     placeholder="Tell something about yourself..."
                     autoFocus
                   />
                 ) : (
-                  <p className="text-sm text-gray-200 leading-relaxed italic">
+                  <p className="text-sm text-foreground/90 leading-relaxed italic">
                     "{user?.about || 'Hey there! I am using Liquid Chat 🌊'}"
                   </p>
                 )}
 
                 {/* Quick Status Presets */}
                 <div>
-                  <span className="text-[10px] text-gray-400 block mb-1.5 uppercase tracking-wider font-semibold">
+                  <span className="text-[10px] text-foreground/60 block mb-1.5 uppercase tracking-wider font-semibold">
                     Quick Presets
                   </span>
                   <div className="flex flex-wrap gap-1.5">
@@ -393,7 +393,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                       <button
                         key={idx}
                         onClick={() => handleSaveAbout(preset)}
-                        className="px-2.5 py-1 rounded-lg bg-black/30 hover:bg-liquid-accent/20 hover:text-liquid-accent text-[11px] text-gray-300 border border-white/5 transition-colors text-left"
+                        className="px-2.5 py-1 rounded-lg bg-background/30 hover:bg-liquid-accent/20 hover:text-liquid-accent text-[11px] text-foreground/80 border border-foreground/5 transition-colors text-left"
                       >
                         {preset}
                       </button>
@@ -404,7 +404,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
             </div>
 
             {/* Logout Button */}
-            <div className="pt-6 border-t border-white/10 mt-6">
+            <div className="pt-6 border-t border-foreground/10 mt-6">
               <button
                 onClick={() => {
                   logout();

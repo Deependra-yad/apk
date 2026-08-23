@@ -120,7 +120,7 @@ export default function StatusStoriesBar() {
   return (
     <>
       {/* Horizontal Liquid Stories Feed */}
-      <div className="h-24 px-4 py-2 border-b border-white/5 bg-liquid-base/20 flex items-center gap-3 overflow-x-auto no-scrollbar">
+      <div className="h-24 px-4 py-2 border-b border-foreground/5 bg-liquid-base/20 flex items-center gap-3 overflow-x-auto no-scrollbar">
         {/* My Status / Add Button */}
         <div 
           onClick={() => setIsAddModalOpen(true)}
@@ -134,7 +134,7 @@ export default function StatusStoriesBar() {
               <Plus size={12} strokeWidth={3} />
             </div>
           </div>
-          <span className="text-[11px] text-gray-300 font-medium truncate max-w-[56px]">Your Story</span>
+          <span className="text-[11px] text-foreground/80 font-medium truncate max-w-[56px]">Your Story</span>
         </div>
 
         {/* Stories from Contacts */}
@@ -149,7 +149,7 @@ export default function StatusStoriesBar() {
                 <img src={story.user?.avatar} alt={story.user?.username} className="w-full h-full object-cover" />
               </div>
             </div>
-            <span className="text-[11px] text-gray-300 font-medium truncate max-w-[56px]">
+            <span className="text-[11px] text-foreground/80 font-medium truncate max-w-[56px]">
               {story.user?.username}
             </span>
           </div>
@@ -163,12 +163,12 @@ export default function StatusStoriesBar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
           >
-            <div className="w-full max-w-md bg-liquid-base/95 border border-white/10 rounded-3xl p-6 shadow-2xl relative flex flex-col gap-4">
+            <div className="w-full max-w-md bg-liquid-base/95 border border-foreground/10 rounded-3xl p-6 shadow-2xl relative flex flex-col gap-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-bold text-white">Create Status Update</h3>
-                <button onClick={() => setIsAddModalOpen(false)} className="text-gray-400 hover:text-white">
+                <h3 className="text-lg font-bold text-foreground">Create Status Update</h3>
+                <button onClick={() => setIsAddModalOpen(false)} className="text-foreground/60 hover:text-foreground">
                   <X size={20} />
                 </button>
               </div>
@@ -182,11 +182,11 @@ export default function StatusStoriesBar() {
               />
 
               {newFile ? (
-                <div className="relative h-48 rounded-2xl overflow-hidden bg-black/40 border border-white/10">
+                <div className="relative h-48 rounded-2xl overflow-hidden bg-background/40 border border-foreground/10">
                   <img src={URL.createObjectURL(newFile)} alt="Preview" className="w-full h-full object-contain" />
                   <button
                     onClick={() => setNewFile(null)}
-                    className="absolute top-2 right-2 p-1.5 rounded-full bg-black/60 text-white hover:bg-black"
+                    className="absolute top-2 right-2 p-1.5 rounded-full bg-background/60 text-foreground hover:bg-background"
                   >
                     <X size={16} />
                   </button>
@@ -194,7 +194,7 @@ export default function StatusStoriesBar() {
               ) : (
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="h-32 rounded-2xl border-2 border-dashed border-white/10 hover:border-liquid-accent/50 flex flex-col items-center justify-center text-gray-400 hover:text-liquid-accent transition-all gap-2 bg-white/5"
+                  className="h-32 rounded-2xl border-2 border-dashed border-foreground/10 hover:border-liquid-accent/50 flex flex-col items-center justify-center text-foreground/60 hover:text-liquid-accent transition-all gap-2 bg-foreground/5"
                 >
                   <ImageIcon size={28} />
                   <span className="text-xs font-medium">Add Photo / Video</span>
@@ -206,13 +206,13 @@ export default function StatusStoriesBar() {
                 value={newCaption}
                 onChange={(e) => setNewCaption(e.target.value)}
                 placeholder="Add a liquid caption..."
-                className="h-12 bg-black/40 rounded-xl px-4 text-white placeholder-gray-500 border border-white/5 outline-none focus:border-liquid-accent/50 text-sm"
+                className="h-12 bg-background/40 rounded-xl px-4 text-foreground placeholder-gray-500 border border-foreground/5 outline-none focus:border-liquid-accent/50 text-sm"
               />
 
               <button
                 onClick={handleCreateStory}
                 disabled={isUploading}
-                className="h-12 bg-gradient-to-r from-liquid-accent to-liquid-secondary rounded-xl text-white font-semibold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,210,255,0.4)] hover:brightness-110 transition-all disabled:opacity-50"
+                className="h-12 bg-gradient-to-r from-liquid-accent to-liquid-secondary rounded-xl text-foreground font-semibold flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(0,210,255,0.4)] hover:brightness-110 transition-all disabled:opacity-50"
               >
                 <Send size={18} />
                 <span>{isUploading ? 'Posting...' : 'Share Status'}</span>
@@ -229,12 +229,12 @@ export default function StatusStoriesBar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-2xl p-4 select-none"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-2xl p-4 select-none"
           >
-            <div className="relative w-full max-w-lg h-[90vh] bg-liquid-base/90 rounded-3xl overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(0,210,255,0.2)] flex flex-col justify-between p-6">
+            <div className="relative w-full max-w-lg h-[90vh] bg-liquid-base/90 rounded-3xl overflow-hidden border border-foreground/10 shadow-[0_0_60px_rgba(0,210,255,0.2)] flex flex-col justify-between p-6">
               {/* Progress Bars */}
               <div className="absolute top-4 left-6 right-6 flex gap-1 z-30">
-                <div className="flex-1 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="flex-1 h-1 bg-foreground/20 rounded-full overflow-hidden">
                   <div
                     className="h-full bg-liquid-accent rounded-full transition-all duration-100 ease-linear"
                     style={{ width: `${storyProgress}%` }}
@@ -249,13 +249,13 @@ export default function StatusStoriesBar() {
                     <img src={currentStory.user?.avatar} alt={currentStory.user?.username} className="w-full h-full object-cover" />
                   </div>
                   <div>
-                    <h4 className="text-white font-semibold text-sm">{currentStory.user?.username}</h4>
-                    <span className="text-[11px] text-gray-400">24h Status</span>
+                    <h4 className="text-foreground font-semibold text-sm">{currentStory.user?.username}</h4>
+                    <span className="text-[11px] text-foreground/60">24h Status</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setActiveStoryIndex(null)}
-                  className="p-2 text-gray-400 hover:text-white rounded-full hover:bg-white/10"
+                  className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
                 >
                   <X size={20} />
                 </button>
@@ -267,20 +267,20 @@ export default function StatusStoriesBar() {
                   <img src={currentStory.mediaUrl} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
                 ) : (
                   <div className="text-center p-8">
-                    <p className="text-2xl font-semibold text-white leading-relaxed">{currentStory.caption}</p>
+                    <p className="text-2xl font-semibold text-foreground leading-relaxed">{currentStory.caption}</p>
                   </div>
                 )}
 
                 {/* Left/Right Click Nav */}
                 <button
                   onClick={handlePrevStory}
-                  className="absolute left-2 p-2 rounded-full bg-black/40 text-white hover:bg-black/80"
+                  className="absolute left-2 p-2 rounded-full bg-background/40 text-foreground hover:bg-background/80"
                 >
                   <ChevronLeft size={24} />
                 </button>
                 <button
                   onClick={handleNextStory}
-                  className="absolute right-2 p-2 rounded-full bg-black/40 text-white hover:bg-black/80"
+                  className="absolute right-2 p-2 rounded-full bg-background/40 text-foreground hover:bg-background/80"
                 >
                   <ChevronRight size={24} />
                 </button>
@@ -288,7 +288,7 @@ export default function StatusStoriesBar() {
 
               {/* Story Caption (if media) */}
               {currentStory.mediaUrl && currentStory.caption && (
-                <div className="p-4 bg-black/50 rounded-xl backdrop-blur-md text-center text-sm text-white z-30">
+                <div className="p-4 bg-background/50 rounded-xl backdrop-blur-md text-center text-sm text-foreground z-30">
                   {currentStory.caption}
                 </div>
               )}

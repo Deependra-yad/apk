@@ -70,45 +70,45 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-xl p-4 select-none"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-xl p-4 select-none"
       >
         <motion.div
           initial={{ scale: 0.9, y: 20 }}
           animate={{ scale: 1, y: 0 }}
           exit={{ scale: 0.9, y: 20 }}
-          className="w-full max-w-xl bg-liquid-base/95 border border-white/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 relative overflow-hidden"
+          className="w-full max-w-xl bg-liquid-base/95 border border-foreground/10 rounded-3xl p-6 shadow-2xl flex flex-col gap-4 relative overflow-hidden"
         >
           {/* Ambient Top Glow */}
           <div className="absolute top-0 right-1/3 w-64 h-32 bg-liquid-accent/15 rounded-full blur-3xl pointer-events-none" />
 
           {/* Header */}
-          <div className="flex items-center justify-between pb-3 border-b border-white/10">
+          <div className="flex items-center justify-between pb-3 border-b border-foreground/10">
             <div className="flex items-center gap-2.5">
               <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-liquid-accent to-purple-500 flex items-center justify-center text-liquid-dark shadow-md">
                 <Bot size={22} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-white flex items-center gap-1.5">
+                <h3 className="text-base font-bold text-foreground flex items-center gap-1.5">
                   <span>Liquid AI Copilot</span>
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-mono bg-liquid-accent/20 text-liquid-accent font-bold">
                     AI 2.0
                   </span>
                 </h3>
-                <p className="text-xs text-gray-400">Smart translations, writing & summaries</p>
+                <p className="text-xs text-foreground/60">Smart translations, writing & summaries</p>
               </div>
             </div>
 
-            <button onClick={onClose} className="p-2 text-gray-400 hover:text-white rounded-xl hover:bg-white/5">
+            <button onClick={onClose} className="p-2 text-foreground/60 hover:text-foreground rounded-xl hover:bg-foreground/5">
               <X size={20} />
             </button>
           </div>
 
           {/* Tab Selector */}
-          <div className="grid grid-cols-4 gap-1.5 bg-black/40 p-1 rounded-2xl border border-white/5">
+          <div className="grid grid-cols-4 gap-1.5 bg-background/40 p-1 rounded-2xl border border-foreground/5">
             <button
               onClick={() => { setActiveTab('chat'); setResponse(''); }}
               className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                activeTab === 'chat' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-gray-400 hover:text-white'
+                activeTab === 'chat' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-foreground/60 hover:text-foreground'
               }`}
             >
               <Sparkles size={14} />
@@ -118,7 +118,7 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
             <button
               onClick={() => { setActiveTab('translate'); setResponse(''); }}
               className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                activeTab === 'translate' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-gray-400 hover:text-white'
+                activeTab === 'translate' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-foreground/60 hover:text-foreground'
               }`}
             >
               <Languages size={14} />
@@ -128,7 +128,7 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
             <button
               onClick={() => { setActiveTab('summarize'); setResponse(''); }}
               className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                activeTab === 'summarize' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-gray-400 hover:text-white'
+                activeTab === 'summarize' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-foreground/60 hover:text-foreground'
               }`}
             >
               <FileText size={14} />
@@ -138,7 +138,7 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
             <button
               onClick={() => { setActiveTab('suggest'); setResponse(''); }}
               className={`py-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-                activeTab === 'suggest' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-gray-400 hover:text-white'
+                activeTab === 'suggest' ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md' : 'text-foreground/60 hover:text-foreground'
               }`}
             >
               <MessageSquare size={14} />
@@ -149,11 +149,11 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
           {/* Translation Target Language Selector */}
           {activeTab === 'translate' && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-400 font-medium">Target Language:</span>
+              <span className="text-xs text-foreground/60 font-medium">Target Language:</span>
               <select
                 value={targetLang}
                 onChange={(e) => setTargetLang(e.target.value)}
-                className="bg-black/40 border border-white/10 text-white text-xs rounded-xl px-3 py-1.5 outline-none focus:border-liquid-accent/50"
+                className="bg-background/40 border border-foreground/10 text-foreground text-xs rounded-xl px-3 py-1.5 outline-none focus:border-liquid-accent/50"
               >
                 <option value="Spanish">🇪🇸 Spanish</option>
                 <option value="French">🇫🇷 French</option>
@@ -177,13 +177,13 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
                 'Enter recent message to generate smart reply suggestions...'
               }
               rows={3}
-              className="w-full bg-black/40 border border-white/10 rounded-2xl p-3.5 text-white text-xs outline-none focus:border-liquid-accent/50 resize-none placeholder-gray-500"
+              className="w-full bg-background/40 border border-foreground/10 rounded-2xl p-3.5 text-foreground text-xs outline-none focus:border-liquid-accent/50 resize-none placeholder-gray-500"
             />
 
             <button
               onClick={() => handleRunAI(activeTab === 'suggest' ? 'suggest_replies' : activeTab)}
               disabled={!prompt.trim() || isLoading}
-              className="w-full h-10 bg-gradient-to-r from-liquid-accent to-liquid-secondary rounded-xl text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,210,255,0.4)] hover:brightness-110 disabled:opacity-40 transition-all"
+              className="w-full h-10 bg-gradient-to-r from-liquid-accent to-liquid-secondary rounded-xl text-foreground font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(0,210,255,0.4)] hover:brightness-110 disabled:opacity-40 transition-all"
             >
               {isLoading ? (
                 <>
@@ -204,7 +204,7 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/5 border border-white/10 rounded-2xl p-4 max-h-48 overflow-y-auto no-scrollbar space-y-3"
+              className="bg-foreground/5 border border-foreground/10 rounded-2xl p-4 max-h-48 overflow-y-auto no-scrollbar space-y-3"
             >
               {suggestedReplies.length > 0 ? (
                 <div className="space-y-1.5">
@@ -217,7 +217,7 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
                           if (onInsertToChat) onInsertToChat(reply);
                           onClose();
                         }}
-                        className="p-2.5 rounded-xl bg-black/40 hover:bg-liquid-accent/20 hover:text-liquid-accent text-white text-xs text-left border border-white/5 transition-all"
+                        className="p-2.5 rounded-xl bg-background/40 hover:bg-liquid-accent/20 hover:text-liquid-accent text-foreground text-xs text-left border border-foreground/5 transition-all"
                       >
                         {reply}
                       </button>
@@ -226,14 +226,14 @@ export default function LiquidAiModal({ isOpen, onClose, initialPrompt = '', onI
                 </div>
               ) : (
                 <>
-                  <div className="text-xs text-white leading-relaxed whitespace-pre-wrap">
+                  <div className="text-xs text-foreground leading-relaxed whitespace-pre-wrap">
                     {response}
                   </div>
 
-                  <div className="flex justify-end gap-2 pt-2 border-t border-white/10">
+                  <div className="flex justify-end gap-2 pt-2 border-t border-foreground/10">
                     <button
                       onClick={() => handleCopy(response)}
-                      className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium flex items-center gap-1.5"
+                      className="px-3 py-1.5 rounded-lg bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-medium flex items-center gap-1.5"
                     >
                       {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
                       <span>{isCopied ? 'Copied' : 'Copy'}</span>

@@ -241,16 +241,16 @@ export default function Home() {
       />
 
       {/* Dynamic Tab Panel */}
-      <div className={`w-full sm:w-96 h-full bg-liquid-base/40 border-r border-white/5 flex flex-col backdrop-blur-2xl z-20 pb-16 sm:pb-0 shrink-0 ${
+      <div className={`w-full sm:w-96 h-full bg-liquid-base/40 border-r border-foreground/5 flex flex-col backdrop-blur-2xl z-20 pb-16 sm:pb-0 shrink-0 ${
         isChatOpen ? 'hidden sm:flex' : 'flex'
       }`}>
         {/* Tab 1: CHATS */}
         {activeTab === 'chat' && (
           <>
             {/* Header */}
-            <div className="h-20 border-b border-white/5 flex items-center justify-between px-6 bg-liquid-base/30">
+            <div className="h-20 border-b border-foreground/5 flex items-center justify-between px-6 bg-liquid-base/30">
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-white tracking-wide">Liquid Chat</h1>
+                <h1 className="text-xl font-bold text-foreground tracking-wide">Liquid Chat</h1>
                 <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
                   PRO
                 </span>
@@ -259,7 +259,7 @@ export default function Home() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setIsNewGroupModalOpen(true)}
-                  className="p-2 rounded-xl bg-white/10 hover:bg-liquid-accent/20 text-gray-300 hover:text-liquid-accent transition-colors"
+                  className="p-2 rounded-xl bg-foreground/10 hover:bg-liquid-accent/20 text-foreground/80 hover:text-liquid-accent transition-colors"
                   title="New Group"
                 >
                   <Plus size={18} />
@@ -267,7 +267,7 @@ export default function Home() {
 
                 <button 
                   onClick={() => setIsProfileOpen(true)}
-                  className="w-9 h-9 rounded-full overflow-hidden border border-white/10 hover:border-liquid-accent transition-colors shadow-sm"
+                  className="w-9 h-9 rounded-full overflow-hidden border border-foreground/10 hover:border-liquid-accent transition-colors shadow-sm"
                 >
                   <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
                 </button>
@@ -279,20 +279,20 @@ export default function Home() {
 
             {/* Search Bar */}
             <div className="px-4 pt-3 pb-2">
-              <div className="h-10 bg-black/30 rounded-xl px-3 flex items-center gap-2.5 border border-white/5 focus-within:border-liquid-accent/50 transition-colors">
-                <Search size={16} className="text-gray-400" />
+              <div className="h-10 bg-background/30 rounded-xl px-3 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
+                <Search size={16} className="text-foreground/60" />
                 <input
                   type="text"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
                   placeholder="Search chats, groups..."
-                  className="flex-1 bg-transparent border-none outline-none text-white text-xs placeholder-gray-500"
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500"
                 />
               </div>
             </div>
 
             {/* Chat Category Filter Tabs (All, Unread, Groups, Archived) */}
-            <div className="px-4 py-2 flex items-center gap-1.5 border-b border-white/5 overflow-x-auto no-scrollbar">
+            <div className="px-4 py-2 flex items-center gap-1.5 border-b border-foreground/5 overflow-x-auto no-scrollbar">
               {(['all', 'unread', 'groups', 'archived'] as const).map(tab => (
                 <button
                   key={tab}
@@ -300,7 +300,7 @@ export default function Home() {
                   className={`px-3 py-1 rounded-full text-xs font-semibold capitalize transition-all shrink-0 ${
                     chatFilter === tab 
                       ? 'bg-liquid-accent text-liquid-dark font-bold shadow-sm' 
-                      : 'bg-white/5 hover:bg-white/10 text-gray-400'
+                      : 'bg-foreground/5 hover:bg-foreground/10 text-foreground/60'
                   }`}
                 >
                   {tab}
@@ -311,7 +311,7 @@ export default function Home() {
             {/* Unified Chats & Groups List */}
             <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
               {unifiedChatList.length === 0 ? (
-                <div className="p-8 text-center text-gray-500 text-xs">
+                <div className="p-8 text-center text-foreground/50 text-xs">
                   No conversations found in this filter
                 </div>
               ) : (
@@ -341,7 +341,7 @@ export default function Home() {
                       className={`flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer relative overflow-hidden transition-all ${
                         isActive
                           ? 'bg-gradient-to-r from-liquid-accent/15 via-white/5 to-transparent border border-liquid-accent/30 shadow-[0_0_15px_rgba(0,210,255,0.15)]'
-                          : 'hover:bg-white/5 border border-transparent'
+                          : 'hover:bg-foreground/5 border border-transparent'
                       }`}
                     >
                       {/* Avatar */}
@@ -349,7 +349,7 @@ export default function Home() {
                         <div className={`w-12 h-12 rounded-full p-[2px] ${
                           isGroupItem 
                             ? 'bg-gradient-to-tr from-purple-500 to-indigo-500' 
-                            : 'bg-white/10'
+                            : 'bg-foreground/10'
                         }`}>
                           <img 
                             src={isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar} 
@@ -365,20 +365,20 @@ export default function Home() {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <h3 className={`text-sm font-semibold truncate ${isActive ? 'text-white font-bold' : 'text-gray-200'}`}>
+                          <h3 className={`text-sm font-semibold truncate ${isActive ? 'text-foreground font-bold' : 'text-foreground/90'}`}>
                             {isGroupItem ? item.name : (item as any).username}
                           </h3>
 
                           <div className="flex items-center gap-1.5">
                             {isPinned && <Pin size={12} className="text-liquid-accent fill-liquid-accent" />}
-                            {isMuted && <BellOff size={12} className="text-gray-500" />}
+                            {isMuted && <BellOff size={12} className="text-foreground/50" />}
                             {!isGroupItem && isOnline && (
                               <span className="text-[10px] text-green-400 font-medium font-mono">online</span>
                             )}
                           </div>
                         </div>
 
-                        <p className="text-xs text-gray-400 truncate">
+                        <p className="text-xs text-foreground/60 truncate">
                           {isGroupItem ? `${item.members.length} members` : ((item as any).about || 'Liquid user')}
                         </p>
                       </div>
@@ -461,22 +461,22 @@ export default function Home() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setContextMenuTarget(null)}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-md p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/75 backdrop-blur-md p-4"
           >
             <motion.div
               initial={{ scale: 0.9, y: 15 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 15 }}
               onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-xs bg-liquid-base/95 border border-white/10 rounded-2xl p-4 shadow-2xl space-y-1.5"
+              className="w-full max-w-xs bg-liquid-base/95 border border-foreground/10 rounded-2xl p-4 shadow-2xl space-y-1.5"
             >
-              <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider px-2 pb-1 border-b border-white/10">
+              <h4 className="text-xs font-bold text-foreground/60 uppercase tracking-wider px-2 pb-1 border-b border-foreground/10">
                 {contextMenuTarget.name}
               </h4>
 
               <button
                 onClick={() => handleToggleMeta(contextMenuTarget.id, 'isPinned')}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium"
               >
                 <Pin size={16} className={isTargetPinned(contextMenuTarget.id) ? "text-liquid-accent fill-liquid-accent" : ""} />
                 <span>{isTargetPinned(contextMenuTarget.id) ? 'Unpin Chat' : 'Pin to Top'}</span>
@@ -484,7 +484,7 @@ export default function Home() {
 
               <button
                 onClick={() => handleToggleMeta(contextMenuTarget.id, 'isMuted')}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium"
               >
                 <BellOff size={16} />
                 <span>{isTargetMuted(contextMenuTarget.id) ? 'Unmute Notifications' : 'Mute Notifications'}</span>
@@ -492,7 +492,7 @@ export default function Home() {
 
               <button
                 onClick={() => handleToggleMeta(contextMenuTarget.id, 'isArchived')}
-                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium"
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium"
               >
                 <Archive size={16} />
                 <span>{isTargetArchived(contextMenuTarget.id) ? 'Unarchive Chat' : 'Archive Chat'}</span>

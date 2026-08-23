@@ -120,7 +120,7 @@ export default function VoiceRecorder({ onSendVoiceNote, onCancel }: VoiceRecord
       {/* Left: Delete / Cancel */}
       <button 
         onClick={onCancel}
-        className="p-2 text-gray-400 hover:text-red-400 rounded-full hover:bg-white/5 transition-colors"
+        className="p-2 text-foreground/60 hover:text-red-400 rounded-full hover:bg-foreground/5 transition-colors"
         title="Discard Voice Note"
       >
         <Trash2 size={18} />
@@ -151,7 +151,7 @@ export default function VoiceRecorder({ onSendVoiceNote, onCancel }: VoiceRecord
 
         <div className="flex items-center gap-2">
           {isRecording && <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />}
-          <span className="text-sm font-mono text-white/90 font-medium">
+          <span className="text-sm font-mono text-foreground/90 font-medium">
             {formatTimer(recordSeconds)}
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function VoiceRecorder({ onSendVoiceNote, onCancel }: VoiceRecord
         {isRecording ? (
           <button
             onClick={handleStopAndPreview}
-            className="p-2 bg-white/10 text-white rounded-full hover:bg-white/20 transition-colors"
+            className="p-2 bg-foreground/10 text-foreground rounded-full hover:bg-foreground/20 transition-colors"
             title="Stop Recording"
           >
             <Square size={16} />
@@ -173,7 +173,7 @@ export default function VoiceRecorder({ onSendVoiceNote, onCancel }: VoiceRecord
           whileHover={{ scale: 1.08 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleSend}
-          className="p-2.5 bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-white rounded-full shadow-[0_0_15px_rgba(0,210,255,0.4)]"
+          className="p-2.5 bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground rounded-full shadow-[0_0_15px_rgba(0,210,255,0.4)]"
           title="Send Voice Note"
         >
           <Send size={16} className="ml-0.5" />
@@ -258,7 +258,7 @@ export function AudioBubblePlayer({ audioUrl, duration }: { audioUrl: string; du
     <div className="flex items-center gap-3 py-1 min-w-[240px]">
       <button 
         onClick={togglePlay}
-        className="w-10 h-10 rounded-full bg-white/20 hover:bg-white/30 text-white flex items-center justify-center transition-all shadow-md shrink-0 cursor-pointer"
+        className="w-10 h-10 rounded-full bg-foreground/20 hover:bg-white/30 text-foreground flex items-center justify-center transition-all shadow-md shrink-0 cursor-pointer"
       >
         {isPlaying ? <Pause size={18} /> : <Play size={18} className="ml-0.5" />}
       </button>
@@ -289,14 +289,14 @@ export function AudioBubblePlayer({ audioUrl, duration }: { audioUrl: string; du
           })}
         </div>
 
-        <div className="flex justify-between items-center text-[10px] text-white/80 font-mono">
+        <div className="flex justify-between items-center text-[10px] text-foreground/80 font-mono">
           <span>{formatTimer(currentTime)}</span>
           <div className="flex items-center gap-2">
             <span>{formatTimer(audioDuration)}</span>
             {/* Speed Badge */}
             <button
               onClick={handleToggleSpeed}
-              className="px-1.5 py-0.2 rounded-md bg-white/20 hover:bg-white/30 text-white font-bold text-[9px] transition-colors"
+              className="px-1.5 py-0.2 rounded-md bg-foreground/20 hover:bg-white/30 text-foreground font-bold text-[9px] transition-colors"
               title="Change playback speed"
             >
               {playbackSpeed}x

@@ -43,10 +43,10 @@ export default function NotificationToast() {
           </div>
 
           <div className="overflow-hidden">
-            <h4 className="text-xs font-bold text-white truncate">
+            <h4 className="text-xs font-bold text-foreground truncate">
               {incomingToast.groupName ? `${incomingToast.groupName} • ${incomingToast.sender?.username}` : incomingToast.sender?.username}
             </h4>
-            <p className="text-xs text-gray-300 truncate mt-0.5">
+            <p className="text-xs text-foreground/80 truncate mt-0.5">
               {incomingToast.text || (incomingToast.type === 'image' ? '📷 Photo' : incomingToast.type === 'video' ? '🎥 Video' : incomingToast.type === 'audio' ? '🎵 Voice Note' : incomingToast.fileName || 'Attachment')}
             </p>
           </div>
@@ -57,7 +57,7 @@ export default function NotificationToast() {
             e.stopPropagation();
             setIncomingToast(null);
           }}
-          className="p-1.5 text-gray-400 hover:text-white rounded-lg hover:bg-white/10 shrink-0"
+          className="p-1.5 text-foreground/60 hover:text-foreground rounded-lg hover:bg-foreground/10 shrink-0"
         >
           <X size={16} />
         </button>

@@ -73,7 +73,7 @@ export function ReactionBadges({
           className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium backdrop-blur-md border transition-all ${
             hasMyReaction
               ? 'bg-liquid-accent/20 border-liquid-accent/40 text-liquid-accent shadow-[0_0_10px_rgba(0,210,255,0.2)]'
-              : 'bg-white/10 border-white/10 text-white/90 hover:bg-white/20'
+              : 'bg-foreground/10 border-foreground/10 text-foreground/90 hover:bg-foreground/20'
           }`}
         >
           <span>{emoji}</span>

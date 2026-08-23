@@ -301,12 +301,12 @@ export default function CallModal({
           dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth - 250 : 500, top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight - 200 : 500 }}
           className="fixed bottom-6 right-6 z-50 w-64 h-44 bg-liquid-base/95 border border-liquid-accent/50 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(0,210,255,0.5)] backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between p-2.5"
         >
-          <div className="flex justify-between items-center text-xs text-white/90 px-1">
+          <div className="flex justify-between items-center text-xs text-foreground/90 px-1">
             <span className="font-semibold truncate">{targetUser?.username}</span>
             <button onClick={() => setIsMinimized(false)} className="hover:text-liquid-accent p-1"><Maximize2 size={14} /></button>
           </div>
 
-          <div className="relative w-full flex-1 rounded-xl overflow-hidden bg-black/70 flex items-center justify-center my-1">
+          <div className="relative w-full flex-1 rounded-xl overflow-hidden bg-background/70 flex items-center justify-center my-1">
             {isVideoCall && remoteStream ? (
               <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
             ) : (
@@ -318,7 +318,7 @@ export default function CallModal({
 
           <div className="flex justify-between items-center px-1">
             <span className="text-[11px] text-green-400 font-mono font-medium">{formatTimer(callDuration)}</span>
-            <button onClick={() => endCall('completed')} className="p-1.5 bg-red-500 rounded-full text-white hover:bg-red-600">
+            <button onClick={() => endCall('completed')} className="p-1.5 bg-red-500 rounded-full text-foreground hover:bg-red-600">
               <PhoneOff size={12} />
             </button>
           </div>
@@ -329,13 +329,13 @@ export default function CallModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-2xl p-4 sm:p-6"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-background/85 backdrop-blur-2xl p-4 sm:p-6"
           >
             <motion.div
               initial={{ scale: 0.9, y: 30 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 30 }}
-          className="w-full max-w-4xl h-full sm:h-[85vh] bg-liquid-base/95 border-0 sm:border border-white/10 rounded-none sm:rounded-3xl overflow-hidden relative shadow-[0_0_80px_rgba(0,210,255,0.25)] flex flex-col justify-between"
+          className="w-full max-w-4xl h-full sm:h-[85vh] bg-liquid-base/95 border-0 sm:border border-foreground/10 rounded-none sm:rounded-3xl overflow-hidden relative shadow-[0_0_80px_rgba(0,210,255,0.25)] flex flex-col justify-between"
         >
           {/* Permission Notice Banner */}
           {hasPermissionWarning && (
@@ -346,20 +346,20 @@ export default function CallModal({
                   Microphone/Camera blocked by browser. Connected in simulation mode. Click the lock icon in address bar to allow.
                 </span>
               </div>
-              <button onClick={() => setHasPermissionWarning(false)} className="text-amber-300 hover:text-white font-bold ml-2">
+              <button onClick={() => setHasPermissionWarning(false)} className="text-amber-300 hover:text-foreground font-bold ml-2">
                 Dismiss
               </button>
             </div>
           )}
 
           {/* Header Bar */}
-          <div className="h-16 px-6 border-b border-white/5 flex items-center justify-between z-20 bg-liquid-dark/40 backdrop-blur-md">
+          <div className="h-16 px-6 border-b border-foreground/5 flex items-center justify-between z-20 bg-liquid-dark/40 backdrop-blur-md">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-full overflow-hidden border border-liquid-accent/40">
                 <img src={targetUser?.avatar} alt={targetUser?.username} className="w-full h-full object-cover" />
               </div>
               <div>
-                <h3 className="text-white font-semibold text-sm">{targetUser?.username}</h3>
+                <h3 className="text-foreground font-semibold text-sm">{targetUser?.username}</h3>
                 <p className="text-xs text-liquid-accent font-mono">
                   {callState === 'connected' ? `Connected • ${formatTimer(callDuration)}` : callState === 'calling' ? 'Calling...' : 'Incoming Call...'}
                 </p>
@@ -369,7 +369,7 @@ export default function CallModal({
             {callState === 'connected' && (
               <button
                 onClick={() => setIsMinimized(true)}
-                className="text-gray-400 hover:text-white p-2 rounded-xl hover:bg-white/5 transition-colors"
+                className="text-foreground/60 hover:text-foreground p-2 rounded-xl hover:bg-foreground/5 transition-colors"
                 title="Minimize call"
               >
                 <Minimize2 size={18} />
@@ -393,8 +393,8 @@ export default function CallModal({
                   </div>
                 </div>
 
-                <h2 className="text-2xl font-bold text-white mb-2">{targetUser?.username}</h2>
-                <p className="text-gray-400 mb-10 flex items-center gap-2">
+                <h2 className="text-2xl font-bold text-foreground mb-2">{targetUser?.username}</h2>
+                <p className="text-foreground/60 mb-10 flex items-center gap-2">
                   {incomingCallData?.isVideo ? <Video size={18} className="text-liquid-accent" /> : <Phone size={18} className="text-liquid-accent" />}
                   Incoming {incomingCallData?.isVideo ? 'Video' : 'Voice'} Call...
                 </p>
@@ -404,7 +404,7 @@ export default function CallModal({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={answerCall}
-                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 text-white flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.6)] cursor-pointer"
+                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.6)] cursor-pointer"
                   >
                     <Phone size={28} />
                   </motion.button>
@@ -413,7 +413,7 @@ export default function CallModal({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => endCall('rejected')}
-                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.6)] cursor-pointer"
+                    className="w-16 h-16 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.6)] cursor-pointer"
                   >
                     <PhoneOff size={28} />
                   </motion.button>
@@ -435,14 +435,14 @@ export default function CallModal({
                   </div>
                 </div>
 
-                <h2 className="text-xl font-bold text-white mb-2">Calling {targetUser?.username}...</h2>
-                <p className="text-sm text-gray-400 mb-10">Ringing liquid bell...</p>
+                <h2 className="text-xl font-bold text-foreground mb-2">Calling {targetUser?.username}...</h2>
+                <p className="text-sm text-foreground/60 mb-10">Ringing liquid bell...</p>
 
                 <motion.button
                   whileHover={{ scale: 1.08 }}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => endCall('missed')}
-                  className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.5)] cursor-pointer"
+                  className="w-14 h-14 rounded-full bg-red-500 text-foreground flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.5)] cursor-pointer"
                 >
                   <PhoneOff size={24} />
                 </motion.button>
@@ -458,7 +458,7 @@ export default function CallModal({
                     ref={remoteVideoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-full object-cover bg-black"
+                    className="w-full h-full object-cover bg-background"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center">
@@ -472,7 +472,7 @@ export default function CallModal({
                         <img src={targetUser?.avatar} alt={targetUser?.username} className="w-full h-full rounded-full object-cover bg-liquid-base" />
                       </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">{targetUser?.username}</h3>
+                    <h3 className="text-2xl font-bold text-foreground mb-2">{targetUser?.username}</h3>
                     <div className="flex items-center gap-2 text-liquid-accent text-sm font-medium">
                       <Volume2 size={16} className="animate-pulse" />
                       <span>HD Voice Audio Connected</span>
@@ -485,7 +485,7 @@ export default function CallModal({
                   <motion.div
                     drag
                     dragConstraints={{ left: 0, right: 300, top: 0, bottom: 200 }}
-                    className="absolute top-4 right-4 w-44 h-60 bg-black/80 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl z-20 cursor-grab active:cursor-grabbing"
+                    className="absolute top-4 right-4 w-44 h-60 bg-background/80 rounded-2xl overflow-hidden border-2 border-foreground/20 shadow-2xl z-20 cursor-grab active:cursor-grabbing"
                   >
                     {!isCameraOff ? (
                       <video
@@ -496,11 +496,11 @@ export default function CallModal({
                         className="w-full h-full object-cover -scale-x-100"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs text-gray-500 bg-liquid-base">
+                      <div className="w-full h-full flex items-center justify-center text-xs text-foreground/50 bg-liquid-base">
                         Camera Off
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/60 text-[10px] text-white font-medium">
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-background/60 text-[10px] text-foreground font-medium">
                       You
                     </div>
                   </motion.div>
@@ -511,11 +511,11 @@ export default function CallModal({
 
           {/* Control Bar */}
           {callState === 'connected' && (
-            <div className="h-24 bg-liquid-dark/80 backdrop-blur-2xl border-t border-white/5 flex items-center justify-center gap-4 sm:gap-6 px-6 z-20">
+            <div className="h-24 bg-liquid-dark/80 backdrop-blur-2xl border-t border-foreground/5 flex items-center justify-center gap-4 sm:gap-6 px-6 z-20">
               <button
                 onClick={toggleMute}
                 className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                  isMuted ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                  isMuted ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                 }`}
                 title={isMuted ? 'Unmute' : 'Mute'}
               >
@@ -527,7 +527,7 @@ export default function CallModal({
                   <button
                     onClick={toggleCamera}
                     className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                      isCameraOff ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                      isCameraOff ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                     }`}
                     title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
                   >
@@ -537,7 +537,7 @@ export default function CallModal({
                   <button
                     onClick={toggleScreenShare}
                     className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
-                      isScreenSharing ? 'bg-liquid-accent text-liquid-dark font-bold' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
+                      isScreenSharing ? 'bg-liquid-accent text-liquid-dark font-bold' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                     }`}
                     title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
                   >
@@ -548,7 +548,7 @@ export default function CallModal({
 
               <button
                 onClick={() => endCall('completed')}
-                className="w-14 h-14 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 text-white flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.6)] hover:brightness-110 transition-all ml-2 cursor-pointer"
+                className="w-14 h-14 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 text-foreground flex items-center justify-center shadow-[0_0_25px_rgba(239,68,68,0.6)] hover:brightness-110 transition-all ml-2 cursor-pointer"
                 title="End Call"
               >
                 <PhoneOff size={24} />

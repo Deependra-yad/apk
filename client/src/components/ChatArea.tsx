@@ -45,8 +45,8 @@ function renderFormattedMessage(text: string) {
         const hasLang = /^[a-zA-Z0-9_-]+$/.test(firstLine);
         const code = hasLang ? lines.slice(1).join('\n') : lines.join('\n');
         return (
-          <div key={index} className="my-2 rounded-xl bg-black/60 border border-white/10 overflow-hidden font-mono text-xs">
-            <div className="flex items-center justify-between px-3 py-1 bg-white/5 border-b border-white/5 text-[10px] text-gray-400">
+          <div key={index} className="my-2 rounded-xl bg-background/60 border border-foreground/10 overflow-hidden font-mono text-xs">
+            <div className="flex items-center justify-between px-3 py-1 bg-foreground/5 border-b border-foreground/5 text-[10px] text-foreground/60">
               <span className="font-bold uppercase text-liquid-accent">{hasLang ? firstLine : 'CODE'}</span>
               <button
                 onClick={(e) => {
@@ -457,8 +457,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             <span className="text-4xl">🌊</span>
           </div>
         </motion.div>
-        <h2 className="text-2xl font-bold text-white mb-2">Welcome to Liquid Chat</h2>
-        <p className="text-gray-400 max-w-sm">
+        <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Liquid Chat</h2>
+        <p className="text-foreground/60 max-w-sm">
           Select a contact, open a group, or start a new conversation.
         </p>
       </div>
@@ -481,12 +481,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
       {/* Multi-Select Bulk Actions Top Bar Overlay */}
       {isMultiSelectMode ? (
-        <div className="h-20 border-b border-white/10 bg-liquid-base/95 backdrop-blur-2xl px-6 flex items-center justify-between z-30 shadow-lg">
+        <div className="h-20 border-b border-foreground/10 bg-liquid-base/95 backdrop-blur-2xl px-6 flex items-center justify-between z-30 shadow-lg">
           <div className="flex items-center gap-3">
-            <button onClick={clearSelection} className="text-gray-400 hover:text-white p-2 rounded-xl">
+            <button onClick={clearSelection} className="text-foreground/60 hover:text-foreground p-2 rounded-xl">
               <X size={20} />
             </button>
-            <span className="text-sm font-bold text-white font-mono">
+            <span className="text-sm font-bold text-foreground font-mono">
               {selectedMessageIds.length} Selected
             </span>
           </div>
@@ -495,7 +495,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             <button onClick={selectAllMessages} className="p-2 text-xs text-liquid-accent font-semibold hover:underline">
               Select All
             </button>
-            <button onClick={handleBulkStar} className="p-2.5 rounded-xl bg-white/10 hover:bg-yellow-500/20 text-yellow-400 flex items-center gap-1.5 text-xs font-semibold">
+            <button onClick={handleBulkStar} className="p-2.5 rounded-xl bg-foreground/10 hover:bg-yellow-500/20 text-yellow-400 flex items-center gap-1.5 text-xs font-semibold">
               <Star size={16} /> Star
             </button>
             <button onClick={() => setIsForwardModalOpen(true)} className="p-2.5 rounded-xl bg-liquid-accent/20 hover:bg-liquid-accent/30 text-liquid-accent flex items-center gap-1.5 text-xs font-semibold">
@@ -508,12 +508,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         </div>
       ) : (
         /* Standard Chat Header */
-        <div className="h-16 sm:h-20 border-b border-white/5 flex items-center justify-between px-3 sm:px-6 bg-liquid-base/60 backdrop-blur-2xl z-20 shrink-0">
+        <div className="h-16 sm:h-20 border-b border-foreground/5 flex items-center justify-between px-3 sm:px-6 bg-liquid-base/60 backdrop-blur-2xl z-20 shrink-0">
           <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
             {onBack && (
               <button 
                 onClick={onBack}
-                className="sm:hidden p-2 -ml-1 text-gray-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shrink-0"
+                className="sm:hidden p-2 -ml-1 text-foreground/80 hover:text-foreground rounded-xl hover:bg-foreground/10 transition-colors shrink-0"
                 title="Back to chats"
               >
                 <ArrowLeft size={22} />
@@ -539,7 +539,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
               <div className="overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-white font-semibold text-sm sm:text-base truncate">
+                  <h2 className="text-foreground font-semibold text-sm sm:text-base truncate">
                     {isGroup ? activeGroup?.name : activeContact?.username}
                   </h2>
                   {isGroup && (
@@ -554,7 +554,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     {groupTypers.join(', ')} typing...
                   </span>
                 ) : (
-                  <p className="text-xs text-gray-400 font-medium">
+                  <p className="text-xs text-foreground/60 font-medium">
                     {activeGroup?.members.length} participants
                   </p>
                 )
@@ -568,7 +568,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   </span>
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 font-medium">
+                <p className="text-xs text-foreground/60 font-medium">
                   {isOnline ? (
                     <span className="text-green-400">Online</span>
                   ) : activeContact?.lastSeen ? (
@@ -583,11 +583,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 text-gray-300">
+        <div className="flex items-center gap-2 text-foreground/80">
             {/* AI Assistant Button */}
             <button
               onClick={() => setIsAiModalOpen(true)}
-              className="p-2.5 rounded-full hover:bg-white/10 text-liquid-accent transition-all"
+              className="p-2.5 rounded-full hover:bg-foreground/10 text-liquid-accent transition-all"
               title="Liquid AI Assistant"
             >
               <Bot size={20} />
@@ -596,7 +596,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             {/* Media Gallery / Starred Vault Drawer Button */}
             <button
               onClick={() => setIsGalleryOpen(true)}
-              className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 hover:text-white transition-all"
+              className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-all"
               title="Shared Media & Files"
             >
               <FolderKanban size={20} />
@@ -606,7 +606,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <>
                 <button 
                   onClick={() => onStartCall(false)}
-                  className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 hover:text-liquid-accent transition-all"
+                  className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
                   title="Voice Call"
                 >
                   <Phone size={20} />
@@ -614,7 +614,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                 <button 
                   onClick={() => onStartCall(true)}
-                  className="p-2.5 rounded-full hover:bg-white/10 text-gray-300 hover:text-liquid-accent transition-all"
+                  className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
                   title="Video Call"
                 >
                   <Video size={20} />
@@ -624,7 +624,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             <button 
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`p-2.5 rounded-full transition-all ${isSearchOpen ? 'bg-liquid-accent text-liquid-dark' : 'hover:bg-white/10 hover:text-white'}`}
+              className={`p-2.5 rounded-full transition-all ${isSearchOpen ? 'bg-liquid-accent text-liquid-dark' : 'hover:bg-foreground/10 hover:text-foreground'}`}
               title="Search Messages"
             >
               <Search size={20} />
@@ -632,7 +632,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             <button 
               onClick={() => isGroup ? setIsGroupDrawerOpen(true) : onOpenProfile()}
-              className="p-2.5 rounded-full hover:bg-white/10 hover:text-white transition-all"
+              className="p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
               title={isGroup ? "Group Info" : "Contact Info"}
             >
               {isGroup ? <Info size={20} /> : <MoreVertical size={20} />}
@@ -648,19 +648,19 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="border-b border-white/5 bg-liquid-base/80 backdrop-blur-xl px-6 py-2 flex items-center gap-3 z-10"
+            className="border-b border-foreground/5 bg-liquid-base/80 backdrop-blur-xl px-6 py-2 flex items-center gap-3 z-10"
           >
-            <Search size={16} className="text-gray-400" />
+            <Search size={16} className="text-foreground/60" />
             <input
               type="text"
               value={chatSearchTerm}
               onChange={(e) => setChatSearchTerm(e.target.value)}
               placeholder="Search in this conversation..."
-              className="flex-1 bg-transparent border-none outline-none text-white text-sm placeholder-gray-500"
+              className="flex-1 bg-transparent border-none outline-none text-foreground text-sm placeholder-gray-500"
               autoFocus
             />
             {chatSearchTerm && (
-              <button onClick={() => setChatSearchTerm('')} className="text-gray-400 hover:text-white">
+              <button onClick={() => setChatSearchTerm('')} className="text-foreground/60 hover:text-foreground">
                 <X size={16} />
               </button>
             )}
@@ -701,7 +701,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   onClick={() => toggleSelectMessage(msg.id)}
                   className="mt-3 text-liquid-accent shrink-0"
                 >
-                  {isSelected ? <CheckSquare size={18} /> : <Square size={18} className="text-gray-500" />}
+                  {isSelected ? <CheckSquare size={18} /> : <Square size={18} className="text-foreground/50" />}
                 </button>
               )}
 
@@ -726,13 +726,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
                   } ${
                     isMe
-                      ? 'bg-gradient-to-br from-liquid-accent to-liquid-secondary text-white rounded-br-sm shadow-[0_0_20px_rgba(0,210,255,0.25)]'
-                      : 'bg-white/10 text-white rounded-bl-sm border border-white/5 backdrop-blur-md'
+                      ? 'bg-gradient-to-br from-liquid-accent to-liquid-secondary text-foreground rounded-br-sm shadow-[0_0_20px_rgba(0,210,255,0.25)]'
+                      : 'bg-foreground/10 text-foreground rounded-bl-sm border border-foreground/5 backdrop-blur-md'
                   }`}
                 >
                   {/* Forwarded Header */}
                   {msg.forwardedFrom && (
-                    <div className="flex items-center gap-1 text-[10px] text-white/70 italic mb-1.5">
+                    <div className="flex items-center gap-1 text-[10px] text-foreground/70 italic mb-1.5">
                       <CornerUpRight size={12} />
                       <span>Forwarded from {msg.forwardedFrom}</span>
                     </div>
@@ -740,7 +740,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                   {/* Reply Quote Banner */}
                   {msg.replyToText && (
-                    <div className="mb-2 p-2 rounded-lg bg-black/30 border-l-4 border-white/70 text-xs text-white/90">
+                    <div className="mb-2 p-2 rounded-lg bg-background/30 border-l-4 border-white/70 text-xs text-foreground/90">
                       <span className="font-semibold block text-[10px] text-liquid-accent">Replying to:</span>
                       <span className="truncate block opacity-90">{msg.replyToText}</span>
                     </div>
@@ -757,7 +757,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Media: Image with Click-to-Lightbox */}
                       {msg.type === 'image' && msg.fileUrl && (
                         <div 
-                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-black/40" 
+                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-background/40" 
                           onClick={() => setSelectedLightboxMedia({ url: resolveMediaUrl(msg.fileUrl), type: 'image', name: msg.fileName || 'Image' })}
                         >
                           <img 
@@ -765,8 +765,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                             alt="attachment" 
                             className="rounded-xl max-h-80 w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
-                          <div className="absolute inset-0 bg-black/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
-                            <Maximize2 size={24} className="text-white drop-shadow-md" />
+                          <div className="absolute inset-0 bg-background/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                            <Maximize2 size={24} className="text-foreground drop-shadow-md" />
                           </div>
                         </div>
                       )}
@@ -780,7 +780,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                       {/* Media: Video Player with Inline Controls & Fullscreen */}
                       {msg.type === 'video' && msg.fileUrl && (
-                        <div className="mb-2 rounded-xl overflow-hidden relative bg-black/80 max-h-80">
+                        <div className="mb-2 rounded-xl overflow-hidden relative bg-background/80 max-h-80">
                           <video 
                             src={resolveMediaUrl(msg.fileUrl)} 
                             controls 
@@ -809,23 +809,23 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                       {/* Media: Rich Document / PDF / Code / Archive Card */}
                       {msg.type === 'file' && msg.fileUrl && (
-                        <div className="flex flex-col gap-2 p-3 rounded-2xl bg-black/30 mb-2 border border-white/10 min-w-[240px] sm:min-w-[280px]">
+                        <div className="flex flex-col gap-2 p-3 rounded-2xl bg-background/30 mb-2 border border-foreground/10 min-w-[240px] sm:min-w-[280px]">
                           <div className="flex items-center gap-3">
                             <div className={`p-2.5 rounded-xl border ${fileColorBadge} shrink-0`}>
                               <FileIcon size={22} />
                             </div>
                             <div className="flex-1 overflow-hidden">
-                              <p className="text-xs font-semibold truncate text-white">{msg.fileName || 'Document'}</p>
+                              <p className="text-xs font-semibold truncate text-foreground">{msg.fileName || 'Document'}</p>
                               <div className="flex items-center gap-1.5 mt-0.5">
-                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-white/10 text-white/80">
+                                <span className="px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-foreground/10 text-foreground/80">
                                   {fileLabel}
                                 </span>
-                                <span className="text-[10px] text-gray-400 font-mono">{msg.fileSize || 'File'}</span>
+                                <span className="text-[10px] text-foreground/60 font-mono">{msg.fileSize || 'File'}</span>
                               </div>
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 pt-2 border-t border-white/10">
+                          <div className="flex items-center gap-2 pt-2 border-t border-foreground/10">
                             <button
                               onClick={() => setSelectedDocumentForModal({
                                 url: resolveMediaUrl(msg.fileUrl),
@@ -833,7 +833,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                                 size: msg.fileSize,
                                 mimeType: msg.mimeType
                               })}
-                              className="flex-1 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                              className="flex-1 h-8 rounded-lg bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
                             >
                               <Eye size={13} />
                               <span>Preview</span>
@@ -864,7 +864,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                   {/* Footer: Edited, Star, Time & Read Receipts */}
                   <div className="flex items-center justify-end gap-1.5 mt-1.5 text-[10px] opacity-75">
-                    {msg.isEdited && <span className="italic font-medium text-[9px] text-white/80">(edited)</span>}
+                    {msg.isEdited && <span className="italic font-medium text-[9px] text-foreground/80">(edited)</span>}
                     {msg.isStarred && <Star size={11} className="text-yellow-400 fill-yellow-400" />}
                     <span>{msg.createdAt ? format(new Date(msg.createdAt), 'hh:mm a') : 'Now'}</span>
                     {isMe && !msg.isDeleted && !isGroup && (
@@ -872,7 +872,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         {msg.isSeen ? (
                           <CheckCheck size={14} className="text-cyan-300 drop-shadow-[0_0_6px_rgba(0,210,255,0.8)]" />
                         ) : (
-                          <Check size={14} className="text-white/70" />
+                          <Check size={14} className="text-foreground/70" />
                         )}
                       </span>
                     )}
@@ -914,7 +914,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <Edit2 size={14} className="text-cyan-400 shrink-0" />
               <span>Editing message: <strong className="truncate max-w-sm">{editingMessage.text}</strong></span>
             </div>
-            <button onClick={() => { setEditingMessage(null); setText(''); }} className="text-cyan-400 hover:text-white p-1">
+            <button onClick={() => { setEditingMessage(null); setText(''); }} className="text-cyan-400 hover:text-foreground p-1">
               <X size={16} />
             </button>
           </motion.div>
@@ -928,7 +928,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            className="bg-liquid-base/95 border-t border-white/10 px-6 py-2.5 flex items-center justify-between z-10 backdrop-blur-xl"
+            className="bg-liquid-base/95 border-t border-foreground/10 px-6 py-2.5 flex items-center justify-between z-10 backdrop-blur-xl"
           >
             <div className="flex items-center gap-3 overflow-hidden">
               <div className="p-2 rounded-lg bg-liquid-accent/20 text-liquid-accent">
@@ -938,13 +938,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 <span className="text-xs font-bold text-liquid-accent">
                   Replying to message
                 </span>
-                <p className="text-xs text-gray-300 truncate">
+                <p className="text-xs text-foreground/80 truncate">
                   {replyingTo.text || (replyingTo.type === 'image' ? '📷 Image' : replyingTo.type === 'video' ? '🎥 Video' : replyingTo.type === 'audio' ? '🎵 Voice Note' : replyingTo.fileName)}
                 </p>
               </div>
             </div>
 
-            <button onClick={() => setReplyingTo(null)} className="text-gray-400 hover:text-white p-1">
+            <button onClick={() => setReplyingTo(null)} className="text-foreground/60 hover:text-foreground p-1">
               <X size={18} />
             </button>
           </motion.div>
@@ -962,11 +962,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           >
             <div className="flex items-center gap-3.5 overflow-hidden">
               {filePreviewUrl && file.type.startsWith('image/') ? (
-                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/40 border border-white/10 shrink-0">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-background/40 border border-foreground/10 shrink-0">
                   <img src={filePreviewUrl} alt="Preview" className="w-full h-full object-cover" />
                 </div>
               ) : filePreviewUrl && file.type.startsWith('video/') ? (
-                <div className="w-12 h-12 rounded-xl overflow-hidden bg-black/60 border border-white/10 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-xl overflow-hidden bg-background/60 border border-foreground/10 flex items-center justify-center shrink-0">
                   <Film size={22} className="text-rose-400" />
                 </div>
               ) : (
@@ -976,7 +976,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               )}
 
               <div className="overflow-hidden">
-                <span className="text-xs font-bold text-white block truncate max-w-sm">{file.name}</span>
+                <span className="text-xs font-bold text-foreground block truncate max-w-sm">{file.name}</span>
                 <span className="text-[11px] text-liquid-accent font-mono">
                   {(file.size / (1024 * 1024)).toFixed(1)} MB • {file.type || 'Document'}
                 </span>
@@ -988,7 +988,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 setFile(null);
                 setFilePreviewUrl(null);
               }} 
-              className="p-2 text-red-400 hover:text-red-300 hover:bg-white/5 rounded-full transition-colors"
+              className="p-2 text-red-400 hover:text-red-300 hover:bg-foreground/5 rounded-full transition-colors"
               title="Cancel Attachment"
             >
               <X size={18} />
@@ -999,8 +999,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
       {/* Input Bar Area */}
       {isBlocked ? (
-        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex flex-col items-center justify-center z-20 relative shrink-0 pb-safe">
-          <p className="text-sm text-gray-400 mb-2">You have blocked this contact.</p>
+        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-foreground/5 px-2 sm:px-6 py-2 sm:py-4 flex flex-col items-center justify-center z-20 relative shrink-0 pb-safe">
+          <p className="text-sm text-foreground/60 mb-2">You have blocked this contact.</p>
           <button 
             onClick={() => token && toggleBlockUser(token, activeContact.id)}
             className="px-4 py-1.5 bg-liquid-accent text-liquid-dark font-bold text-xs rounded-full hover:brightness-110 transition-all cursor-pointer"
@@ -1009,7 +1009,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </button>
         </div>
       ) : (
-        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
+        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-foreground/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
         {/* Sticker & GIF Picker Modal */}
         <StickerGifPicker
           isOpen={isStickerPickerOpen}
@@ -1037,7 +1037,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             <button
               onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
               className={`p-2 sm:p-2.5 rounded-full transition-colors shrink-0 ${
-                isStickerPickerOpen ? 'bg-liquid-accent text-liquid-dark' : 'text-gray-400 hover:text-liquid-accent hover:bg-white/5'
+                isStickerPickerOpen ? 'bg-liquid-accent text-liquid-dark' : 'text-foreground/60 hover:text-liquid-accent hover:bg-foreground/5'
               }`}
               title="Stickers, GIFs & Emojis"
             >
@@ -1051,7 +1051,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 className={`p-2 sm:p-3 rounded-full transition-all ${
                   isAttachmentMenuOpen 
                     ? 'bg-liquid-accent text-liquid-dark rotate-45' 
-                    : 'text-gray-400 hover:text-white hover:bg-white/5'
+                    : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
                 }`}
                 title="Attach"
               >
@@ -1064,11 +1064,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     initial={{ opacity: 0, scale: 0.8, y: 20 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                    className="absolute bottom-16 left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-3 rounded-2xl border border-white/10 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[200px]"
+                    className="absolute bottom-16 left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-3 rounded-2xl border border-foreground/10 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[200px]"
                   >
                     <button
                       onClick={() => triggerFileInput('image/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium transition-colors"
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
                     >
                       <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
                         <ImageIcon size={18} />
@@ -1078,7 +1078,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                     <button
                       onClick={() => triggerFileInput('video/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium transition-colors"
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
                     >
                       <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
                         <Film size={18} />
@@ -1088,7 +1088,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                     <button
                       onClick={() => triggerFileInput('*/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium transition-colors"
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
                     >
                       <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
                         <FileText size={18} />
@@ -1101,7 +1101,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         setIsAttachmentMenuOpen(false);
                         setIsPollModalOpen(true);
                       }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/10 text-white text-xs font-medium transition-colors"
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
                     >
                       <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
                         <BarChart2 size={18} />
@@ -1114,7 +1114,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             </div>
 
             {/* Text Input */}
-            <div className="flex-1 bg-black/40 rounded-full h-10 sm:h-12 flex items-center px-3 sm:px-5 border border-white/10 focus-within:border-liquid-accent/50 transition-colors">
+            <div className="flex-1 bg-background/40 rounded-full h-10 sm:h-12 flex items-center px-3 sm:px-5 border border-foreground/10 focus-within:border-liquid-accent/50 transition-colors">
               <input 
                 type="text" 
                 value={text}
@@ -1125,7 +1125,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }
                 }}
                 placeholder={editingMessage ? "Update text..." : "Message or /ai..."}
-                className="flex-1 bg-transparent border-none outline-none text-white placeholder-gray-500 text-base sm:text-sm"
+                className="flex-1 bg-transparent border-none outline-none text-foreground placeholder-gray-500 text-base sm:text-sm"
               />
             </div>
 
@@ -1137,7 +1137,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={handleSend}
-                className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-white p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer"
+                className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer"
                 title={editingMessage ? "Save Edit" : "Send Message"}
               >
                 {editingMessage ? <Check size={18} /> : <Send size={18} className="ml-0.5" />}
@@ -1145,7 +1145,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             ) : (
               <button 
                 onClick={() => setIsRecordingVoice(true)}
-                className="text-gray-400 hover:text-liquid-accent p-3 rounded-full hover:bg-white/5 transition-colors cursor-pointer"
+                className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer"
                 title="Record Voice Note"
               >
                 <Mic size={22} />
@@ -1178,7 +1178,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[70] min-w-[200px] bg-liquid-base/95 backdrop-blur-3xl border border-white/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
+              className="fixed z-[70] min-w-[200px] bg-liquid-base/95 backdrop-blur-3xl border border-foreground/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
               style={{
                 left: Math.min(messageContextMenu.x, window.innerWidth - 220),
                 top: Math.min(messageContextMenu.y, window.innerHeight - 300)
@@ -1189,7 +1189,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   setActiveReactionMessageId(messageContextMenu.msg.id);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <Smile size={16} className="text-liquid-accent" /> Add Reaction
               </button>
@@ -1199,7 +1199,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   setReplyingTo(messageContextMenu.msg);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <Reply size={16} /> Reply
               </button>
@@ -1211,7 +1211,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   setIsForwardModalOpen(true);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <Forward size={16} /> Forward
               </button>
@@ -1221,7 +1221,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   toggleSelectMessage(messageContextMenu.msg.id);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <CheckSquare size={16} /> Select Message
               </button>
@@ -1231,7 +1231,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   toggleStarMessage(messageContextMenu.msg.id);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <Star size={16} className={messageContextMenu.msg.isStarred ? "text-yellow-400" : ""} /> 
                 {messageContextMenu.msg.isStarred ? 'Unstar Message' : 'Star Message'}
@@ -1243,7 +1243,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     setEditingMessage(messageContextMenu.msg);
                     setMessageContextMenu(null);
                   }}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-white/90 hover:bg-white/10 transition-colors text-left"
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
                 >
                   <Edit2 size={16} className="text-cyan-400" /> Edit
                 </button>
@@ -1251,7 +1251,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
               {messageContextMenu.msg.senderId === user?.id && !messageContextMenu.msg.isDeleted && (
                 <>
-                  <div className="h-[1px] w-full bg-white/10 my-1" />
+                  <div className="h-[1px] w-full bg-foreground/10 my-1" />
                   <button 
                     onClick={() => {
                       handleDeleteMessage(messageContextMenu.msg.id, true);
@@ -1313,9 +1313,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setSelectedLightboxMedia(null)}
-            className="fixed inset-0 z-50 bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-between p-6"
+            className="fixed inset-0 z-50 bg-background/95 backdrop-blur-2xl flex flex-col items-center justify-between p-6"
           >
-            <div className="w-full flex justify-between items-center z-50 text-white">
+            <div className="w-full flex justify-between items-center z-50 text-foreground">
               <span className="text-sm font-semibold truncate max-w-sm">
                 {selectedLightboxMedia.name || 'Media Viewer'}
               </span>
@@ -1324,13 +1324,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   href={selectedLightboxMedia.url}
                   download
                   onClick={(e) => e.stopPropagation()}
-                  className="p-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white flex items-center gap-1 text-xs"
+                  className="p-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/20 text-foreground flex items-center gap-1 text-xs"
                 >
                   <Download size={16} /> Download
                 </a>
                 <button 
                   onClick={() => setSelectedLightboxMedia(null)}
-                  className="p-2.5 rounded-full bg-white/10 text-white hover:bg-white/20"
+                  className="p-2.5 rounded-full bg-foreground/10 text-foreground hover:bg-foreground/20"
                 >
                   <X size={20} />
                 </button>
