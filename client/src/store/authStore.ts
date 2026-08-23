@@ -6,6 +6,7 @@ export interface User {
   avatar: string;
   about?: string;
   lastSeen?: string;
+  isAdmin?: boolean;
 }
 
 interface AuthState {
