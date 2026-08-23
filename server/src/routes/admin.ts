@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import prisma from '../prisma';
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
@@ -105,7 +105,7 @@ router.post('/clear-storage', adminAuth, async (req, res) => {
       });
     }
 
-    res.json({ message: Successfully deleted  files to free up space. });
+    res.json({ message: `Successfully deleted ${deletedCount} files to free up space.` });
   } catch (e) {
     res.status(500).json({ error: 'Failed to clear storage' });
   }
