@@ -26,7 +26,6 @@ import { soundEffects } from '@/utils/audioSynth';
 
 export default function Home() {
   const { user, token, initAuth, logout } = useAuthStore();
-  const { 
     connectSocket, 
     onlineUsers, 
     setActiveContact, 
@@ -38,7 +37,6 @@ export default function Home() {
     chatMetaMap, 
     setChatMetaMap, 
     activeConversations,
-    updateChatMeta, 
     socket 
   } = useChatStore();
 
@@ -97,13 +95,6 @@ export default function Home() {
         setChatMetaMap(res.data);
       });
 
-      // Fetch active conversations list
-      axios.get('/api/users/conversations', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        useChatStore.getState().setActiveConversations(res.data);
-      }).catch(console.error);
-    }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
 
   useEffect(() => {
@@ -182,32 +173,10 @@ export default function Home() {
     const lockContextMenu = (e: MouseEvent) => {
       // e.preventDefault(); // Un-commenting this will completely disable native context menu globally
     };
-    window.addEventListener('contextmenu', lockContextMenu);
-    return () => window.removeEventListener('contextmenu', lockContextMenu);
-  }, []);
 
-  const handleLogout = () => {
-    logout();
-    router.push('/login');
-  };
-
-  const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
-  const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;
-  const isTargetMuted = (targetId: string) => chatMetaMap[targetId]?.isMuted || false;
-
-  // Filter Contacts
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = u.username.toLowerCase().includes(contactSearch.toLowerCase()) || u.about?.toLowerCase().includes(contactSearch.toLowerCase());
-    const archived = isTargetArchived(u.id);
-    const hasHistory = activeConversations.includes(u.id);
 
     // If no search query, ONLY show users with chat history
     if (!contactSearch.trim() && !hasHistory) return false;
-
-    if (chatFilter === 'archived') return archived && matchesSearch;
-    if (chatFilter === 'groups') return false;
-    return !archived && matchesSearch;
-  });
 
   // Filter Groups
   const filteredGroups = groups.filter(g => {

@@ -120,9 +120,10 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     toggleStarMessage
   } = useChatStore();
 
-  const { enterToSend } = useSettingsStore();
+  const { enterToSend, blockedUsers, toggleBlockUser } = useSettingsStore();
 
   const isGroup = !!activeGroup;
+  const isBlocked = !isGroup && activeContact && blockedUsers.some(u => u.id === activeContact.id);
   const isMultiSelectMode = selectedMessageIds.length > 0;
   const targetId = activeContact?.id || activeGroup?.id || '';
   const targetName = isGroup ? activeGroup?.name : activeContact?.username || '';
@@ -997,7 +998,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Input Bar Area */}
-      <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
+      {isBlocked ? (
+        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex flex-col items-center justify-center z-20 relative shrink-0 pb-safe">
+          <p className="text-sm text-gray-400 mb-2">You have blocked this contact.</p>
+          <button 
+            onClick={() => token && toggleBlockUser(token, activeContact.id)}
+            className="px-4 py-1.5 bg-liquid-accent text-liquid-dark font-bold text-xs rounded-full hover:brightness-110 transition-all cursor-pointer"
+          >
+            Unblock User
+          </button>
+        </div>
+      ) : (
+        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
         {/* Sticker & GIF Picker Modal */}
         <StickerGifPicker
           isOpen={isStickerPickerOpen}
@@ -1142,6 +1154,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </>
         )}
       </div>
+      )}
 
       {/* Context Menu (Right Click / Long Press) */}
       <AnimatePresence>
