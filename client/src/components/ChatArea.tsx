@@ -8,7 +8,7 @@ import {
   Film, BarChart2, Star, Copy, Play, Pause, Volume2, Eye, 
   Code2, Archive, File, Edit2, Forward, CheckSquare, Square, 
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
-  ArrowLeft
+  ArrowLeft, Lock
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -668,7 +668,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4">
+        {/* E2EE Disclaimer */}
+        <div className="w-full flex justify-center mb-2 mt-2">
+          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center">
+            <Lock size={12} className="text-yellow-500/80 shrink-0" />
+            <p className="text-[10px] sm:text-xs text-yellow-500/80 font-medium">
+              Messages and calls are end-to-end encrypted. No one outside of this chat, not even Liquid, can read or listen to them.
+            </p>
+          </div>
+        </div>
+
         {filteredMessages.map((msg, i) => {
           const isMe = msg.senderId === user?.id;
           const isSelected = selectedMessageIds.includes(msg.id);

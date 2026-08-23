@@ -157,4 +157,30 @@ router.get('/chat-meta', authenticate, async (req: any, res) => {
   }
 });
 
+// Get list of user IDs that the current user has chatted with
+router.get('/conversations', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { senderId: userId, groupId: null },
+          { receiverId: userId, groupId: null }
+        ]
+      },
+      select: { senderId: true, receiverId: true }
+    });
+
+    const userIds = new Set<string>();
+    messages.forEach((m: any) => {
+      if (m.senderId !== userId && m.senderId) userIds.add(m.senderId);
+      if (m.receiverId !== userId && m.receiverId) userIds.add(m.receiverId);
+    });
+
+    res.json(Array.from(userIds));
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch conversations' });
+  }
+});
+
 export default router;

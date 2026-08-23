@@ -64,6 +64,7 @@ interface ChatState {
   selectedMessageIds: string[];
   searchQuery: string;
   chatMetaMap: Record<string, { isPinned: boolean; isArchived: boolean; isMuted: boolean }>;
+  activeConversations: string[];
   incomingToast: any | null;
 
   connectSocket: (userId: string) => void;
@@ -81,6 +82,8 @@ interface ChatState {
   setSearchQuery: (q: string) => void;
   setChatMetaMap: (metaList: any[]) => void;
   updateChatMeta: (targetId: string, updates: Partial<{ isPinned: boolean; isArchived: boolean; isMuted: boolean }>) => void;
+  setActiveConversations: (ids: string[]) => void;
+  addActiveConversation: (id: string) => void;
   updateMessageReaction: (messageId: string, reactions: string) => void;
   updateMessagePoll: (updatedMessage: Message) => void;
   updateEditedMessage: (updatedMessage: Message) => void;
@@ -104,6 +107,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
   selectedMessageIds: [],
   searchQuery: '',
   chatMetaMap: {},
+  activeConversations: [],
   incomingToast: null,
 
   connectSocket: (userId) => {
@@ -147,12 +151,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
         set((state) => {
           // Avoid duplicate messages
           if (state.messages.some(m => m.id === message.id)) return state;
-          return { messages: [...state.messages, message] };
+          const activeConversations = !state.activeConversations.includes(message.senderId) 
+            ? [...state.activeConversations, message.senderId] 
+            : state.activeConversations;
+          return { messages: [...state.messages, message], activeConversations };
         });
         if (message.senderId === activeContact.id) {
           socket.emit('mark_seen', { senderId: message.senderId, receiverId: userId });
         }
       } else {
+        set((state) => ({
+          activeConversations: !state.activeConversations.includes(message.senderId)
+            ? [...state.activeConversations, message.senderId]
+            : state.activeConversations
+        }));
         // Show notification toast & browser push notification
         const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
         set({ incomingToast: { ...message, text: preview } });
@@ -293,7 +305,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   setGroups: (groups) => set({ groups }),
   setMessages: (messages) => set({ messages }),
-  addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
+  addMessage: (message) => set((state) => {
+    // If it's a 1-on-1 message, add the other party to active conversations
+    const otherId = message.senderId === localStorage.getItem('userId') ? message.receiverId : message.senderId;
+    const activeConversations = otherId && !state.activeConversations.includes(otherId) && !message.groupId
+      ? [...state.activeConversations, otherId]
+      : state.activeConversations;
+    
+    return { 
+      messages: [...state.messages, message],
+      activeConversations
+    };
+  }),
   setReplyingTo: (replyingTo) => set({ replyingTo }),
   setEditingMessage: (editingMessage) => set({ editingMessage }),
   setIncomingToast: (incomingToast) => set({ incomingToast }),
@@ -320,6 +343,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
     set({ chatMetaMap: map });
   },
+
+  setActiveConversations: (ids) => set({ activeConversations: ids }),
+
+  addActiveConversation: (id) => set((state) => ({ 
+    activeConversations: state.activeConversations.includes(id) 
+      ? state.activeConversations 
+      : [...state.activeConversations, id] 
+  })),
 
   updateChatMeta: (targetId, updates) => {
     set((state) => ({

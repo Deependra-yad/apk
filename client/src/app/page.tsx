@@ -25,7 +25,7 @@ import { useSettingsStore } from '@/store/settingsStore';
 import { soundEffects } from '@/utils/audioSynth';
 
 export default function Home() {
-  const { user, token, initAuth } = useAuthStore();
+  const { user, token, initAuth, logout } = useAuthStore();
   const { 
     connectSocket, 
     onlineUsers, 
@@ -37,6 +37,7 @@ export default function Home() {
     setGroups, 
     chatMetaMap, 
     setChatMetaMap, 
+    activeConversations,
     updateChatMeta, 
     socket 
   } = useChatStore();
@@ -95,6 +96,13 @@ export default function Home() {
       }).then(res => {
         setChatMetaMap(res.data);
       });
+
+      // Fetch active conversations list
+      axios.get('/api/users/conversations', {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        useChatStore.getState().setActiveConversations(res.data);
+      }).catch(console.error);
     }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
 
@@ -169,15 +177,33 @@ export default function Home() {
 
   if (!isClient || !user) return null;
 
-  // Filter and sort items (Contacts and Groups)
-  const isTargetArchived = (id: string) => !!chatMetaMap[id]?.isArchived;
-  const isTargetPinned = (id: string) => !!chatMetaMap[id]?.isPinned;
-  const isTargetMuted = (id: string) => !!chatMetaMap[id]?.isMuted;
+  // Global Context Menu lock for privacy (Mobile & Desktop)
+  useEffect(() => {
+    const lockContextMenu = (e: MouseEvent) => {
+      // e.preventDefault(); // Un-commenting this will completely disable native context menu globally
+    };
+    window.addEventListener('contextmenu', lockContextMenu);
+    return () => window.removeEventListener('contextmenu', lockContextMenu);
+  }, []);
+
+  const handleLogout = () => {
+    logout();
+    router.push('/login');
+  };
+
+  const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
+  const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;
+  const isTargetMuted = (targetId: string) => chatMetaMap[targetId]?.isMuted || false;
 
   // Filter Contacts
   const filteredUsers = users.filter(u => {
     const matchesSearch = u.username.toLowerCase().includes(contactSearch.toLowerCase()) || u.about?.toLowerCase().includes(contactSearch.toLowerCase());
     const archived = isTargetArchived(u.id);
+    const hasHistory = activeConversations.includes(u.id);
+
+    // If no search query, ONLY show users with chat history
+    if (!contactSearch.trim() && !hasHistory) return false;
+
     if (chatFilter === 'archived') return archived && matchesSearch;
     if (chatFilter === 'groups') return false;
     return !archived && matchesSearch;
