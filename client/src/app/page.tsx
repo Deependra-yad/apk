@@ -175,8 +175,6 @@ export default function Home() {
     } catch (e) {}
   };
 
-  if (!isClient || !user) return null;
-
   // Global Context Menu lock for privacy (Mobile & Desktop)
   useEffect(() => {
     const lockContextMenu = (e: MouseEvent) => {
@@ -185,6 +183,8 @@ export default function Home() {
     window.addEventListener('contextmenu', lockContextMenu);
     return () => window.removeEventListener('contextmenu', lockContextMenu);
   }, []);
+
+  if (!isClient || !user) return null;
 
   const handleLogout = () => {
     logout();
