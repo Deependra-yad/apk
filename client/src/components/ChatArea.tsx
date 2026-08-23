@@ -154,6 +154,21 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, typingUsers, groupTypingUsers]);
 
+  // Handle mobile keyboard open/close scroll jumping
+  useEffect(() => {
+    const handleResize = () => {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
+      }, 100);
+    };
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
   // Handle local file preview url creation
   useEffect(() => {
     if (file) {
@@ -1057,72 +1072,79 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             {/* Attachment Menu */}
             <div className="relative shrink-0">
-              <button 
-                onClick={() => setIsAttachmentMenuOpen(!isAttachmentMenuOpen)}
-                className={`p-2 sm:p-3 rounded-full transition-all ${
-                  isAttachmentMenuOpen 
-                    ? 'bg-liquid-accent text-liquid-dark rotate-45' 
-                    : 'text-foreground/60 hover:text-foreground hover:bg-foreground/5'
-                }`}
-                title="Attach"
-              >
-                <Paperclip size={20} className="sm:w-5 sm:h-5" />
-              </button>
+                <button 
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+                  }}
+                  className={`p-2 sm:p-3 rounded-full transition-all ${
+                    isAttachmentMenuOpen 
+                      ? 'bg-liquid-accent text-liquid-dark rotate-45' 
+                      : 'text-foreground/60 hover:text-liquid-accent hover:bg-foreground/5'
+                  }`}
+                  title="Attach Media"
+                >
+                  <Plus size={22} />
+                </button>
 
-              <AnimatePresence>
-                {isAttachmentMenuOpen && (
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                    className="absolute bottom-16 left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-3 rounded-2xl border border-foreground/10 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[200px]"
-                  >
-                    <button
-                      onClick={() => triggerFileInput('image/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                {/* Attachment Dropdown Menu */}
+                <AnimatePresence>
+                  {isAttachmentMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 0.8, y: 20 }}
+                      className="absolute bottom-16 left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-3 rounded-2xl border border-foreground/10 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[200px]"
                     >
-                      <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
-                        <ImageIcon size={18} />
-                      </div>
-                      <span>Photos & Images</span>
-                    </button>
+                      <button
+                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('image/*'); }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                      >
+                        <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                          <ImageIcon size={18} />
+                        </div>
+                        <span>Photos & Images</span>
+                      </button>
 
-                    <button
-                      onClick={() => triggerFileInput('video/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
-                    >
-                      <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
-                        <Film size={18} />
-                      </div>
-                      <span>Videos</span>
-                    </button>
+                      <button
+                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('video/*'); }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                      >
+                        <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+                          <Film size={18} />
+                        </div>
+                        <span>Videos</span>
+                      </button>
 
-                    <button
-                      onClick={() => triggerFileInput('*/*')}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
-                    >
-                      <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
-                        <FileText size={18} />
-                      </div>
-                      <span>Documents & PDFs</span>
-                    </button>
+                      <button
+                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('*/*'); }}
+                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                      >
+                        <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
+                          <FileText size={18} />
+                        </div>
+                        <span>Documents & Files</span>
+                      </button>
 
-                    <button
-                      onClick={() => {
-                        setIsAttachmentMenuOpen(false);
-                        setIsPollModalOpen(true);
-                      }}
-                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
-                    >
-                      <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
-                        <BarChart2 size={18} />
-                      </div>
-                      <span>Create Poll</span>
-                    </button>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+                      {isGroup && (
+                        <button
+                          onPointerDown={(e) => {
+                            e.preventDefault();
+                            setIsAttachmentMenuOpen(false);
+                            setIsPollModalOpen(true);
+                          }}
+                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                        >
+                          <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                            <BarChart2 size={18} />
+                          </div>
+                          <span>Create Poll</span>
+                        </button>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
 
             {/* Text Input */}
             <div className="flex-1 bg-background/40 rounded-full h-10 sm:h-12 flex items-center px-3 sm:px-5 border border-foreground/10 focus-within:border-liquid-accent/50 transition-colors">
@@ -1135,31 +1157,37 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     handleSend();
                   }
                 }}
-                placeholder={editingMessage ? "Update text..." : "Message or /ai..."}
-                className="flex-1 bg-transparent border-none outline-none text-foreground placeholder-gray-500 text-base sm:text-sm"
+                placeholder="Message or /ai..."
+                className="flex-1 bg-transparent border-none outline-none text-foreground text-sm"
               />
             </div>
 
-            {/* Send / Edit / Mic Button */}
-            {(text.trim() || file) ? (
+            {/* Send or Mic Button */}
+            {text.trim() || file ? (
               <motion.button 
                 initial={{ scale: 0.6, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={handleSend}
-                className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  handleSend();
+                }}
+                className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer shrink-0"
                 title={editingMessage ? "Save Edit" : "Send Message"}
               >
                 {editingMessage ? <Check size={18} /> : <Send size={18} className="ml-0.5" />}
               </motion.button>
             ) : (
               <button 
-                onClick={() => setIsRecordingVoice(true)}
-                className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  setIsRecordingVoice(true);
+                }}
+                className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer shrink-0"
                 title="Record Voice Note"
               >
-                <Mic size={22} />
+                <Mic size={20} />
               </button>
             )}
           </>
