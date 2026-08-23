@@ -86,6 +86,17 @@ io.on('connection', (socket) => {
     io.emit('online_users', Array.from(connectedUsers.keys()));
     io.emit('user_status_changed', { userId: uid, isOnline: true });
 
+    // Automatically join all group rooms the user is a member of (crucial for reconnections)
+    try {
+      const userGroups = await prisma.groupMember.findMany({
+        where: { userId: uid },
+        select: { groupId: true }
+      });
+      userGroups.forEach(g => socket.join(`group_${g.groupId}`));
+    } catch (err) {
+      console.error('Failed to auto-join groups:', err);
+    }
+
     try {
       const user = await prisma.user.findUnique({
         where: { id: uid },

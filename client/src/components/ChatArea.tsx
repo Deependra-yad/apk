@@ -8,7 +8,7 @@ import {
   Film, BarChart2, Star, Copy, Play, Pause, Volume2, Eye, 
   Code2, Archive, File, Edit2, Forward, CheckSquare, Square, 
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
-  ArrowLeft, Lock
+  ArrowLeft, Lock, Plus
 } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';

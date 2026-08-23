@@ -1,11 +1,7 @@
 export const getApiUrl = (): string => {
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    return process.env.NEXT_PUBLIC_API_URL;
-  }
-
   if (typeof window !== 'undefined') {
-    // If on Vercel (.vercel.app), direct all traffic to Railway production backend
-    if (window.location.hostname.endsWith('.vercel.app')) {
+    // If on Vercel or any production domain, strictly connect to Railway to avoid Vercel WebSocket drops
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
       return 'https://apk-production-740c.up.railway.app';
     }
     // Local development on port 3000

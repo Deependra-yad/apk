@@ -88,6 +88,10 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         setGroups(res.data);
+        const socket = useChatStore.getState().socket;
+        if (socket) {
+          res.data.forEach((group: any) => socket.emit('join_group', group.id));
+        }
       });
 
       // Fetch chat metadata
