@@ -279,7 +279,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       const formData = new FormData();
       formData.append('file', file);
       const res = await axios.post('/api/upload', formData);
-      fileUrl = res.data.fileUrl;
+      fileUrl = /uploads/\;
       fileName = res.data.fileName;
       fileSize = res.data.fileSize;
       mimeType = res.data.mimeType;
