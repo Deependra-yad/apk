@@ -67,7 +67,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
         const formData = new FormData();
         formData.append('file', newFile);
         const res = await axios.post('/api/upload', formData);
-        mediaUrl = `/uploads/${res.data.fileName}`;
+        mediaUrl = res.data.fileUrl;
         type = res.data.type;
       }
 
