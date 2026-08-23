@@ -4,7 +4,7 @@
   "description": "Next-Gen Liquid WhatsApp Fullstack Application",
   "main": "server/dist/index.js",
   "scripts": {
-    "build": "cd server && npm install && npx prisma generate && npx prisma db push && npm run build",
+    "build": "cd server && npm install && npx prisma generate && npm run build",
     "start": "cd server && npm start"
   },
   "engines": {
