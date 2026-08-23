@@ -7,6 +7,7 @@ import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { format } from 'date-fns';
+import { resolveMediaUrl } from '@/utils/apiUrl';
 
 export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onOpenCreateStory: () => void; onSelectStory: (index: number) => void }) {
   const { user, token } = useAuthStore();
@@ -324,9 +325,9 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               <div className="flex-1 relative flex items-center justify-center my-4 overflow-hidden rounded-2xl">
                 {currentStory.mediaUrl ? (
                   currentStory.type === 'video' ? (
-                    <video src={currentStory.mediaUrl} autoPlay controls className="max-w-full max-h-full object-contain rounded-xl" />
+                    <video src={resolveMediaUrl(currentStory.mediaUrl)} autoPlay controls className="max-w-full max-h-full object-contain rounded-xl" />
                   ) : (
-                    <img src={currentStory.mediaUrl} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
+                    <img src={resolveMediaUrl(currentStory.mediaUrl)} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
                   )
                 ) : (
                   <div className="text-center p-8">

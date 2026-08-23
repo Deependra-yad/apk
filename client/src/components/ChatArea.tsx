@@ -583,11 +583,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         </div>
 
         {/* Action Buttons */}
-        <div className="flex items-center gap-2 text-foreground/80">
+        <div className="flex items-center gap-1 sm:gap-2 text-foreground/80 shrink-0">
             {/* AI Assistant Button */}
             <button
               onClick={() => setIsAiModalOpen(true)}
-              className="p-2.5 rounded-full hover:bg-foreground/10 text-liquid-accent transition-all"
+              className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-liquid-accent transition-all"
               title="Liquid AI Assistant"
             >
               <Bot size={20} />
@@ -596,7 +596,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             {/* Media Gallery / Starred Vault Drawer Button */}
             <button
               onClick={() => setIsGalleryOpen(true)}
-              className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-all"
+              className="hidden sm:block p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-all"
               title="Shared Media & Files"
             >
               <FolderKanban size={20} />
@@ -606,7 +606,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <>
                 <button 
                   onClick={() => onStartCall(false)}
-                  className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
+                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
                   title="Voice Call"
                 >
                   <Phone size={20} />
@@ -614,7 +614,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                 <button 
                   onClick={() => onStartCall(true)}
-                  className="p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
+                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
                   title="Video Call"
                 >
                   <Video size={20} />
@@ -624,7 +624,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             <button 
               onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`p-2.5 rounded-full transition-all ${isSearchOpen ? 'bg-liquid-accent text-liquid-dark' : 'hover:bg-foreground/10 hover:text-foreground'}`}
+              className={`hidden sm:block p-2.5 rounded-full transition-all ${isSearchOpen ? 'bg-liquid-accent text-liquid-dark' : 'hover:bg-foreground/10 hover:text-foreground'}`}
               title="Search Messages"
             >
               <Search size={20} />
@@ -636,14 +636,14 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   socket?.emit('clear_chat', { targetId: activeContact.id });
                 }
               }}
-              className="p-2 sm:p-2.5 rounded-full hover:bg-red-500/20 text-foreground/60 hover:text-red-500 transition-all"
+              className="hidden sm:block p-2 sm:p-2.5 rounded-full hover:bg-red-500/20 text-foreground/60 hover:text-red-500 transition-all"
               title="Clear Chat"
             >
               <Trash2 size={18} className="sm:w-5 sm:h-5" />
             </button>
             <button 
               onClick={() => isGroup ? setIsGroupDrawerOpen(true) : onOpenProfile()}
-              className="p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
+              className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
               title={isGroup ? "Group Info" : "Contact Info"}
             >
               {isGroup ? <Info size={20} /> : <MoreVertical size={20} />}

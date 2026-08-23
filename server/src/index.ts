@@ -181,13 +181,13 @@ io.on('connection', (socket) => {
         }
       });
 
-      if (isGroup) {
-        // Broadcast to group room (including sender)
-        io.to(`group_${data.groupId}`).emit('receive_group_message', msg);
-      } else {
-        io.to(`user_${data.receiverId}`).emit('receive_message', msg);
-        io.to(`user_${data.senderId}`).emit('message_sent', msg);
-      }
+        if (isGroup) {
+          // Broadcast to group room (including sender)
+          io.to(`group_${data.groupId}`).emit('receive_group_message', msg);
+        } else {
+          io.to(`user_${data.receiverId}`).emit('receive_message', msg);
+          io.to(`user_${data.senderId}`).emit('message_sent', msg);
+        }
     } catch (err) {
       console.error('Error sending message:', err);
     }

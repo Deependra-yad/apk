@@ -3,8 +3,9 @@
 import { motion } from 'framer-motion';
 import { 
   MessageSquare, CircleDashed, Phone, 
-  Settings, User, Sparkles, Star, Bot 
+  Settings, User, Sparkles, Star, Bot, Shield
 } from 'lucide-react';
+import { useAuthStore } from '@/store/authStore';
 
 interface LiquidSidebarProps {
   activeTab: string;
@@ -14,12 +15,14 @@ interface LiquidSidebarProps {
 }
 
 export default function LiquidSidebar({ activeTab, setActiveTab, onOpenProfile, isChatActive }: LiquidSidebarProps) {
+  const { user } = useAuthStore();
   const tabs = [
     { id: 'chat', label: 'Chats', icon: MessageSquare },
     { id: 'stories', label: 'Stories', icon: CircleDashed },
     { id: 'calls', label: 'Calls', icon: Phone },
     { id: 'starred', label: 'Starred', icon: Star },
     { id: 'settings', label: 'Settings', icon: Settings },
+    ...(user?.isAdmin ? [{ id: 'admin', label: 'Admin', icon: Shield }] : []),
   ];
 
   return (
@@ -48,7 +51,7 @@ export default function LiquidSidebar({ activeTab, setActiveTab, onOpenProfile, 
                 key={tab.id}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => tab.id === 'admin' ? window.location.href = '/admin' : setActiveTab(tab.id)}
                 className={`relative p-3 rounded-2xl transition-all duration-300 ${
                   isActive
                     ? 'text-foreground bg-liquid-accent/20 border border-liquid-accent/40 shadow-[0_0_20px_rgba(0,210,255,0.3)]'
@@ -90,7 +93,7 @@ export default function LiquidSidebar({ activeTab, setActiveTab, onOpenProfile, 
             return (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => tab.id === 'admin' ? window.location.href = '/admin' : setActiveTab(tab.id)}
                 className={`flex flex-col items-center justify-center p-1.5 rounded-xl transition-all ${
                   isActive ? 'text-liquid-accent' : 'text-foreground/60'
                 }`}
