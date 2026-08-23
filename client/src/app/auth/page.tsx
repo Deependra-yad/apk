@@ -5,6 +5,9 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import axios from 'axios';
+import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+
+const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -14,6 +17,18 @@ export default function AuthPage() {
   
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
+
+  const handleGoogleSuccess = async (credentialResponse: any) => {
+    try {
+      const res = await axios.post('/api/auth/google', {
+        credential: credentialResponse.credential
+      });
+      setAuth(res.data.user, res.data.token);
+      router.push('/');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Google login failed');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,89 +46,108 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="w-full min-h-[100dvh] flex items-center justify-center p-4 bg-liquid-dark overflow-y-auto relative selection:bg-liquid-accent/30">
-      {/* Ambient background */}
-      <div className="absolute w-[600px] h-[600px] bg-liquid-accent/10 rounded-full blur-[100px] animate-pulse"></div>
-      <div className="absolute top-10 right-10 w-[400px] h-[400px] bg-liquid-secondary/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }}></div>
-      
-      <motion.div 
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="w-full max-w-md p-6 sm:p-8 bg-liquid-base/60 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 my-4"
-      >
-        <div className="text-center mb-10">
-          <motion.div 
-            initial={{ scale: 0 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring' }}
-            className="w-20 h-20 mx-auto bg-gradient-to-tr from-liquid-accent to-liquid-secondary rounded-full flex items-center justify-center shadow-[0_0_20px_rgba(0,210,255,0.4)] mb-6 gooey-container relative"
-          >
-             <div className="absolute inset-1 bg-liquid-base rounded-full"></div>
-             <div className="relative z-10 w-8 h-8 bg-liquid-accent rounded-full animate-bounce" style={{ animationDuration: '2s' }}></div>
-          </motion.div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Liquid Chat</h1>
-          <p className="text-gray-400 mt-2">{isLogin ? 'Welcome back, sign in to continue' : 'Create an account to get started'}</p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {error && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-3 bg-red-500/20 border border-red-500/50 rounded-xl text-red-200 text-sm text-center">
-              {error}
-            </motion.div>
-          )}
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Username</label>
-            <div className="h-12 bg-black/40 rounded-xl border border-white/5 focus-within:border-liquid-accent/50 transition-colors flex items-center px-4">
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-white placeholder-gray-600 text-base sm:text-sm"
-                placeholder="liquid_user"
-                required
-              />
-            </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-            <div className="h-12 bg-black/40 rounded-xl border border-white/5 focus-within:border-liquid-accent/50 transition-colors flex items-center px-4">
-              <input 
-                type="password" 
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-transparent border-none outline-none text-white placeholder-gray-600 text-base sm:text-sm"
-                placeholder="••••••••"
-                required
-              />
-            </div>
-          </div>
-
-          <motion.button 
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            type="submit"
-            className="w-full h-12 bg-gradient-to-r from-liquid-accent to-liquid-secondary rounded-xl text-white font-semibold shadow-[0_0_20px_rgba(0,210,255,0.3)] hover:shadow-[0_0_30px_rgba(0,210,255,0.5)] transition-all"
-          >
-            {isLogin ? 'Sign In' : 'Create Account'}
-          </motion.button>
-        </form>
-
-        <div className="mt-8 text-center">
-          <p className="text-gray-400 text-sm">
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
-            <button 
-              onClick={() => setIsLogin(!isLogin)}
-              className="text-liquid-accent hover:text-liquid-secondary transition-colors font-medium outline-none"
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <div className="w-full min-h-[100dvh] flex items-center justify-center p-4 bg-liquid-dark overflow-y-auto relative selection:bg-liquid-accent/30">
+        {/* Ambient background */}
+        <div className="absolute w-[600px] h-[600px] bg-liquid-accent/10 rounded-full blur-[100px] animate-pulse"></div>
+        <div className="absolute top-10 right-10 w-[400px] h-[400px] bg-liquid-secondary/10 rounded-full blur-[100px] animate-pulse" style={{ animationDelay: '1s' }}></div>
+        
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          className="w-full max-w-md p-6 sm:p-8 bg-liquid-base/60 backdrop-blur-2xl rounded-3xl border border-white/10 shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10 my-4"
+        >
+          <div className="text-center mb-10">
+            <motion.div 
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.2, type: 'spring' }}
+              className="w-16 h-16 bg-gradient-to-tr from-liquid-accent to-blue-500 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg rotate-12"
             >
-              {isLogin ? 'Sign up' : 'Sign in'}
-            </button>
-          </p>
-        </div>
-      </motion.div>
-    </div>
+              <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center -rotate-12">
+                <div className="w-4 h-4 bg-blue-500 rounded-full"></div>
+              </div>
+            </motion.div>
+            <h1 className="text-3xl font-black text-white mb-2">Liquid Chat</h1>
+            <p className="text-gray-400 text-sm">
+              {isLogin ? 'Sign in to sync your messages' : 'Create an account to start chatting'}
+            </p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {error && (
+              <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm text-center font-medium">
+                {error}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1 mb-1.5 block">Username</label>
+                <input 
+                  type="text" 
+                  required
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-liquid-accent/50 focus:ring-1 focus:ring-liquid-accent/50 transition-all placeholder-gray-600"
+                  placeholder="Enter your username"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1 mb-1.5 block">Password</label>
+                <input 
+                  type="password" 
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-black/40 border border-white/10 rounded-xl px-4 py-3.5 text-white outline-none focus:border-liquid-accent/50 focus:ring-1 focus:ring-liquid-accent/50 transition-all placeholder-gray-600"
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              type="submit"
+              className="w-full bg-gradient-to-r from-liquid-accent to-blue-500 text-white font-bold py-3.5 rounded-xl shadow-[0_0_20px_rgba(0,210,255,0.3)] hover:shadow-[0_0_25px_rgba(0,210,255,0.5)] transition-all mt-4"
+            >
+              {isLogin ? 'Sign In' : 'Create Account'}
+            </motion.button>
+          </form>
+
+          <div className="mt-6 flex items-center justify-center">
+            <div className="h-px bg-white/10 w-full" />
+            <span className="text-xs text-gray-400 px-4 whitespace-nowrap">OR CONTINUE WITH</span>
+            <div className="h-px bg-white/10 w-full" />
+          </div>
+
+          <div className="mt-6 flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={() => setError('Google Sign-In failed')}
+              useOneTap
+              theme="filled_black"
+              shape="pill"
+              text={isLogin ? "signin_with" : "signup_with"}
+            />
+          </div>
+
+          <div className="mt-8 text-center">
+            <p className="text-gray-400 text-sm">
+              {isLogin ? "Don't have an account? " : "Already have an account? "}
+              <button 
+                onClick={() => setIsLogin(!isLogin)}
+                className="text-liquid-accent hover:text-liquid-secondary transition-colors font-medium outline-none"
+              >
+                {isLogin ? 'Sign up' : 'Sign in'}
+              </button>
+            </p>
+          </div>
+        </motion.div>
+      </div>
+    </GoogleOAuthProvider>
   );
 }
-

@@ -6,6 +6,81 @@ import prisma from '../prisma';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
 
+import { OAuth2Client } from 'google-auth-library';
+
+const googleClient = new OAuth2Client('543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com');
+
+router.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) return res.status(400).json({ error: 'Missing credential' });
+
+  try {
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: '543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com'
+    });
+    
+    const payload = ticket.getPayload();
+    if (!payload) return res.status(400).json({ error: 'Invalid Google token' });
+
+    const { sub, email, name, picture } = payload;
+    
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { googleId: sub },
+          { email: email }
+        ]
+      }
+    });
+
+    if (!user) {
+      let baseUsername = (name || email?.split('@')[0] || 'user').replace(/[^a-zA-Z0-9]/g, '');
+      let uniqueUsername = baseUsername;
+      let counter = 1;
+      
+      while (await prisma.user.findUnique({ where: { username: uniqueUsername } })) {
+        uniqueUsername = baseUsername + counter;
+        counter++;
+      }
+
+      user = await prisma.user.create({
+        data: {
+          username: uniqueUsername,
+          email: email,
+          googleId: sub,
+          avatar: picture
+        }
+      });
+    } else {
+      if (!user.googleId || (picture && !user.avatar)) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: {
+            googleId: sub,
+            ...(picture && !user.avatar && { avatar: picture })
+          }
+        });
+      }
+    }
+
+    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        avatar: user.avatar,
+        about: user.about
+      }
+    });
+
+  } catch (error) {
+    console.error('Google Auth Error:', error);
+    res.status(500).json({ error: 'Failed to authenticate with Google' });
+  }
+});
+
 router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {

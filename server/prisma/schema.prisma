@@ -11,9 +11,11 @@ datasource db {
 model User {
   id           String    @id @default(uuid())
   username     String    @unique
-  passwordHash String
+  email        String?   @unique
+  googleId     String?   @unique
+  passwordHash String?
   avatar       String?
-  about        String?   @default("Hey there! I am using Liquid Chat 🌊")
+  about        String?   @default("Hey there! I am using Liquid Chat 💧")
   lastSeen     DateTime  @default(now())
   createdAt    DateTime  @default(now())
 
