@@ -126,7 +126,7 @@ export default function StatusStoriesBar() {
           onClick={() => setIsAddModalOpen(true)}
           className="flex flex-col items-center gap-1 cursor-pointer shrink-0 group"
         >
-          <div className="relative w-13 h-13 rounded-full p-[2px] bg-gradient-to-tr from-liquid-accent to-liquid-secondary">
+          <div className="relative w-14 h-14 rounded-full p-[2px] bg-gradient-to-tr from-liquid-accent to-liquid-secondary">
             <div className="w-full h-full rounded-full overflow-hidden bg-liquid-base">
               <img src={user?.avatar} alt="You" className="w-full h-full object-cover" />
             </div>
@@ -144,7 +144,7 @@ export default function StatusStoriesBar() {
             onClick={() => setActiveStoryIndex(idx)}
             className="flex flex-col items-center gap-1 cursor-pointer shrink-0 group"
           >
-            <div className="relative w-13 h-13 rounded-full p-[2.5px] bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary animate-pulse">
+            <div className="relative w-14 h-14 rounded-full p-[2.5px] bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary animate-pulse">
               <div className="w-full h-full rounded-full overflow-hidden bg-liquid-base border border-liquid-base">
                 <img src={story.user?.avatar} alt={story.user?.username} className="w-full h-full object-cover" />
               </div>

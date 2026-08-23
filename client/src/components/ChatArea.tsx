@@ -1051,7 +1051,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Input Bar Area */}
-      <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0">
+      <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-white/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
         {/* Sticker & GIF Picker Modal */}
         <StickerGifPicker
           isOpen={isStickerPickerOpen}

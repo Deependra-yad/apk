@@ -520,7 +520,7 @@ export default function CallModal({
             <div className="h-24 bg-liquid-dark/80 backdrop-blur-2xl border-t border-white/5 flex items-center justify-center gap-4 sm:gap-6 px-6 z-20">
               <button
                 onClick={toggleMute}
-                className={`w-13 h-13 rounded-full flex items-center justify-center transition-all ${
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                   isMuted ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                 }`}
                 title={isMuted ? 'Unmute' : 'Mute'}
@@ -532,7 +532,7 @@ export default function CallModal({
                 <>
                   <button
                     onClick={toggleCamera}
-                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                       isCameraOff ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                     }`}
                     title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
@@ -542,7 +542,7 @@ export default function CallModal({
 
                   <button
                     onClick={toggleScreenShare}
-                    className={`w-13 h-13 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                       isScreenSharing ? 'bg-liquid-accent text-liquid-dark font-bold' : 'bg-white/10 text-white hover:bg-white/20 border border-white/10'
                     }`}
                     title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
