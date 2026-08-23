@@ -61,11 +61,11 @@ export default function CallModal({
 
     manager.onRemoteStream = (stream) => {
       setRemoteStream(stream);
-      if (remoteVideoRef.current) {
+      if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== stream) {
         remoteVideoRef.current.srcObject = stream;
         remoteVideoRef.current.play().catch(() => {});
       }
-      if (remoteAudioRef.current) {
+      if (remoteAudioRef.current && remoteAudioRef.current.srcObject !== stream) {
         remoteAudioRef.current.srcObject = stream;
         remoteAudioRef.current.play().catch(() => {});
       }
@@ -95,16 +95,16 @@ export default function CallModal({
   // Bind remote stream
   useEffect(() => {
     if (remoteStream) {
-      if (remoteVideoRef.current) {
+      if (remoteVideoRef.current && remoteVideoRef.current.srcObject !== remoteStream) {
         remoteVideoRef.current.srcObject = remoteStream;
         remoteVideoRef.current.play().catch(() => {});
       }
-      if (remoteAudioRef.current) {
+      if (remoteAudioRef.current && remoteAudioRef.current.srcObject !== remoteStream) {
         remoteAudioRef.current.srcObject = remoteStream;
         remoteAudioRef.current.play().catch(() => {});
       }
     }
-  }, [remoteStream, callState]);
+  }, [remoteStream, callState, isMinimized]);
 
   // Handle Socket Signaling Events
   useEffect(() => {
@@ -292,55 +292,49 @@ export default function CallModal({
 
   const targetUser = activeContact || incomingCallData?.from;
 
-  // Minimized Picture-in-Picture Bubble
-  if (isMinimized && callState === 'connected') {
-    return (
-      <motion.div
-        drag
-        dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth - 250 : 500, top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight - 200 : 500 }}
-        className="fixed bottom-6 right-6 z-50 w-64 h-44 bg-liquid-base/95 border border-liquid-accent/50 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(0,210,255,0.5)] backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between p-2.5"
-      >
-        <div className="flex justify-between items-center text-xs text-white/90 px-1">
-          <span className="font-semibold truncate">{targetUser?.username}</span>
-          <button onClick={() => setIsMinimized(false)} className="hover:text-liquid-accent p-1"><Maximize2 size={14} /></button>
-        </div>
-
-        <div className="relative w-full flex-1 rounded-xl overflow-hidden bg-black/70 flex items-center justify-center my-1">
-          {isVideoCall && remoteStream ? (
-            <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-12 h-12 rounded-full overflow-hidden border border-liquid-accent">
-              <img src={targetUser?.avatar} alt={targetUser?.username} className="w-full h-full object-cover" />
-            </div>
-          )}
-          <audio ref={remoteAudioRef} autoPlay playsInline />
-        </div>
-
-        <div className="flex justify-between items-center px-1">
-          <span className="text-[11px] text-green-400 font-mono font-medium">{formatTimer(callDuration)}</span>
-          <button onClick={() => endCall('completed')} className="p-1.5 bg-red-500 rounded-full text-white hover:bg-red-600">
-            <PhoneOff size={12} />
-          </button>
-        </div>
-      </motion.div>
-    );
-  }
-
   return (
-    <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-2xl p-4 sm:p-6"
-      >
-        {/* Hidden Audio Element ensuring Remote Audio Always Plays */}
-        <audio ref={remoteAudioRef} autoPlay playsInline />
-
+    <>
+      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
+      {isMinimized && callState === 'connected' ? (
         <motion.div
-          initial={{ scale: 0.9, y: 30 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.9, y: 30 }}
+          drag
+          dragConstraints={{ left: 0, right: typeof window !== 'undefined' ? window.innerWidth - 250 : 500, top: 0, bottom: typeof window !== 'undefined' ? window.innerHeight - 200 : 500 }}
+          className="fixed bottom-6 right-6 z-50 w-64 h-44 bg-liquid-base/95 border border-liquid-accent/50 rounded-2xl overflow-hidden shadow-[0_0_40px_rgba(0,210,255,0.5)] backdrop-blur-xl cursor-grab active:cursor-grabbing flex flex-col justify-between p-2.5"
+        >
+          <div className="flex justify-between items-center text-xs text-white/90 px-1">
+            <span className="font-semibold truncate">{targetUser?.username}</span>
+            <button onClick={() => setIsMinimized(false)} className="hover:text-liquid-accent p-1"><Maximize2 size={14} /></button>
+          </div>
+
+          <div className="relative w-full flex-1 rounded-xl overflow-hidden bg-black/70 flex items-center justify-center my-1">
+            {isVideoCall && remoteStream ? (
+              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-12 h-12 rounded-full overflow-hidden border border-liquid-accent">
+                <img src={targetUser?.avatar} alt={targetUser?.username} className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center px-1">
+            <span className="text-[11px] text-green-400 font-mono font-medium">{formatTimer(callDuration)}</span>
+            <button onClick={() => endCall('completed')} className="p-1.5 bg-red-500 rounded-full text-white hover:bg-red-600">
+              <PhoneOff size={12} />
+            </button>
+          </div>
+        </motion.div>
+      ) : (
+        <AnimatePresence>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 backdrop-blur-2xl p-4 sm:p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 30 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 30 }}
           className="w-full max-w-4xl h-full sm:h-[85vh] bg-liquid-base/95 border-0 sm:border border-white/10 rounded-none sm:rounded-3xl overflow-hidden relative shadow-[0_0_80px_rgba(0,210,255,0.25)] flex flex-col justify-between"
         >
           {/* Permission Notice Banner */}
@@ -564,5 +558,7 @@ export default function CallModal({
         </motion.div>
       </motion.div>
     </AnimatePresence>
+      )}
+    </>
   );
 }
