@@ -29,7 +29,7 @@ router.post('/google', async (req, res) => {
       where: {
         OR: [
           { googleId: sub },
-          { email: email }
+          ...(email ? [{ email }] : [])
         ]
       }
     });
@@ -47,9 +47,9 @@ router.post('/google', async (req, res) => {
       user = await prisma.user.create({
         data: {
           username: uniqueUsername,
-          email: email,
+          email: email || null,
           googleId: sub,
-          avatar: picture
+          avatar: picture || null
         }
       });
     } else {
@@ -102,7 +102,7 @@ router.post('/google-redirect', async (req, res) => {
       where: {
         OR: [
           { googleId: sub },
-          { email: email }
+          ...(email ? [{ email }] : [])
         ]
       }
     });
@@ -120,9 +120,9 @@ router.post('/google-redirect', async (req, res) => {
       user = await prisma.user.create({
         data: {
           username: uniqueUsername,
-          email: email,
+          email: email || null,
           googleId: sub,
-          avatar: picture,
+          avatar: picture || null,
           isAdmin: uniqueUsername.toLowerCase().includes('deependra')
         }
       });
