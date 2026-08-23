@@ -3,7 +3,6 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
-import { createProxyMiddleware } from 'http-proxy-middleware';
 import authRoutes from './routes/auth';
 import messageRoutes from './routes/messages';
 import uploadRoutes from './routes/upload';
@@ -94,7 +93,7 @@ io.on('connection', (socket) => {
         where: { userId: uid },
         select: { groupId: true }
       });
-      userGroups.forEach(g => socket.join(`group_${g.groupId}`));
+      userGroups.forEach((g: any) => socket.join(`group_${g.groupId}`));
     } catch (err) {
       console.error('Failed to auto-join groups:', err);
     }
