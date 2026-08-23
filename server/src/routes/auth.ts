@@ -146,7 +146,8 @@ router.post('/google-redirect', async (req, res) => {
       id: user.id,
       username: user.username,
       avatar: user.avatar,
-      about: user.about
+      about: user.about,
+      isAdmin: user.isAdmin
     }));
     
     return res.redirect(`https://apk-flame.vercel.app/auth/callback?token=${token}&user=${userStr}`);
@@ -180,7 +181,7 @@ router.post('/register', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen } });
+    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during registration' });
@@ -206,7 +207,7 @@ router.post('/login', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen } });
+    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during login' });
@@ -223,7 +224,7 @@ router.get('/me', async (req, res) => {
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
     
-    res.json({ user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen } });
+    res.json({ user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
