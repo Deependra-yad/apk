@@ -9,3 +9,6 @@ cmds = ['cd server && npm run build']
 
 [start]
 cmd = 'cd server && npm start'
+
+[variables]
+DATABASE_URL = 'file:./dev.db'

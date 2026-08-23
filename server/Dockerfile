@@ -18,8 +18,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Expose port
+# Expose port and default DB url
 ENV PORT=5000
+ENV DATABASE_URL="file:./dev.db"
 EXPOSE 5000
 
 # Push DB migrations at startup and launch server

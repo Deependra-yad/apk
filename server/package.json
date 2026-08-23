@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npx tsx watch src/index.ts",
     "build": "npx prisma generate && tsc",
-    "start": "npx prisma db push && node dist/index.js",
+    "start": "node -e \"const fs=require('fs'); if(!fs.existsSync('.env')) fs.writeFileSync('.env', 'DATABASE_URL=file:./dev.db');\" && npx prisma db push && node dist/index.js",
     "postinstall": "npx prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
