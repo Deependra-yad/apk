@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "npx tsx watch src/index.ts",
     "build": "npx prisma generate && tsc",
-    "start": "npx prisma db push && node dist/index.js",
+    "start": "node startup.js && npx prisma db push && node dist/index.js",
     "postinstall": "npx prisma generate",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
