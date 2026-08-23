@@ -56,13 +56,15 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/stickers', stickerRoutes);
 
-// Proxy all frontend/SSR routes to Next.js dev server on port 3000
-app.use('/', createProxyMiddleware({
-  target: 'http://127.0.0.1:3000',
-  changeOrigin: true,
-  ws: false, // Socket.io is handled natively below
-  logger: console
-}));
+// Simple healthcheck route for Railway
+app.get('/', (req, res) => {
+  res.status(200).send('Liquid Chat Backend is running successfully.');
+});
+
+// Catch-all for undefined routes
+app.use((req, res) => {
+  res.status(404).json({ error: 'Route not found' });
+});
 
 const server = http.createServer(app);
 const io = new Server(server, {
