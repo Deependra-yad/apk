@@ -1169,10 +1169,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 animate={{ scale: 1, opacity: 1 }}
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  handleSend();
-                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
+                onClick={handleSend}
                 className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer shrink-0"
                 title={editingMessage ? "Save Edit" : "Send Message"}
               >
@@ -1180,10 +1179,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               </motion.button>
             ) : (
               <button 
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  setIsRecordingVoice(true);
-                }}
+                onMouseDown={(e) => e.preventDefault()}
+                onTouchStart={(e) => e.preventDefault()}
+                onClick={() => setIsRecordingVoice(true)}
                 className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer shrink-0"
                 title="Record Voice Note"
               >

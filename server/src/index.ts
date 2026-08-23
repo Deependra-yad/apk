@@ -144,6 +144,7 @@ io.on('connection', (socket) => {
 
   // --- Real-Time Messaging (Direct & Group) ---
   socket.on('send_message', async (data) => {
+    console.log('RECEIVED send_message:', data);
     try {
       const isGroup = !!data.groupId;
 
