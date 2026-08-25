@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, X, Image as ImageIcon, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, X, Image as ImageIcon, Send, ChevronLeft, ChevronRight, Trash2, Eye } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
+import { resolveMediaUrl } from '@/utils/apiUrl';
 
 export default function StatusStoriesBar() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const { user, token } = useAuthStore();
   const { socket } = useChatStore();
 
@@ -117,6 +122,27 @@ export default function StatusStoriesBar() {
 
   const currentStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null;
 
+  useEffect(() => {
+    if (currentStory && currentStory.user?.id !== user?.id && token) {
+      axios.post(`/api/stories/${currentStory.id}/view`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(console.error);
+    }
+  }, [currentStory, user?.id, token]);
+
+  const handleDeleteStory = async (storyId: string) => {
+    if (!token) return;
+    try {
+      await axios.delete(`/api/stories/${storyId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStories(prev => prev.filter(s => s.id !== storyId));
+      setActiveStoryIndex(null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <>
       {/* Horizontal Liquid Stories Feed */}
@@ -156,14 +182,16 @@ export default function StatusStoriesBar() {
         ))}
       </div>
 
-      {/* Story Creation Modal */}
-      <AnimatePresence>
+      {mounted && createPortal(
+        <>
+          {/* Story Creation Modal */}
+          <AnimatePresence>
         {isAddModalOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
           >
             <div className="w-full max-w-md bg-liquid-base/95 border border-foreground/10 rounded-3xl p-6 shadow-2xl relative flex flex-col gap-4">
               <div className="flex justify-between items-center">
@@ -229,7 +257,7 @@ export default function StatusStoriesBar() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-2xl p-4 select-none"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-2xl p-4 select-none"
           >
             <div className="relative w-full max-w-lg h-[90vh] bg-liquid-base/90 rounded-3xl overflow-hidden border border-foreground/10 shadow-[0_0_60px_rgba(0,210,255,0.2)] flex flex-col justify-between p-6">
               {/* Progress Bars */}
@@ -253,12 +281,23 @@ export default function StatusStoriesBar() {
                     <span className="text-[11px] text-foreground/60">24h Status</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setActiveStoryIndex(null)}
-                  className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
+                    <button
+                      onClick={() => handleDeleteStory(currentStory.id)}
+                      className="p-2 text-rose-400 hover:text-rose-500 rounded-full hover:bg-rose-500/10 transition-colors"
+                      title="Delete Status"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveStoryIndex(null)}
+                    className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               {/* Story Media / Content */}
@@ -292,10 +331,36 @@ export default function StatusStoriesBar() {
                   {currentStory.caption}
                 </div>
               )}
+
+              {/* Viewers List (only for the creator) */}
+              {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
+                <div className="flex flex-col items-center gap-1 mt-2 mb-2 pb-2 z-30 overflow-y-auto max-h-32 hide-scrollbar">
+                  <div className="flex items-center gap-1 text-foreground/70 text-xs font-semibold uppercase tracking-widest mb-1 bg-background/40 px-3 py-1 rounded-full backdrop-blur-md">
+                    <Eye size={14} /> Views
+                  </div>
+                  {(() => {
+                    try {
+                      const views = JSON.parse(currentStory.views || '[]');
+                      if (views.length === 0) return <span className="text-xs text-foreground/50 bg-background/40 px-3 py-1 rounded-full">No views yet</span>;
+                      return (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {views.map((v: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 bg-background/80 px-3 py-1.5 rounded-full border border-foreground/10 shadow-sm">
+                              <img src={v.avatar} className="w-5 h-5 rounded-full object-cover bg-liquid-base" />
+                              <span className="text-xs font-medium text-foreground">{v.username}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } catch(e) { return null; }
+                  })()}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
       </AnimatePresence>
+      </>, document.body)}
     </>
   );
 }
