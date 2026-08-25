@@ -562,7 +562,7 @@ export default function Home() {
             <img 
               src={fullScreenImage} 
               alt="Full Screen" 
-              className="max-w-full max-h-full object-contain select-none"
+              className="w-full h-full object-contain select-none"
               onClick={e => e.stopPropagation()}
             />
           </motion.div>

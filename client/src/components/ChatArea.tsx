@@ -1441,7 +1441,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             <img 
               src={fullScreenImage} 
               alt="Full Screen" 
-              className="max-w-full max-h-full object-contain select-none"
+              className="w-full h-full object-contain select-none"
               onClick={e => e.stopPropagation()}
             />
           </motion.div>
