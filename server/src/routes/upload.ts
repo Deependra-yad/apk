@@ -14,7 +14,8 @@ const upload = multer({
 // These environment variables need to be set in your Railway dashboard
 const s3Client = new S3Client({
   region: process.env.S3_REGION || 'auto',
-  endpoint: process.env.S3_ENDPOINT, // e.g., https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+  endpoint: process.env.S3_ENDPOINT, // e.g., https://<ACCOUNT_ID>.r2.cloudflarestorage.com or Supabase S3 endpoint
+  forcePathStyle: true, // Required for Supabase S3 compatibility
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
