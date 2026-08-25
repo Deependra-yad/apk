@@ -68,5 +68,27 @@ router.get('/', authenticate, async (req: any, res) => {
   }
 });
 
+// Delete a story
+router.delete('/:id', authenticate, async (req: any, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  try {
+    // Make sure the story belongs to the user
+    const story = await prisma.story.findUnique({ where: { id } });
+    if (!story) {
+      return res.status(404).json({ error: 'Story not found' });
+    }
+    if (story.userId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to delete this story' });
+    }
+
+    await prisma.story.delete({ where: { id } });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete story' });
+  }
+});
+
 export default router;
 

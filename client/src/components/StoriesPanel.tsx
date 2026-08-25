@@ -103,6 +103,25 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     } catch (e) {}
   };
 
+  const handleDeleteStory = async (storyId: string) => {
+    if (!token) return;
+    try {
+      await axios.delete(`/api/stories/${storyId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setStories(prev => prev.filter(s => s.id !== storyId));
+      if (activeStoryIndex !== null) {
+        if (stories.length <= 1) {
+          setActiveStoryIndex(null);
+        } else {
+          setActiveStoryIndex(activeStoryIndex === stories.length - 1 ? activeStoryIndex - 1 : activeStoryIndex);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchStories();
   }, [token]);
@@ -313,12 +332,23 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                     <span className="text-[11px] text-foreground/60">24h Status</span>
                   </div>
                 </div>
-                <button
-                  onClick={() => setActiveStoryIndex(null)}
-                  className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
-                >
-                  <X size={20} />
-                </button>
+                <div className="flex items-center gap-2">
+                  {currentStory.userId === user?.id && (
+                    <button
+                      onClick={() => handleDeleteStory(currentStory.id)}
+                      className="p-2 text-rose-400 hover:text-rose-500 rounded-full hover:bg-rose-500/10 transition-colors"
+                      title="Delete Status"
+                    >
+                      <Trash2 size={20} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setActiveStoryIndex(null)}
+                    className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
+                  >
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
 
               {/* Story Media / Content */}
