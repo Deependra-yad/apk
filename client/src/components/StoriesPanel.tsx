@@ -92,6 +92,14 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
 
   const currentStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null;
 
+  useEffect(() => {
+    if (currentStory && currentStory.user?.id !== user?.id && token) {
+      axios.post(`/api/stories/${currentStory.id}/view`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).catch(console.error);
+    }
+  }, [currentStory, user?.id, token]);
+
 
   const fetchStories = async () => {
     if (!token) return;
@@ -238,7 +246,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
           >
             <div className="w-full max-w-md bg-liquid-base/95 border border-foreground/10 rounded-3xl p-6 shadow-2xl relative flex flex-col gap-4">
               <div className="flex justify-between items-center">
@@ -308,7 +316,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-background/95 backdrop-blur-2xl p-4 select-none"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-background/95 backdrop-blur-2xl p-4 select-none"
           >
             <div className="relative w-full max-w-lg h-[90vh] bg-liquid-base/90 rounded-3xl overflow-hidden border border-foreground/10 shadow-[0_0_60px_rgba(0,210,255,0.2)] flex flex-col justify-between p-6">
               {/* Progress Bars */}
@@ -333,7 +341,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {currentStory.userId === user?.id && (
+                  {currentStory.user?.id === user?.id && (
                     <button
                       onClick={() => handleDeleteStory(currentStory.id)}
                       className="p-2 text-rose-400 hover:text-rose-500 rounded-full hover:bg-rose-500/10 transition-colors"
@@ -384,6 +392,31 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               {currentStory.mediaUrl && currentStory.caption && (
                 <div className="p-4 bg-background/50 rounded-xl backdrop-blur-md text-center text-sm text-foreground z-30">
                   {currentStory.caption}
+                </div>
+              )}
+
+              {/* Viewers List (only for the creator) */}
+              {currentStory.user?.id === user?.id && (
+                <div className="flex flex-col items-center gap-1 mt-2 mb-2 pb-2 z-30 overflow-y-auto max-h-32 hide-scrollbar">
+                  <div className="flex items-center gap-1 text-foreground/70 text-xs font-semibold uppercase tracking-widest mb-1 bg-background/40 px-3 py-1 rounded-full backdrop-blur-md">
+                    <Eye size={14} /> Views
+                  </div>
+                  {(() => {
+                    try {
+                      const views = JSON.parse(currentStory.views || '[]');
+                      if (views.length === 0) return <span className="text-xs text-foreground/50 bg-background/40 px-3 py-1 rounded-full">No views yet</span>;
+                      return (
+                        <div className="flex flex-wrap justify-center gap-2">
+                          {views.map((v: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 bg-background/80 px-3 py-1.5 rounded-full border border-foreground/10 shadow-sm">
+                              <img src={v.avatar} className="w-5 h-5 rounded-full object-cover bg-liquid-base" />
+                              <span className="text-xs font-medium text-foreground">{v.username}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    } catch(e) { return null; }
+                  })()}
                 </div>
               )}
             </div>

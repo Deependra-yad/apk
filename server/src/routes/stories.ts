@@ -90,5 +90,73 @@ router.delete('/:id', authenticate, async (req: any, res) => {
   }
 });
 
+// View a story
+router.post('/:id/view', authenticate, async (req: any, res) => {
+  const { id } = req.params;
+  const userId = req.userId;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const story = await prisma.story.findUnique({ where: { id } });
+    if (!story || !user) return res.status(404).json({ error: 'Not found' });
+
+    let views = JSON.parse(story.views || '[]');
+    if (!views.find((v: any) => v.userId === userId)) {
+      views.push({
+        userId,
+        username: user.username,
+        avatar: user.avatar,
+        viewedAt: new Date().toISOString()
+      });
+      await prisma.story.update({
+        where: { id },
+        data: { views: JSON.stringify(views) }
+      });
+    }
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
+// React to a story
+router.post('/:id/react', authenticate, async (req: any, res) => {
+  const { id } = req.params;
+  const { emoji } = req.body;
+  const userId = req.userId;
+
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const story = await prisma.story.findUnique({ where: { id } });
+    if (!story || !user) return res.status(404).json({ error: 'Not found' });
+
+    let reactions = JSON.parse(story.reactions || '[]');
+    // Replace if exists, else push
+    const idx = reactions.findIndex((r: any) => r.userId === userId);
+    if (idx > -1) {
+      if (reactions[idx].emoji === emoji) {
+        reactions.splice(idx, 1); // toggle off
+      } else {
+        reactions[idx].emoji = emoji;
+      }
+    } else {
+      reactions.push({
+        userId,
+        username: user.username,
+        avatar: user.avatar,
+        emoji
+      });
+    }
+
+    const updated = await prisma.story.update({
+      where: { id },
+      data: { reactions: JSON.stringify(reactions) }
+    });
+    res.json(updated);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed' });
+  }
+});
+
 export default router;
 

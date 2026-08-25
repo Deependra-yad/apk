@@ -48,3 +48,4 @@ export async function subscribeToPushNotifications(token: string) {
     console.error('Failed to subscribe to push notifications:', error);
   }
 }
+

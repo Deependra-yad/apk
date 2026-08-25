@@ -61,3 +61,4 @@ router.post('/subscribe', authenticate, async (req: any, res) => {
 });
 
 export default router;
+

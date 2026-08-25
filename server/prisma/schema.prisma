@@ -142,6 +142,8 @@ model Story {
   caption   String?
   type      String   @default("image") // 'image' | 'video' | 'text'
   bgColor   String?  @default("#1e1e24")
+  views     String?  @default("[]") // JSON array of { userId, username, avatar, viewedAt }
+  reactions String?  @default("[]") // JSON array of { userId, username, avatar, emoji }
   createdAt DateTime @default(now())
   expiresAt DateTime
 
