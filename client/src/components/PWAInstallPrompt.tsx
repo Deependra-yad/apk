@@ -36,8 +36,17 @@ export default function PWAInstallPrompt() {
       }
       setDeferredPrompt(null);
     } else {
-      // Fallback instructions for iOS / browsers that don't support the native prompt
-      alert("To install: Tap the Share button in your browser, then select 'Add to Home Screen'.");
+      // Fallback instructions tailored by device OS
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS) {
+        alert("🍎 iOS / iPhone Installation:\n\n1. Tap the Share button at the bottom of your screen (the square with an arrow pointing up).\n2. Scroll down and tap 'Add to Home Screen'.");
+      } else if (isAndroid) {
+        alert("🤖 Android Installation:\n\n1. Tap the 3-dots menu (⋮) at the top right of your browser.\n2. Tap 'Install app' or 'Add to Home screen'.");
+      } else {
+        alert("💻 Desktop Installation:\n\nLook for the install icon (monitor with a downward arrow) in the right side of your URL bar, or check your browser menu to 'Install App'.");
+      }
     }
     setShowPrompt(false);
   };
