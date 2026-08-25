@@ -78,8 +78,8 @@ export default function AdminDashboard() {
 
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
-        <div className="max-w-md w-full bg-foreground/5 p-8 rounded-2xl border border-foreground/10">
+      <div className="h-screen overflow-y-auto bg-background flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-foreground/5 p-8 rounded-2xl border border-foreground/10 my-8">
           <div className="flex justify-center mb-6">
             <div className="w-16 h-16 bg-liquid-accent/20 rounded-full flex items-center justify-center">
               <Shield className="text-liquid-accent" size={32} />
@@ -106,8 +106,8 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="h-screen overflow-y-auto bg-background text-foreground p-8">
+      <div className="max-w-6xl mx-auto pb-16">
         <div className="flex items-center justify-between mb-8">
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-liquid-accent to-liquid-secondary">
             Admin Dashboard
