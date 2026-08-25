@@ -18,6 +18,15 @@ axios.interceptors.request.use((config) => {
 
 export default function AppInitializer() {
   useEffect(() => {
+    // Register Service Worker for PWA Installability
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.error('Service Worker registration failed:', err);
+        });
+      });
+    }
+
     requestNotificationPermission();
 
     // Privacy Locks
