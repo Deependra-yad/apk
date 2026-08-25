@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
+import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v4 as uuidv4 } from 'uuid';
 
 const router = Router();
 const storage = multer.memoryStorage();
@@ -10,6 +12,17 @@ const upload = multer({
 });
 
 const prisma = new PrismaClient();
+
+// Configure Cloudflare R2 / AWS S3 Client
+const s3Client = new S3Client({
+  region: process.env.S3_REGION || 'auto',
+  endpoint: process.env.S3_ENDPOINT,
+  forcePathStyle: true,
+  credentials: {
+    accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+  }
+});
 
 router.post('/', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -29,7 +42,28 @@ router.post('/', upload.single('file'), async (req, res) => {
   else if (mimeType.startsWith('audio/')) type = 'audio';
 
   try {
-    // Highly Optimized Database Binary Storage (Supabase/Railway only)
+    // 1. Try Cloudflare R2 / S3 Upload First
+    if (process.env.S3_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME) {
+      const fileExtension = fileName.split('.').pop();
+      const uniqueFileName = `${uuidv4()}.${fileExtension}`;
+      
+      const uploadParams = {
+        Bucket: process.env.S3_BUCKET_NAME,
+        Key: uniqueFileName,
+        Body: req.file.buffer,
+        ContentType: mimeType,
+      };
+
+      await s3Client.send(new PutObjectCommand(uploadParams));
+
+      // Construct public URL
+      const publicUrlBase = process.env.S3_PUBLIC_DOMAIN || process.env.S3_ENDPOINT;
+      const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
+
+      return res.json({ fileUrl, fileName, fileSize, mimeType, type });
+    }
+
+    // 2. FALLBACK: Highly Optimized Database Binary Storage (Supabase)
     const media = await prisma.media.create({
       data: {
         data: req.file.buffer,
@@ -42,7 +76,7 @@ router.post('/', upload.single('file'), async (req, res) => {
     return res.json({ fileUrl, fileName, fileSize, mimeType, type });
   } catch (error) {
     console.error('Upload Error:', error);
-    return res.status(500).json({ error: 'Failed to upload file to database' });
+    return res.status(500).json({ error: 'Failed to upload file' });
   }
 });
 
