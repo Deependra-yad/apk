@@ -16,18 +16,31 @@ axios.interceptors.request.use((config) => {
   return config;
 });
 
+import { useAuthStore } from '@/store/authStore';
+import { subscribeToPushNotifications } from '@/utils/push';
+
 export default function AppInitializer() {
+  const { token } = useAuthStore();
+
   useEffect(() => {
     // Register Service Worker for PWA Installability
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js').catch(err => {
+        navigator.serviceWorker.register('/sw.js').then(() => {
+          if (token && Notification.permission === 'granted') {
+            subscribeToPushNotifications(token);
+          }
+        }).catch(err => {
           console.error('Service Worker registration failed:', err);
         });
       });
     }
 
-    requestNotificationPermission();
+    requestNotificationPermission().then(() => {
+      if (token && Notification.permission === 'granted' && navigator.serviceWorker.controller) {
+        subscribeToPushNotifications(token);
+      }
+    });
 
     // Privacy Locks
     const handleContextMenu = (e: MouseEvent) => {
@@ -55,7 +68,7 @@ export default function AppInitializer() {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, []);
+  }, [token]);
 
   return null;
 }

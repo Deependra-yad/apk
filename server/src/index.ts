@@ -3,6 +3,12 @@ import express from 'express';
 import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
+import webpush from 'web-push';
+
+const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB3IQWwegwE3yB-kLNlU_ZPUY';
+const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'QvT_0R6KozjHlHh_6gD_U28XkK3E5ZzK-U2NnF8pE10';
+webpush.setVapidDetails('mailto:support@liquidchat.com', publicVapidKey, privateVapidKey);
+
 import authRoutes from './routes/auth';
 import messageRoutes from './routes/messages';
 import uploadRoutes from './routes/upload';
@@ -14,6 +20,7 @@ import userRoutes from './routes/users';
 import aiRoutes from './routes/ai';
 import mediaRoutes from './routes/media';
 import stickerRoutes from './routes/stickers';
+import pushRoutes from './routes/push';
 import prisma from './prisma';
 import path from 'path';
 import fs from 'fs';
@@ -54,6 +61,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/stickers', stickerRoutes);
+app.use('/api/push', pushRoutes);
 
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
@@ -72,6 +80,30 @@ const io = new Server(server, {
     methods: ['GET', 'POST', 'PUT', 'DELETE']
   }
 });
+
+const sendPushNotification = async (userId: string, title: string, body: string, url: string = '/') => {
+  try {
+    const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
+    const payload = JSON.stringify({ title, body, url });
+    
+    for (const sub of subscriptions) {
+      const pushSub = {
+        endpoint: sub.endpoint,
+        keys: { p256dh: sub.p256dh, auth: sub.auth }
+      };
+      try {
+        await webpush.sendNotification(pushSub, payload);
+      } catch (err: any) {
+        if (err.statusCode === 404 || err.statusCode === 410) {
+          // Subscription has expired or is no longer valid
+          await prisma.pushSubscription.delete({ where: { id: sub.id } });
+        }
+      }
+    }
+  } catch (e) {
+    console.error('Push error:', e);
+  }
+};
 
 // Map of userId -> socketId
 const connectedUsers = new Map<string, string>();
@@ -197,9 +229,22 @@ io.on('connection', (socket) => {
         if (isGroup) {
           // Broadcast to group room (including sender)
           io.to(`group_${data.groupId}`).emit('receive_group_message', msg);
+          
+          // Send push to all group members except sender
+          const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
+          members.forEach(member => {
+            if (member.userId !== data.senderId) {
+              sendPushNotification(member.userId, `New message in group`, `${msg.sender?.username}: ${msg.text || msg.type}`);
+            }
+          });
         } else {
           io.to(`user_${data.receiverId}`).emit('receive_message', msg);
           io.to(`user_${data.senderId}`).emit('message_sent', msg);
+          
+          // Send push to receiver
+          if (data.receiverId) {
+            sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
+          }
         }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -329,6 +374,9 @@ io.on('connection', (socket) => {
       offer,
       isVideo
     });
+    
+    // Trigger push notification for incoming call
+    sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`);
   });
 
   socket.on('call_answer', ({ to, answer }) => {

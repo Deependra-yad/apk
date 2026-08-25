@@ -31,6 +31,7 @@ model User {
   blocksInitiated  BlockList[]   @relation("Blocker")
   blocksReceived   BlockList[]   @relation("Blocked")
   settings         UserSettings?
+  pushSubscriptions PushSubscription[]
 }
 
 model Group {
@@ -160,4 +161,15 @@ model CallLog {
 
   caller   User @relation("CallsMade", fields: [callerId], references: [id], onDelete: Cascade)
   receiver User @relation("CallsReceived", fields: [receiverId], references: [id], onDelete: Cascade)
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
