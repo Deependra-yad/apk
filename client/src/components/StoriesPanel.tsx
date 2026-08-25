@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Sparkles, Image as ImageIcon, Clock, Eye, Trash2, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import axios from 'axios';
@@ -10,6 +11,9 @@ import { format } from 'date-fns';
 import { resolveMediaUrl } from '@/utils/apiUrl';
 
 export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onOpenCreateStory: () => void; onSelectStory: (index: number) => void }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   const { user, token } = useAuthStore();
   const { socket } = useChatStore();
   const [stories, setStories] = useState<any[]>([]);
@@ -239,12 +243,15 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
           })
         )}
       </div>
-    {/* Story Creation Modal */}
-      <AnimatePresence>
-        {isAddModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+
+      {mounted && createPortal(
+        <>
+          {/* Story Creation Modal */}
+          <AnimatePresence>
+            {isAddModalOpen && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] flex items-center justify-center bg-background/80 backdrop-blur-xl p-4"
           >
@@ -341,7 +348,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  {currentStory.user?.id === user?.id && (
+                  {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
                     <button
                       onClick={() => handleDeleteStory(currentStory.id)}
                       className="p-2 text-rose-400 hover:text-rose-500 rounded-full hover:bg-rose-500/10 transition-colors"
@@ -396,7 +403,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               )}
 
               {/* Viewers List (only for the creator) */}
-              {currentStory.user?.id === user?.id && (
+              {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
                 <div className="flex flex-col items-center gap-1 mt-2 mb-2 pb-2 z-30 overflow-y-auto max-h-32 hide-scrollbar">
                   <div className="flex items-center gap-1 text-foreground/70 text-xs font-semibold uppercase tracking-widest mb-1 bg-background/40 px-3 py-1 rounded-full backdrop-blur-md">
                     <Eye size={14} /> Views
@@ -423,6 +430,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
           </motion.div>
         )}
       </AnimatePresence>
+      </>, document.body)}
     </div>
   );
 }
