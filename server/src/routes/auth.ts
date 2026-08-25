@@ -338,9 +338,9 @@ router.get('/users', async (req, res) => {
       }
     });
 
-    const sanitizedUsers = users.map(u => {
-      const isBlockedByMe = currentUserId ? u.blocksReceived.some(b => b.blockerId === currentUserId) : false;
-      const hasBlockedMe = currentUserId ? u.blocksInitiated.some(b => b.blockedId === currentUserId) : false;
+    const sanitizedUsers = users.map((u: any) => {
+      const isBlockedByMe = currentUserId ? u.blocksReceived.some((b: any) => b.blockerId === currentUserId) : false;
+      const hasBlockedMe = currentUserId ? u.blocksInitiated.some((b: any) => b.blockedId === currentUserId) : false;
 
       const privacy = u.settings?.lastSeenPrivacy || 'everyone';
       let hideLastSeen = false;

@@ -232,7 +232,7 @@ io.on('connection', (socket) => {
           
           // Send push to all group members except sender
           const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
-          members.forEach(member => {
+          members.forEach((member: any) => {
             if (member.userId !== data.senderId) {
               sendPushNotification(member.userId, `New message in group`, `${msg.sender?.username}: ${msg.text || msg.type}`);
             }
