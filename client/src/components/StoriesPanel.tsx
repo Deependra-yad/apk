@@ -129,6 +129,36 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     }
   };
 
+  const handleReact = async (emoji: string) => {
+    if (!currentStory || !token) return;
+    try {
+      await axios.post(`/api/stories/${currentStory.id}/react`, { emoji }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const [replyText, setReplyText] = useState('');
+  const handleReply = async () => {
+    if (!currentStory || !replyText.trim() || !token) return;
+    try {
+      const targetUserId = currentStory.userId || currentStory.user?.id;
+      const res = await axios.post('/api/messages', {
+        receiverId: targetUserId,
+        content: `Reply to status: ${replyText}`,
+        type: 'text'
+      }, { headers: { Authorization: `Bearer ${token}` } });
+      
+      socket?.emit('send_message', res.data);
+      setReplyText('');
+      setActiveStoryIndex(null); 
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchStories();
   }, [token]);
