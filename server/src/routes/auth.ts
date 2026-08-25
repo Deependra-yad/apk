@@ -307,6 +307,15 @@ router.delete('/account', async (req, res) => {
 
 router.get('/users', async (req, res) => {
   try {
+    const token = req.headers.authorization?.split(' ')[1];
+    let currentUserId: string | null = null;
+    if (token) {
+      try {
+        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'liquid_super_secret');
+        currentUserId = decoded.userId;
+      } catch (e) {}
+    }
+
     const users = await prisma.user.findMany({
       select: { 
         id: true, 
@@ -314,12 +323,41 @@ router.get('/users', async (req, res) => {
         avatar: true, 
         about: true, 
         lastSeen: true,
+        settings: {
+          select: { lastSeenPrivacy: true }
+        },
         stories: {
           where: { expiresAt: { gt: new Date() } }
+        },
+        blocksInitiated: {
+          select: { blockedId: true }
+        },
+        blocksReceived: {
+          select: { blockerId: true }
         }
       }
     });
-    res.json(users);
+
+    const sanitizedUsers = users.map(u => {
+      const isBlockedByMe = currentUserId ? u.blocksReceived.some(b => b.blockerId === currentUserId) : false;
+      const hasBlockedMe = currentUserId ? u.blocksInitiated.some(b => b.blockedId === currentUserId) : false;
+
+      const privacy = u.settings?.lastSeenPrivacy || 'everyone';
+      let hideLastSeen = false;
+
+      if (privacy === 'nobody') hideLastSeen = true;
+      else if (privacy === 'contacts' && !currentUserId) hideLastSeen = true;
+      else if (isBlockedByMe || hasBlockedMe) hideLastSeen = true;
+
+      // Ensure we don't leak settings or block data
+      const { settings, blocksInitiated, blocksReceived, ...safeUser } = u;
+
+      if (hideLastSeen) safeUser.lastSeen = null;
+      
+      return safeUser;
+    });
+
+    res.json(sanitizedUsers);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch users' });
   }

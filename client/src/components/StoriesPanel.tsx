@@ -205,7 +205,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                 </div>
 
                 <span className="text-[10px] text-foreground/50 font-mono">
-                  {format(new Date(story.createdAt), 'hh:mm a')}
+                  {format(new Date(story.createdAt), 'EEEE, h:mm a')}
                 </span>
               </motion.div>
             );
@@ -240,7 +240,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               {newFile ? (
                 <div className="relative h-48 rounded-2xl overflow-hidden bg-background/40 border border-foreground/10">
                   {newFile.type.startsWith('video/') ? (
-                    <video src={URL.createObjectURL(newFile)} controls className="w-full h-full object-contain" />
+                    <video src={URL.createObjectURL(newFile)} controls playsInline className="w-full h-full object-contain" />
                   ) : (
                     <img src={URL.createObjectURL(newFile)} alt="Preview" className="w-full h-full object-contain" />
                   )}
@@ -325,7 +325,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               <div className="flex-1 relative flex items-center justify-center my-4 overflow-hidden rounded-2xl">
                 {currentStory.mediaUrl ? (
                   currentStory.type === 'video' ? (
-                    <video src={resolveMediaUrl(currentStory.mediaUrl)} autoPlay controls className="max-w-full max-h-full object-contain rounded-xl" />
+                    <video src={resolveMediaUrl(currentStory.mediaUrl)} autoPlay playsInline controls className="max-w-full max-h-full object-contain rounded-xl" />
                   ) : (
                     <img src={resolveMediaUrl(currentStory.mediaUrl)} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
                   )

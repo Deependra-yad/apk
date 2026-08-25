@@ -83,6 +83,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const [isContactInfoOpen, setIsContactInfoOpen] = useState(false);
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{ msg: any; x: number; y: number } | null>(null);
 
@@ -667,7 +668,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <Trash2 size={18} className="sm:w-5 sm:h-5" />
             </button>
             <button 
-              onClick={() => isGroup ? setIsGroupDrawerOpen(true) : onOpenProfile()}
+              onClick={() => isGroup ? setIsGroupDrawerOpen(true) : setIsContactInfoOpen(true)}
               className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
               title={isGroup ? "Group Info" : "Contact Info"}
             >
@@ -1443,6 +1444,57 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               className="max-w-full max-h-full object-contain select-none"
               onClick={e => e.stopPropagation()}
             />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Contact Info Modal */}
+      <AnimatePresence>
+        {isContactInfoOpen && activeContact && (
+          <motion.div
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            className="absolute right-0 top-0 bottom-0 w-80 bg-liquid-base border-l border-foreground/5 z-50 flex flex-col shadow-2xl"
+          >
+            <div className="p-4 border-b border-foreground/5 flex items-center gap-3">
+              <button onClick={() => setIsContactInfoOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full">
+                <X size={20} />
+              </button>
+              <h2 className="font-bold">Contact Info</h2>
+            </div>
+            
+            <div className="p-6 flex flex-col items-center border-b border-foreground/5">
+              <img 
+                src={activeContact.avatar} 
+                alt={activeContact.username} 
+                className="w-32 h-32 rounded-full object-cover mb-4 cursor-pointer"
+                onClick={() => setFullScreenImage(activeContact.avatar)}
+              />
+              <h3 className="text-xl font-bold mb-1">{activeContact.username}</h3>
+              <p className="text-sm text-foreground/60">{activeContact.email}</p>
+            </div>
+
+            <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+              <div className="bg-foreground/5 rounded-xl p-4">
+                <h4 className="text-xs font-semibold text-foreground/50 mb-2 uppercase">About</h4>
+                <p className="text-sm">{activeContact.status || "Hey there! I am using Liquid Chat."}</p>
+              </div>
+              
+              <div className="bg-foreground/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-foreground/10 transition-colors" onClick={() => {}}>
+                <div className="flex flex-col">
+                  <h4 className="text-sm font-semibold">Media, Links, and Docs</h4>
+                  <p className="text-xs text-foreground/60">0 shared</p>
+                </div>
+                <MoreVertical size={16} className="text-foreground/50" />
+              </div>
+
+              <div className="bg-foreground/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-foreground/10 transition-colors mt-2" onClick={() => {}}>
+                <div className="flex flex-col">
+                  <h4 className="text-sm text-rose-400 font-semibold">Block {activeContact.username}</h4>
+                </div>
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

@@ -217,7 +217,8 @@ export default function Home() {
 
   // Filter Contacts
   const filteredUsers = users.filter(u => {
-    const matchesSearch = u.username.toLowerCase().includes(contactSearch.toLowerCase()) || u.about?.toLowerCase().includes(contactSearch.toLowerCase());
+    const searchLow = contactSearch.toLowerCase().trim();
+    const matchesSearch = !searchLow || u.username.toLowerCase().startsWith(searchLow) || u.email?.toLowerCase().startsWith(searchLow);
     const archived = isTargetArchived(u.id);
     const hasHistory = activeConversations.includes(u.id);
 
@@ -231,7 +232,8 @@ export default function Home() {
 
   // Filter Groups
   const filteredGroups = groups.filter(g => {
-    const matchesSearch = g.name.toLowerCase().includes(contactSearch.toLowerCase());
+    const searchLow = contactSearch.toLowerCase().trim();
+    const matchesSearch = !searchLow || g.name.toLowerCase().startsWith(searchLow);
     const archived = isTargetArchived(g.id);
     if (chatFilter === 'archived') return archived && matchesSearch;
     if (chatFilter === 'unread') return false;
