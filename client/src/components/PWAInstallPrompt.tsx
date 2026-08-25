@@ -9,31 +9,42 @@ export default function PWAInstallPrompt() {
   const [showPrompt, setShowPrompt] = useState(false);
 
   useEffect(() => {
+    // Force show the prompt UI after 2 seconds as a fallback
+    const fallbackTimer = setTimeout(() => {
+      setShowPrompt(true);
+    }, 2000);
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      // Show the prompt after a short delay so it doesn't immediately interrupt the user
-      setTimeout(() => setShowPrompt(true), 3000);
+      setShowPrompt(true);
     };
 
     window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handler);
+      clearTimeout(fallbackTimer);
+    };
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      console.log('User accepted the PWA install prompt');
+    if (deferredPrompt) {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        console.log('User accepted the PWA install prompt');
+      }
+      setDeferredPrompt(null);
+    } else {
+      // Fallback instructions for iOS / browsers that don't support the native prompt
+      alert("To install: Tap the Share button in your browser, then select 'Add to Home Screen'.");
     }
-    setDeferredPrompt(null);
     setShowPrompt(false);
   };
 
   return (
     <AnimatePresence>
-      {showPrompt && deferredPrompt && (
+      {showPrompt && (
         <motion.div
           initial={{ opacity: 0, y: 50, scale: 0.9 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
