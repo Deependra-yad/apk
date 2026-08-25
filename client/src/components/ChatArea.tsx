@@ -14,7 +14,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, Message } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday } from 'date-fns';
 import axios from 'axios';
 import VoiceRecorder, { AudioBubblePlayer } from './VoiceRecorder';
 import MessageReactions, { ReactionBadges } from './MessageReactions';
@@ -82,6 +82,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isGroupDrawerOpen, setIsGroupDrawerOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
   const [isStickerPickerOpen, setIsStickerPickerOpen] = useState(false);
   const [messageContextMenu, setMessageContextMenu] = useState<{ msg: any; x: number; y: number } | null>(null);
 
@@ -544,7 +545,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   <img 
                     src={isGroup ? (activeGroup?.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(activeGroup?.name || 'G')}`) : activeContact?.avatar} 
                     alt={isGroup ? activeGroup?.name : activeContact?.username} 
-                    className="w-full h-full rounded-full object-cover bg-liquid-base" 
+                    className="w-full h-full rounded-full object-cover bg-liquid-base cursor-pointer" 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setFullScreenImage(isGroup ? (activeGroup?.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(activeGroup?.name || 'G')}`) : (activeContact?.avatar || ''));
+                    }}
                   />
                 </div>
                 {!isGroup && isOnline && (
@@ -587,7 +592,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   {isOnline ? (
                     <span className="text-green-400">Online</span>
                   ) : activeContact?.lastSeen ? (
-                    `Last seen ${format(new Date(activeContact.lastSeen), 'hh:mm a')}`
+                    (() => {
+                      const d = new Date(activeContact.lastSeen);
+                      if (isToday(d)) return `Last seen today at ${format(d, 'h:mm a')}`;
+                      if (isYesterday(d)) return `Last seen yesterday at ${format(d, 'h:mm a')}`;
+                      return `Last seen on ${format(d, 'MMM d, yyyy')}`;
+                    })()
                   ) : (
                     'Offline'
                   )}
@@ -1410,6 +1420,32 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           mimeType={selectedDocumentForModal.mimeType}
         />
       )}
+
+      {/* Fullscreen DP / Image Modal */}
+      <AnimatePresence>
+        {fullScreenImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setFullScreenImage(null)}
+          >
+            <button 
+              className="absolute top-4 right-4 sm:top-8 sm:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              onClick={() => setFullScreenImage(null)}
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={fullScreenImage} 
+              alt="Full Screen" 
+              className="max-w-full max-h-full object-contain select-none"
+              onClick={e => e.stopPropagation()}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

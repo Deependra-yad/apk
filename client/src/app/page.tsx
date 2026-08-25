@@ -6,7 +6,7 @@ import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Users, Pin, BellOff, Archive, 
-  MoreVertical, Plus, Check, Trash2, UserX 
+  MoreVertical, Plus, Check, Trash2, UserX, X
 } from 'lucide-react';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
@@ -58,11 +58,30 @@ export default function Home() {
   const [callState, setCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
   const [incomingCallData, setIncomingCallData] = useState<any>(null);
   const [isVideoCall, setIsVideoCall] = useState(true);
+  const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
 
   useEffect(() => {
     initAuth();
     setIsClient(true);
   }, [initAuth]);
+
+  // Handle hardware back button
+  useEffect(() => {
+    if (activeContact || activeGroup) {
+      window.history.pushState({ chatOpen: true }, '', '#chat');
+    }
+  }, [activeContact, activeGroup]);
+
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (activeContact || activeGroup) {
+        setActiveContact(null);
+        setActiveGroup(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [activeContact, activeGroup, setActiveContact, setActiveGroup]);
 
   // Auth Guard & Initial Data Fetch
   useEffect(() => {
@@ -78,9 +97,6 @@ export default function Home() {
       }).then(res => {
         const others = res.data.filter((u: any) => u.id !== user.id);
         setUsers(others);
-        if (others.length > 0 && !activeContact && !activeGroup && typeof window !== 'undefined' && window.innerWidth >= 640) {
-          setActiveContact(others[0]);
-        }
       });
 
       // Fetch groups
@@ -358,7 +374,11 @@ export default function Home() {
                           <img 
                             src={isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar} 
                             alt={isGroupItem ? item.name : (item as any).username} 
-                            className="w-full h-full rounded-full object-cover bg-liquid-base" 
+                            className="w-full h-full rounded-full object-cover bg-liquid-base cursor-pointer" 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFullScreenImage(isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar);
+                            }}
                           />
                         </div>
                         {!isGroupItem && isOnline && (
@@ -517,6 +537,32 @@ export default function Home() {
                 </button>
               )}
             </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Fullscreen DP / Image Modal */}
+      <AnimatePresence>
+        {fullScreenImage && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4"
+            onClick={() => setFullScreenImage(null)}
+          >
+            <button 
+              className="absolute top-4 right-4 sm:top-8 sm:right-8 p-3 bg-white/10 hover:bg-white/20 rounded-full text-white transition-colors"
+              onClick={() => setFullScreenImage(null)}
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={fullScreenImage} 
+              alt="Full Screen" 
+              className="max-w-full max-h-full object-contain select-none"
+              onClick={e => e.stopPropagation()}
+            />
           </motion.div>
         )}
       </AnimatePresence>

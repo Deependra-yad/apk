@@ -5,19 +5,19 @@ import axios from 'axios';
 import { getApiUrl } from '@/utils/apiUrl';
 import { requestNotificationPermission } from '@/utils/notifications';
 
+// Set up Axios globally BEFORE React renders
+const backendUrl = getApiUrl();
+axios.defaults.baseURL = backendUrl;
+
+axios.interceptors.request.use((config) => {
+  if (config.url && config.url.startsWith('/api')) {
+    config.url = `${backendUrl}${config.url}`;
+  }
+  return config;
+});
+
 export default function AppInitializer() {
   useEffect(() => {
-    const backendUrl = getApiUrl();
-    axios.defaults.baseURL = backendUrl;
-
-    // Intercept relative requests to ensure baseURL is respected
-    axios.interceptors.request.use((config) => {
-      if (config.url && config.url.startsWith('/api')) {
-        config.url = `${backendUrl}${config.url}`;
-      }
-      return config;
-    });
-
     requestNotificationPermission();
 
     // Privacy Locks

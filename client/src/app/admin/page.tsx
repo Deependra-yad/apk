@@ -1,37 +1,59 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore } from '@/store/authStore';
 import axios from 'axios';
-import { Trash2, Users, Database, FileVideo } from 'lucide-react';
+import { Trash2, Users, Database, FileVideo, Shield, Lock, User } from 'lucide-react';
 
 export default function AdminDashboard() {
-  const { user, token } = useAuthStore();
   const router = useRouter();
   
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [stats, setStats] = useState<any>(null);
   const [users, setUsers] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'overview' | 'users'>('overview');
 
   useEffect(() => {
-    if (user && !user.isAdmin) {
-      router.push('/');
-    } else if (user && token) {
+    const auth = sessionStorage.getItem('adminAuth');
+    if (auth === 'true') setIsLoggedIn(true);
+  }, []);
+
+  useEffect(() => {
+    if (isLoggedIn) {
       fetchStats();
       fetchUsers();
     }
-  }, [user, token, router]);
+  }, [isLoggedIn]);
+
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (username === 'Deependra' && password === 'Deependra@123') {
+      setIsLoggedIn(true);
+      sessionStorage.setItem('adminAuth', 'true');
+      sessionStorage.setItem('adminPass', password);
+      setLoginError('');
+    } else {
+      setLoginError('Invalid username or password');
+    }
+  };
+
+  const getHeaders = () => ({
+    headers: { 'x-admin-password': sessionStorage.getItem('adminPass') || '' }
+  });
 
   const fetchStats = async () => {
     try {
-      const res = await axios.get('/api/admin/stats', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get('/api/admin/stats', getHeaders());
       setStats(res.data);
     } catch (e) { console.error(e); }
   };
 
   const fetchUsers = async () => {
     try {
-      const res = await axios.get('/api/admin/users', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.get('/api/admin/users', getHeaders());
       setUsers(res.data);
     } catch (e) { console.error(e); }
   };
@@ -39,7 +61,7 @@ export default function AdminDashboard() {
   const handleDeleteUser = async (id: string) => {
     if (!confirm('Are you sure you want to completely delete this user?')) return;
     try {
-      await axios.delete(`/api/admin/users/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.delete(`/api/admin/users/${id}`, getHeaders());
       fetchUsers();
       fetchStats();
     } catch (e) { alert('Failed to delete user'); }
@@ -48,13 +70,40 @@ export default function AdminDashboard() {
   const handleClearStorage = async () => {
     if (!confirm('WARNING: This will permanently delete ALL uploaded images and videos from the server to free up space. Continue?')) return;
     try {
-      const res = await axios.post('/api/admin/clear-storage', {}, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await axios.post('/api/admin/clear-storage', {}, getHeaders());
       alert(res.data.message);
       fetchStats();
     } catch (e) { alert('Failed to clear storage'); }
   };
 
-  if (!user || !user.isAdmin) return null;
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-4">
+        <div className="max-w-md w-full bg-foreground/5 p-8 rounded-2xl border border-foreground/10">
+          <div className="flex justify-center mb-6">
+            <div className="w-16 h-16 bg-liquid-accent/20 rounded-full flex items-center justify-center">
+              <Shield className="text-liquid-accent" size={32} />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-center mb-8 text-foreground">Admin Login</h1>
+          {loginError && <div className="bg-rose-500/10 text-rose-500 p-3 rounded-xl text-sm mb-6 text-center">{loginError}</div>}
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={20} />
+              <input type="text" placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-background border border-foreground/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-liquid-accent transition-colors" required />
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={20} />
+              <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background border border-foreground/10 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:border-liquid-accent transition-colors" required />
+            </div>
+            <button type="submit" className="w-full bg-liquid-accent text-background font-bold py-3 rounded-xl hover:brightness-110 transition-all">
+              Login to Dashboard
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground p-8">
@@ -63,7 +112,10 @@ export default function AdminDashboard() {
           <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-liquid-accent to-liquid-secondary">
             Admin Dashboard
           </h1>
-          <button onClick={() => router.push('/')} className="text-liquid-accent hover:underline">Back to App</button>
+          <div className="flex gap-4">
+            <button onClick={() => router.push('/')} className="text-liquid-accent hover:underline">Back to App</button>
+            <button onClick={() => { sessionStorage.removeItem('adminAuth'); setIsLoggedIn(false); }} className="text-rose-400 hover:underline">Logout</button>
+          </div>
         </div>
 
         <div className="flex gap-4 mb-8">
