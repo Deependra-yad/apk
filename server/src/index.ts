@@ -44,9 +44,9 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(UPLOAD_DIR));
 
-// Express JSON parser for API routes
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Express JSON parser for API routes (Increased limit for Base64 image handling)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
