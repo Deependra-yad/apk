@@ -74,18 +74,23 @@ router.delete('/:id', authenticate, async (req: any, res) => {
   const userId = req.userId;
 
   try {
+    console.log(`[DELETE STORY] User ${userId} attempting to delete story ${id}`);
     // Make sure the story belongs to the user
     const story = await prisma.story.findUnique({ where: { id } });
     if (!story) {
+      console.log(`[DELETE STORY] Story not found`);
       return res.status(404).json({ error: 'Story not found' });
     }
     if (story.userId !== userId) {
+      console.log(`[DELETE STORY] Unauthorized. Story userId: ${story.userId}, req.userId: ${userId}`);
       return res.status(403).json({ error: 'Unauthorized to delete this story' });
     }
 
     await prisma.story.delete({ where: { id } });
+    console.log(`[DELETE STORY] Success`);
     res.json({ success: true });
   } catch (error) {
+    console.error(`[DELETE STORY] Error:`, error);
     res.status(500).json({ error: 'Failed to delete story' });
   }
 });
@@ -96,9 +101,13 @@ router.post('/:id/view', authenticate, async (req: any, res) => {
   const userId = req.userId;
 
   try {
+    console.log(`[VIEW STORY] User ${userId} viewing story ${id}`);
     const user = await prisma.user.findUnique({ where: { id: userId } });
     const story = await prisma.story.findUnique({ where: { id } });
-    if (!story || !user) return res.status(404).json({ error: 'Not found' });
+    if (!story || !user) {
+      console.log(`[VIEW STORY] Story or user not found`);
+      return res.status(404).json({ error: 'Not found' });
+    }
 
     let views = JSON.parse(story.views || '[]');
     if (!views.find((v: any) => v.userId === userId)) {

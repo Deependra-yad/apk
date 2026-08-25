@@ -121,16 +121,11 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
       await axios.delete(`/api/stories/${storyId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setStories(prev => prev.filter(s => s.id !== storyId));
-      if (activeStoryIndex !== null) {
-        if (stories.length <= 1) {
-          setActiveStoryIndex(null);
-        } else {
-          setActiveStoryIndex(activeStoryIndex === stories.length - 1 ? activeStoryIndex - 1 : activeStoryIndex);
-        }
-      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setStories(prev => prev.filter(s => s.id !== storyId));
+      setActiveStoryIndex(null);
     }
   };
 
@@ -402,28 +397,79 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                 </div>
               )}
 
-              {/* Viewers List (only for the creator) */}
+              {/* Viewers & Reactions List (only for the creator) */}
               {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
-                <div className="flex flex-col items-center gap-1 mt-2 mb-2 pb-2 z-30 overflow-y-auto max-h-32 hide-scrollbar">
+                <div className="flex flex-col items-center gap-1 mt-2 mb-2 pb-2 z-30 overflow-y-auto max-h-32 hide-scrollbar w-full px-4">
                   <div className="flex items-center gap-1 text-foreground/70 text-xs font-semibold uppercase tracking-widest mb-1 bg-background/40 px-3 py-1 rounded-full backdrop-blur-md">
-                    <Eye size={14} /> Views
+                    <Eye size={14} /> Views & Reactions
                   </div>
                   {(() => {
                     try {
                       const views = JSON.parse(currentStory.views || '[]');
-                      if (views.length === 0) return <span className="text-xs text-foreground/50 bg-background/40 px-3 py-1 rounded-full">No views yet</span>;
+                      const reactions = JSON.parse(currentStory.reactions || '[]');
+                      
+                      if (views.length === 0 && reactions.length === 0) return <span className="text-xs text-foreground/50 bg-background/40 px-3 py-1 rounded-full">No views yet</span>;
+                      
+                      // Merge views and reactions
+                      const viewMap = new Map();
+                      views.forEach((v: any) => viewMap.set(v.userId, { ...v, emoji: null }));
+                      reactions.forEach((r: any) => {
+                        if (viewMap.has(r.userId)) {
+                          viewMap.get(r.userId).emoji = r.emoji;
+                        } else {
+                          viewMap.set(r.userId, r);
+                        }
+                      });
+                      
+                      const combined = Array.from(viewMap.values());
+
                       return (
                         <div className="flex flex-wrap justify-center gap-2">
-                          {views.map((v: any, i: number) => (
-                            <div key={i} className="flex items-center gap-2 bg-background/80 px-3 py-1.5 rounded-full border border-foreground/10 shadow-sm">
+                          {combined.map((v: any, i: number) => (
+                            <div key={i} className="flex items-center gap-2 bg-background/80 px-3 py-1.5 rounded-full border border-foreground/10 shadow-sm relative">
                               <img src={v.avatar} className="w-5 h-5 rounded-full object-cover bg-liquid-base" />
                               <span className="text-xs font-medium text-foreground">{v.username}</span>
+                              {v.emoji && (
+                                <span className="absolute -top-1.5 -right-1.5 text-xs bg-background/90 rounded-full border border-foreground/10 shadow-sm w-4 h-4 flex items-center justify-center animate-bounce">{v.emoji}</span>
+                              )}
                             </div>
                           ))}
                         </div>
                       );
                     } catch(e) { return null; }
                   })()}
+                </div>
+              )}
+
+              {/* Reply & React (Only for other users) */}
+              {(currentStory.userId !== user?.id && currentStory.user?.id !== user?.id) && (
+                <div className="flex flex-col gap-3 mt-4 z-30">
+                  <div className="flex justify-center gap-4">
+                    {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                      <button
+                        key={emoji}
+                        onClick={() => handleReact(emoji)}
+                        className="text-2xl hover:scale-125 transition-transform bg-background/20 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2 bg-background/50 backdrop-blur-xl p-2 rounded-2xl border border-foreground/10">
+                    <input
+                      type="text"
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      placeholder="Reply to status..."
+                      className="flex-1 bg-transparent border-none outline-none text-sm px-3 text-foreground"
+                    />
+                    <button
+                      onClick={handleReply}
+                      className="w-10 h-10 rounded-full bg-liquid-accent text-white flex items-center justify-center hover:scale-105 transition-transform shrink-0"
+                    >
+                      <Send size={16} />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
