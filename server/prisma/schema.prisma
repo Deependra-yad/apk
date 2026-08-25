@@ -175,3 +175,12 @@ model PushSubscription {
 
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+model Media {
+  id        String   @id @default(uuid())
+  data      Bytes    
+  mimeType  String
+  fileName  String?
+  createdAt DateTime @default(now())
+}
+

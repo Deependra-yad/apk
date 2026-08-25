@@ -1,7 +1,6 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { v4 as uuidv4 } from 'uuid';
+import { PrismaClient } from '@prisma/client';
 
 const router = Router();
 const storage = multer.memoryStorage();
@@ -10,17 +9,7 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
-// Configure S3 Client (Works for AWS S3, Cloudflare R2, Oracle, DigitalOcean Spaces)
-// These environment variables need to be set in your Railway dashboard
-const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'auto',
-  endpoint: process.env.S3_ENDPOINT, // e.g., https://<ACCOUNT_ID>.r2.cloudflarestorage.com or Supabase S3 endpoint
-  forcePathStyle: true, // Required for Supabase S3 compatibility
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
-  }
-});
+const prisma = new PrismaClient();
 
 router.post('/', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -40,35 +29,45 @@ router.post('/', upload.single('file'), async (req, res) => {
   else if (mimeType.startsWith('audio/')) type = 'audio';
 
   try {
-    // If S3 credentials exist, upload to S3 / R2
-    if (process.env.S3_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME) {
-      const fileExtension = fileName.split('.').pop();
-      const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-      
-      const uploadParams = {
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: uniqueFileName,
-        Body: req.file.buffer,
-        ContentType: mimeType,
-      };
+    // Highly Optimized Database Binary Storage (Supabase/Railway only)
+    const media = await prisma.media.create({
+      data: {
+        data: req.file.buffer,
+        mimeType: mimeType,
+        fileName: fileName,
+      }
+    });
 
-      await s3Client.send(new PutObjectCommand(uploadParams));
-
-      // Construct the public URL (Requires configuring a public domain in R2/S3)
-      // e.g., https://pub-xxxxxxxxxx.r2.dev
-      const publicUrlBase = process.env.S3_PUBLIC_DOMAIN || process.env.S3_ENDPOINT;
-      const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
-
-      return res.json({ fileUrl, fileName, fileSize, mimeType, type });
-    } else {
-      // FALLBACK: If S3 isn't configured yet, fallback to Base64 (so the app doesn't break instantly)
-      const base64Data = req.file.buffer.toString('base64');
-      const fileUrl = `data:${mimeType};base64,${base64Data}`;
-      return res.json({ fileUrl, fileName, fileSize, mimeType, type });
-    }
+    const fileUrl = `/api/upload/${media.id}`;
+    return res.json({ fileUrl, fileName, fileSize, mimeType, type });
   } catch (error) {
     console.error('Upload Error:', error);
-    return res.status(500).json({ error: 'Failed to upload file to cloud storage' });
+    return res.status(500).json({ error: 'Failed to upload file to database' });
+  }
+});
+
+// GET route to serve the binary data directly to the browser
+router.get('/:id', async (req, res) => {
+  try {
+    const media = await prisma.media.findUnique({
+      where: { id: req.params.id }
+    });
+
+    if (!media) {
+      return res.status(404).send('Media not found');
+    }
+
+    // Set aggressive caching headers so the browser doesn't re-download it
+    res.setHeader('Content-Type', media.mimeType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    if (media.fileName) {
+      res.setHeader('Content-Disposition', `inline; filename="${media.fileName}"`);
+    }
+
+    return res.send(media.data);
+  } catch (error) {
+    console.error('Media Fetch Error:', error);
+    return res.status(500).send('Internal Server Error');
   }
 });
 
