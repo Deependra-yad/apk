@@ -1,8 +1,9 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { PrismaClient } from '@prisma/client';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { v4 as uuidv4 } from 'uuid';
+
+import prisma from '../prisma';
 
 const router = Router();
 const storage = multer.memoryStorage();
@@ -10,8 +11,6 @@ const upload = multer({
   storage: storage,
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
-
-const prisma = new PrismaClient();
 
 // Configure Cloudflare R2 / AWS S3 Client
 const s3Client = new S3Client({
