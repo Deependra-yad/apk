@@ -9,13 +9,6 @@ import { requestNotificationPermission } from '@/utils/notifications';
 const backendUrl = getApiUrl();
 axios.defaults.baseURL = backendUrl;
 
-axios.interceptors.request.use((config) => {
-  if (config.url && config.url.startsWith('/api')) {
-    config.url = `${backendUrl}${config.url}`;
-  }
-  return config;
-});
-
 import { useAuthStore } from '@/store/authStore';
 import { subscribeToPushNotifications } from '@/utils/push';
 
