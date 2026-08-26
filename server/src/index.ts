@@ -78,7 +78,11 @@ const io = new Server(server, {
   cors: {
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE']
-  }
+  },
+  pingTimeout: 60000,
+  pingInterval: 10000,
+  transports: ['polling', 'websocket'],
+  allowUpgrades: true
 });
 
 const sendPushNotification = async (userId: string, title: string, body: string, url: string = '/') => {

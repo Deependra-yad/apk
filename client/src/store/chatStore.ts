@@ -121,7 +121,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      transports: ['websocket', 'polling']
+      reconnectionDelayMax: 5000,
+      timeout: 20000,
+      transports: ['polling', 'websocket'],
+      upgrade: true
     });
 
     socket.on('connect', () => {
