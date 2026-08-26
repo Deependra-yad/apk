@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'https://apk-production-740c.up.railway.app';
+const BACKEND_URL = process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : 'https://apk-production-740c.up.railway.app';
 
 const nextConfig: NextConfig = {
   async rewrites() {
