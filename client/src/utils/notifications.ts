@@ -8,18 +8,27 @@ export const requestNotificationPermission = async () => {
   }
 };
 
-export const sendBrowserNotification = (title: string, body: string, icon?: string) => {
+export const sendBrowserNotification = async (title: string, body: string, icon?: string) => {
   if (typeof window !== 'undefined' && 'Notification' in window) {
     if (Notification.permission === 'granted') {
       try {
-        const notif = new Notification(title, {
-          body,
-          icon: icon || 'https://api.dicebear.com/7.x/identicon/svg?seed=Liquid',
-          silent: false
-        });
-        notif.onclick = () => {
-          window.focus();
-        };
+        if ('serviceWorker' in navigator) {
+          const reg = await navigator.serviceWorker.ready;
+          reg.showNotification(title, {
+            body,
+            icon: icon || '/icon-192x192.png',
+            badge: '/icon-192x192.png'
+          });
+        } else {
+          const notif = new Notification(title, {
+            body,
+            icon: icon || '/icon-192x192.png',
+            silent: false
+          });
+          notif.onclick = () => {
+            window.focus();
+          };
+        }
       } catch (e) {}
     }
   }

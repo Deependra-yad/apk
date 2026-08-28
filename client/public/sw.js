@@ -7,11 +7,7 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    fetch(event.request).catch(() => {
-      return new Response('Network error occurred. You are offline.');
-    })
-  );
+  // Let the browser handle fetches natively
 });
 
 self.addEventListener('push', (event) => {

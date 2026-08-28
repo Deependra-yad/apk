@@ -18,7 +18,7 @@ export default function AppInitializer() {
   useEffect(() => {
     // Register Service Worker for PWA Installability
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
+      const registerSW = () => {
         navigator.serviceWorker.register('/sw.js').then(() => {
           if (token && Notification.permission === 'granted') {
             subscribeToPushNotifications(token);
@@ -26,7 +26,13 @@ export default function AppInitializer() {
         }).catch(err => {
           console.error('Service Worker registration failed:', err);
         });
-      });
+      };
+
+      if (document.readyState === 'complete') {
+        registerSW();
+      } else {
+        window.addEventListener('load', registerSW);
+      }
     }
 
     requestNotificationPermission().then(() => {
