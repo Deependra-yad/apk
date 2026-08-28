@@ -3,6 +3,7 @@ import { io, Socket } from 'socket.io-client';
 import { soundEffects } from '@/utils/audioSynth';
 import { getApiUrl } from '@/utils/apiUrl';
 import { sendBrowserNotification, requestNotificationPermission } from '@/utils/notifications';
+import axios from 'axios';
 
 export interface Message {
   id: string;
@@ -66,7 +67,10 @@ interface ChatState {
   chatMetaMap: Record<string, { isPinned: boolean; isArchived: boolean; isMuted: boolean }>;
   activeConversations: string[];
   incomingToast: any | null;
+  unreadCounts: Record<string, number>;
 
+  fetchUnreadCounts: (token: string) => Promise<void>;
+  markAsRead: (id: string) => void;
   connectSocket: (userId: string) => void;
   disconnectSocket: () => void;
   setActiveContact: (contact: any) => void;
@@ -109,6 +113,24 @@ export const useChatStore = create<ChatState>((set, get) => ({
   chatMetaMap: {},
   activeConversations: [],
   incomingToast: null,
+  unreadCounts: {},
+
+  fetchUnreadCounts: async (token) => {
+    try {
+      const res = await axios.get('/api/messages/unread-counts', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      set({ unreadCounts: res.data });
+    } catch (e) {
+      console.error('Failed to fetch unread counts', e);
+    }
+  },
+
+  markAsRead: (id) => {
+    set((state) => ({
+      unreadCounts: { ...state.unreadCounts, [id]: 0 }
+    }));
+  },
 
   connectSocket: (userId) => {
     if (get().socket) return;
@@ -163,15 +185,20 @@ export const useChatStore = create<ChatState>((set, get) => ({
           socket.emit('mark_seen', { senderId: message.senderId, receiverId: userId });
         }
       } else {
-        set((state) => ({
-          activeConversations: !state.activeConversations.includes(message.senderId)
+        set((state) => {
+          const activeConversations = !state.activeConversations.includes(message.senderId)
             ? [...state.activeConversations, message.senderId]
-            : state.activeConversations
-        }));
-        // Show notification toast & browser push notification
-        const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
-        set({ incomingToast: { ...message, text: preview } });
-        sendBrowserNotification(message.sender?.username || 'New Message', preview, message.sender?.avatar);
+            : state.activeConversations;
+          
+          const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
+          sendBrowserNotification(message.sender?.username || 'New Message', preview, message.sender?.avatar);
+
+          return {
+            activeConversations,
+            incomingToast: { ...message, text: preview },
+            unreadCounts: { ...state.unreadCounts, [message.senderId]: (state.unreadCounts[message.senderId] || 0) + 1 }
+          };
+        });
 
         setTimeout(() => {
           set((state) => (state.incomingToast?.id === message.id ? { incomingToast: null } : state));
@@ -192,8 +219,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
       } else {
         const grp = groups.find(g => g.id === message.groupId);
         const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
-        set({ incomingToast: { ...message, groupName: grp?.name || 'Group', text: preview } });
+        
         sendBrowserNotification(grp ? `${grp.name} (${message.sender?.username})` : 'New Group Message', preview, grp?.avatar);
+
+        set((state) => ({ 
+          incomingToast: { ...message, groupName: grp?.name || 'Group', text: preview },
+          unreadCounts: { ...state.unreadCounts, [message.groupId!]: (state.unreadCounts[message.groupId!] || 0) + 1 }
+        }));
 
         setTimeout(() => {
           set((state) => (state.incomingToast?.id === message.id ? { incomingToast: null } : state));

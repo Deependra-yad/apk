@@ -18,6 +18,44 @@ const authenticate = (req: any, res: any, next: any) => {
   }
 };
 
+// Get unread counts
+router.get('/unread-counts', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    const unreadMessages = await prisma.message.findMany({
+      where: {
+        receiverId: userId,
+        isSeen: false,
+        groupId: null
+      },
+      select: { senderId: true }
+    });
+
+    const counts: Record<string, number> = {};
+    unreadMessages.forEach((msg: any) => {
+      counts[msg.senderId] = (counts[msg.senderId] || 0) + 1;
+    });
+
+    const unreadGroupMessages = await prisma.message.findMany({
+      where: {
+        groupId: { not: null },
+        senderId: { not: userId },
+      },
+      select: { id: true, groupId: true, isSeen: true }
+    });
+    // Global group unread counting for simplicity (assumes if anyone hasn't seen it, it's counted if isSeen is false).
+    unreadGroupMessages.forEach((msg: any) => {
+      if (!msg.isSeen && msg.groupId) {
+        counts[msg.groupId] = (counts[msg.groupId] || 0) + 1;
+      }
+    });
+
+    res.json(counts);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch unread counts' });
+  }
+});
+
 // Get direct conversation messages
 router.get('/:userId', authenticate, async (req: any, res) => {
   const { userId } = req.params;

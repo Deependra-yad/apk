@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -10,7 +10,7 @@ import {
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
   ArrowLeft, Lock, Plus
 } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, Message } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -235,7 +235,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       setText('');
       // Emit user prompt first
       socket.emit('send_message', {
-        text: `🤖 /ai ${aiPrompt}`,
+        text: `ðŸ¤– /ai ${aiPrompt}`,
         senderId: user.id,
         receiverId: isGroup ? null : activeContact?.id,
         groupId: isGroup ? activeGroup?.id : null,
@@ -246,7 +246,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       try {
         const aiRes = await axios.post('/api/ai/chat', { prompt: aiPrompt });
         socket.emit('send_message', {
-          text: `✨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
+          text: `âœ¨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
           senderId: user.id,
           receiverId: isGroup ? null : activeContact?.id,
           groupId: isGroup ? activeGroup?.id : null,
@@ -314,7 +314,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       fileSize,
       mimeType,
       replyToId: replyingTo?.id || null,
-      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? '📷 Image' : replyingTo?.type === 'video' ? '🎥 Video' : replyingTo?.type === 'audio' ? '🎵 Voice Note' : replyingTo?.fileName) || null
+      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? 'ðŸ“· Image' : replyingTo?.type === 'video' ? 'ðŸŽ¥ Video' : replyingTo?.type === 'audio' ? 'ðŸŽµ Voice Note' : replyingTo?.fileName) || null
     });
 
     setText('');
@@ -471,7 +471,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           className="w-28 h-28 mb-8 rounded-full bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary shadow-[0_0_50px_rgba(0,210,255,0.4)] flex items-center justify-center p-1"
         >
           <div className="w-full h-full bg-liquid-base rounded-full flex items-center justify-center">
-            <span className="text-4xl">🌊</span>
+            <span className="text-4xl">ðŸŒŠ</span>
           </div>
         </motion.div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Liquid Chat</h2>
@@ -722,16 +722,46 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           const isSelected = selectedMessageIds.includes(msg.id);
           const { icon: FileIcon, color: fileColorBadge, label: fileLabel } = getFileMetadataDisplay(msg.fileName, msg.mimeType);
 
+          let showDateDivider = false;
+          let dateDividerText = '';
+          
+          if (msg.createdAt) {
+            const currentDate = new Date(msg.createdAt);
+            const prevMsg = filteredMessages[i - 1];
+            if (!prevMsg || !prevMsg.createdAt) {
+              showDateDivider = true;
+            } else {
+              const prevDate = new Date(prevMsg.createdAt);
+              if (currentDate.toDateString() !== prevDate.toDateString()) {
+                showDateDivider = true;
+              }
+            }
+            if (showDateDivider) {
+              if (isToday(currentDate)) dateDividerText = 'TODAY';
+              else if (isYesterday(currentDate)) dateDividerText = 'YESTERDAY';
+              else dateDividerText = format(currentDate, 'MMMM d, yyyy').toUpperCase();
+            }
+          }
+
           return (
-            <motion.div
-              key={msg.id || i}
-              initial={{ opacity: 0, y: 15, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ delay: 0.02, type: "spring", stiffness: 260, damping: 24 }}
-              className={`max-w-[85%] sm:max-w-[70%] flex items-start gap-2 relative group ${
-                isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'
-              }`}
-            >
+            <React.Fragment key={msg.id || i}>
+              {showDateDivider && (
+                <div className="flex justify-center my-3 w-full">
+                  <div className="bg-foreground/5 backdrop-blur-md px-3 py-1 rounded-lg shadow-sm border border-foreground/10">
+                    <span className="text-[10px] font-bold text-foreground/60 tracking-wider">
+                      {dateDividerText}
+                    </span>
+                  </div>
+                </div>
+              )}
+              <motion.div
+                initial={{ opacity: 0, y: 15, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.02, type: "spring", stiffness: 260, damping: 24 }}
+                className={`max-w-[85%] sm:max-w-[70%] flex items-start gap-2 relative group ${
+                  isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'
+                }`}
+              >
               {/* Multi-Select Checkbox */}
               {isMultiSelectMode && (
                 <button 
@@ -932,6 +962,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 />
               </div>
             </motion.div>
+            </React.Fragment>
           );
         })}
 
@@ -976,7 +1007,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   Replying to message
                 </span>
                 <p className="text-xs text-foreground/80 truncate">
-                  {replyingTo.text || (replyingTo.type === 'image' ? '📷 Image' : replyingTo.type === 'video' ? '🎥 Video' : replyingTo.type === 'audio' ? '🎵 Voice Note' : replyingTo.fileName)}
+                  {replyingTo.text || (replyingTo.type === 'image' ? 'ðŸ“· Image' : replyingTo.type === 'video' ? 'ðŸŽ¥ Video' : replyingTo.type === 'audio' ? 'ðŸŽµ Voice Note' : replyingTo.fileName)}
                 </p>
               </div>
             </div>
@@ -1015,7 +1046,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <div className="overflow-hidden">
                 <span className="text-xs font-bold text-foreground block truncate max-w-sm">{file.name}</span>
                 <span className="text-[11px] text-liquid-accent font-mono">
-                  {(file.size / (1024 * 1024)).toFixed(1)} MB • {file.type || 'Document'}
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB â€¢ {file.type || 'Document'}
                 </span>
               </div>
             </div>

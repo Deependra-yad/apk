@@ -431,6 +431,35 @@ export default function SettingsPanel() {
               <div className={`w-5 h-5 rounded-full bg-white transition-transform ${notificationSound ? 'translate-x-5' : 'translate-x-0'}`} />
             </button>
           </div>
+
+          <div className="bg-foreground/5 rounded-2xl p-3 border border-foreground/5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-green-500/20 text-green-400">
+                <Bell size={18} />
+              </div>
+              <div>
+                <h4 className="text-xs font-semibold text-foreground">Android Push Notifications</h4>
+                <p className="text-[10px] text-foreground/60">Receive alerts when app is closed</p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (typeof window !== 'undefined' && 'Notification' in window) {
+                  const perm = await Notification.requestPermission();
+                  if (perm === 'granted' && token) {
+                    const { subscribeToPushNotifications } = await import('@/utils/push');
+                    subscribeToPushNotifications(token);
+                    alert("Push Notifications Enabled!");
+                  } else {
+                    alert("Permission denied or blocked by browser settings.");
+                  }
+                }
+              }}
+              className="px-3 py-1.5 bg-liquid-accent text-black text-xs font-bold rounded-full hover:opacity-80 transition-opacity"
+            >
+              Enable
+            </button>
+          </div>
         </div>
       )}
 

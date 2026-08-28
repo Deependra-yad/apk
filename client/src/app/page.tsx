@@ -39,7 +39,9 @@ export default function Home() {
     setChatMetaMap, 
     updateChatMeta,
     activeConversations,
-    socket 
+    socket,
+    unreadCounts,
+    markAsRead
   } = useChatStore();
 
   const { fetchSettings, toggleBlockUser } = useSettingsStore();
@@ -90,6 +92,7 @@ export default function Home() {
     } else if (user && token) {
       connectSocket(user.id);
       fetchSettings(token);
+      useChatStore.getState().fetchUnreadCounts(token);
 
       // Fetch users
       axios.get('/api/auth/users', {
@@ -350,6 +353,7 @@ export default function Home() {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => {
+                        markAsRead(item.id);
                         if (isGroupItem) {
                           setActiveGroup(item as any);
                         } else {
@@ -395,7 +399,12 @@ export default function Home() {
                             {isGroupItem ? item.name : (item as any).username}
                           </h3>
 
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            {unreadCounts[item.id] > 0 && (
+                              <span className="bg-liquid-accent text-black text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[20px] text-center shadow-md">
+                                {unreadCounts[item.id]}
+                              </span>
+                            )}
                             {isPinned && <Pin size={12} className="text-liquid-accent fill-liquid-accent" />}
                             {isMuted && <BellOff size={12} className="text-foreground/50" />}
                             {!isGroupItem && isOnline && (

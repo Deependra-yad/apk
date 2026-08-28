@@ -41,7 +41,7 @@ export default function PWAInstallPrompt() {
       const isAndroid = /Android/.test(navigator.userAgent);
       
       if (isIOS) {
-        alert("🍎 iOS / iPhone Installation:\n\n1. Tap the Share button at the bottom of your screen (the square with an arrow pointing up).\n2. Scroll down and tap 'Add to Home Screen'.");
+        alert("📱 iOS / iPhone Installation:\n\n1. Tap the Share button at the bottom of your screen (the square with an arrow pointing up).\n2. Scroll down and tap 'Add to Home Screen'.");
       } else if (isAndroid) {
         alert("🤖 Android Installation:\n\n1. Tap the 3-dots menu (⋮) at the top right of your browser.\n2. Tap 'Install app' or 'Add to Home screen'.");
       } else {
