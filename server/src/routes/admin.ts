@@ -127,4 +127,20 @@ router.post('/clear-storage', adminAuth, async (req, res) => {
   }
 });
 
+router.post('/clear-storage', adminAuth, async (req, res) => {
+  try {
+    const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
+    if (fs.existsSync(UPLOAD_DIR)) {
+      const files = fs.readdirSync(UPLOAD_DIR);
+      for (const file of files) {
+        fs.unlinkSync(path.join(UPLOAD_DIR, file));
+      }
+    }
+    res.json({ message: 'Server storage cleared successfully.' });
+  } catch (e: any) {
+    console.error('Clear storage error:', e);
+    res.status(500).json({ error: 'Failed to clear storage' });
+  }
+});
+
 export default router;

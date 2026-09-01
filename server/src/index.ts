@@ -102,7 +102,7 @@ const io = new Server(server, {
   allowUpgrades: true
 });
 
-const sendPushNotification = async (userId: string, title: string, body: string, url: string = '/') => {
+const sendPushNotification = async (userId: string, title: string, body: string, url: string = '/', force: boolean = false) => {
   try {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
     const payload = JSON.stringify({ title, body, url });
@@ -124,7 +124,7 @@ const sendPushNotification = async (userId: string, title: string, body: string,
           console.error('FCM Push Error:', err);
         }
       } else {
-        if (isConnected) continue; // Skip web push if user is connected via websocket
+        if (isConnected && !force) continue; // Skip web push if user is connected via websocket (unless forced)
         const pushSub = {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth }
@@ -413,8 +413,8 @@ io.on('connection', (socket) => {
       isVideo
     });
     
-    // Trigger push notification for incoming call
-    sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`);
+    // Trigger push notification for incoming call (force=true)
+    sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`, '/', true);
   });
 
   socket.on('call_answer', ({ to, answer }) => {

@@ -119,7 +119,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     clearSelection,
     updateMessageReaction,
     deleteMessageInStore,
-    toggleStarMessage
+    toggleStarMessage,
+    addMessage
   } = useChatStore();
 
   const { enterToSend, blockedUsers, toggleBlockUser } = useSettingsStore();
@@ -224,6 +225,19 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     setIsAttachmentMenuOpen(false);
   };
 
+  const emitSendMessage = (data: any) => {
+    const tempId = `temp-${Date.now()}`;
+    addMessage({
+      ...data,
+      id: tempId,
+      tempId,
+      isPending: true,
+      createdAt: new Date().toISOString(),
+      isSeen: false
+    });
+    socket?.emit('send_message', { ...data, tempId });
+  };
+
   // Send or Edit message
   const handleSend = async () => {
     if ((!text.trim() && !file) || !user || !socket) return;
@@ -234,7 +248,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       const aiPrompt = text.trim().slice(4);
       setText('');
       // Emit user prompt first
-      socket.emit('send_message', {
+      emitSendMessage({
         text: `ðŸ¤– /ai ${aiPrompt}`,
         senderId: user.id,
         receiverId: isGroup ? null : activeContact?.id,
@@ -245,7 +259,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       // Call AI endpoint
       try {
         const aiRes = await axios.post('/api/ai/chat', { prompt: aiPrompt });
-        socket.emit('send_message', {
+        emitSendMessage({
           text: `âœ¨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
           senderId: user.id,
           receiverId: isGroup ? null : activeContact?.id,
@@ -303,7 +317,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       type = res.data.type;
     }
 
-    socket.emit('send_message', {
+    emitSendMessage({
       text,
       senderId: user.id,
       receiverId: isGroup ? null : activeContact?.id,
@@ -326,7 +340,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   // Send Sticker / GIF
   const handleSendStickerOrGif = (url: string, type: 'sticker' | 'image') => {
     if ((!activeContact && !activeGroup) || !user || !socket) return;
-    socket.emit('send_message', {
+    emitSendMessage({
       text: '',
       senderId: user.id,
       receiverId: isGroup ? null : activeContact?.id,
@@ -342,7 +356,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   // Send Voice Note
   const handleSendVoiceNote = (audioUrl: string, duration: number) => {
     if ((!activeContact && !activeGroup) || !user || !socket) return;
-    socket.emit('send_message', {
+    emitSendMessage({
       text: '',
       senderId: user.id,
       receiverId: isGroup ? null : activeContact?.id,
@@ -360,7 +374,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   // Create Poll
   const handleCreatePoll = (pollData: any) => {
     if ((!activeContact && !activeGroup) || !user || !socket) return;
-    socket.emit('send_message', {
+    emitSendMessage({
       text: '',
       senderId: user.id,
       receiverId: isGroup ? null : activeContact?.id,

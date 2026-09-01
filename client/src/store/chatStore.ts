@@ -7,6 +7,8 @@ import axios from 'axios';
 
 export interface Message {
   id: string;
+  tempId?: string;
+  isPending?: boolean;
   text?: string;
   type: string; // 'text' | 'image' | 'video' | 'audio' | 'file' | 'poll' | 'sticker' | 'system'
   fileUrl?: string;
@@ -236,8 +238,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     socket.on('message_sent', (message: Message) => {
       soundEffects.playMessageSent();
       set((state) => {
-        if (state.messages.some(m => m.id === message.id)) return state;
-        return { messages: [...state.messages, message] };
+        let newMessages = state.messages;
+        if (message.tempId) {
+          newMessages = newMessages.filter(m => m.id !== message.tempId);
+        }
+        if (newMessages.some(m => m.id === message.id)) return state;
+        return { messages: [...newMessages, message] };
       });
     });
 
