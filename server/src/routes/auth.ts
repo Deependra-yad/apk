@@ -158,7 +158,75 @@ router.post('/google-redirect', async (req, res) => {
   }
 });
 
-router.post('/register', async (req, res) => {
+  router.post('/google-implicit', async (req, res) => {
+    const { sub, email, name, picture } = req.body;
+    
+    if (!sub) {
+      return res.status(400).json({ error: 'Missing Google ID' });
+    }
+
+    try {
+      let user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { googleId: sub },
+            ...(email ? [{ email }] : [])
+          ]
+        }
+      });
+  
+      if (!user) {
+        let baseUsername = (name || email?.split('@')[0] || 'user').replace(/[^a-zA-Z0-9]/g, '');
+        let uniqueUsername = baseUsername;
+        let counter = 1;
+        
+        while (await prisma.user.findUnique({ where: { username: uniqueUsername } })) {
+          uniqueUsername = baseUsername + counter;
+          counter++;
+        }
+  
+        user = await prisma.user.create({
+          data: {
+            username: uniqueUsername,
+            email: email || null,
+            googleId: sub,
+            avatar: picture || null,
+            isAdmin: uniqueUsername.toLowerCase().includes('deependra')
+          }
+        });
+      } else {
+        let updateData: any = {};
+        if (!user.googleId) updateData.googleId = sub;
+        if (picture && !user.avatar) updateData.avatar = picture;
+        if (user.username.toLowerCase().includes('deependra') && !user.isAdmin) updateData.isAdmin = true;
+        
+        if (Object.keys(updateData).length > 0) {
+          user = await prisma.user.update({
+            where: { id: user.id },
+            data: updateData
+          });
+        }
+      }
+  
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          avatar: user.avatar,
+          about: user.about,
+          isAdmin: user.isAdmin
+        }
+      });
+    } catch (error) {
+      console.error('Google Implicit Auth Error:', error);
+      res.status(500).json({ error: 'Failed to authenticate with Google' });
+    }
+  });
+
+  router.post('/register', async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });

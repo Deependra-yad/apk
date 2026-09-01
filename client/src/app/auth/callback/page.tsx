@@ -10,38 +10,79 @@ function CallbackLogic() {
   const setAuth = useAuthStore((state) => state.setAuth);
 
   useEffect(() => {
-    const token = searchParams.get("token");
-    const userStr = searchParams.get("user");
-    const error = searchParams.get("error");
-
-    if (error) {
-      router.push(`/auth?error=${error}`);
-      return;
-    }
-
-    if (token && userStr) {
-      try {
-        const user = JSON.parse(decodeURIComponent(userStr));
-        setAuth(user, token);
+    const handleGoogleCallback = async () => {
+      // Check for Google OAuth Implicit Flow callback in hash
+      if (typeof window !== 'undefined' && window.location.hash.includes('access_token=')) {
+        const hashParams = new URLSearchParams(window.location.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
         
-        // If we are in an external mobile browser, jump back to the native app
-        if (typeof window !== 'undefined' && !(window as any).Android) {
-            window.location.href = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
+        if (accessToken) {
+          try {
+            // Fetch user profile from Google
+            const googleRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const googleProfile = await googleRes.json();
             
-            // Fallback for PC web users
-            setTimeout(() => {
-                router.push("/");
-            }, 800);
-        } else {
-            router.push("/");
+            // Login/register on our backend
+            const authRes = await fetch('/api/auth/google-implicit', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(googleProfile)
+            });
+            
+            if (!authRes.ok) throw new Error('Backend auth failed');
+            
+            const data = await authRes.json();
+            setAuth(data.user, data.token);
+            
+            const userStr = encodeURIComponent(JSON.stringify(data.user));
+            
+            if (!(window as any).Android) {
+              window.location.href = `liquidchat://auth?token=${data.token}&user=${userStr}`;
+              setTimeout(() => router.push("/"), 800);
+            } else {
+              router.push("/");
+            }
+          } catch (err) {
+            console.error(err);
+            router.push("/auth?error=GoogleAuthFailed");
+          }
+          return;
         }
-      } catch (err) {
-        console.error("Failed to parse user data:", err);
-        router.push("/auth?error=ParseError");
       }
-    } else {
-      router.push("/auth?error=MissingData");
-    }
+
+      // Normal callback from backend redirect or deep link
+      const token = searchParams.get("token");
+      const userStr = searchParams.get("user");
+      const error = searchParams.get("error");
+
+      if (error) {
+        router.push(`/auth?error=${error}`);
+        return;
+      }
+
+      if (token && userStr) {
+        try {
+          const user = JSON.parse(decodeURIComponent(userStr));
+          setAuth(user, token);
+          
+          if (typeof window !== 'undefined' && !(window as any).Android) {
+              window.location.href = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
+              setTimeout(() => router.push("/"), 800);
+          } else {
+              router.push("/");
+          }
+        } catch (err) {
+          console.error("Failed to parse user data:", err);
+          router.push("/auth?error=ParseError");
+        }
+      } else if (!window.location.hash.includes('access_token=')) {
+        router.push("/auth?error=MissingData");
+      }
+    };
+
+    handleGoogleCallback();
   }, [searchParams, router, setAuth]);
 
   return (

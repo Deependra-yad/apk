@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import axios from 'axios';
-import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
 
 const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
@@ -24,16 +24,10 @@ function AuthForm() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
-    try {
-      const res = await axios.post('/api/auth/google', {
-        credential: credentialResponse.credential
-      });
-      setAuth(res.data.user, res.data.token);
-      router.push('/');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Google login failed');
-    }
+  const loginWithGoogle = () => {
+    const redirectUri = encodeURIComponent("https://apk-flame.vercel.app/auth/callback");
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile&prompt=select_account`;
+    window.location.href = authUrl;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -131,15 +125,14 @@ function AuthForm() {
           </div>
 
           <div className="mt-6 flex justify-center w-full">
-            <GoogleLogin
-              onSuccess={handleGoogleSuccess}
-              useOneTap
-              theme="filled_black"
-              shape="pill"
-              text={isLogin ? "signin_with" : "signup_with"}
-              ux_mode="redirect"
-              login_uri="https://apk-flame.vercel.app/api/auth/google-redirect"
-            />
+            <button 
+              type="button" 
+              onClick={() => loginWithGoogle()}
+              className="w-full bg-white text-black font-semibold py-3 rounded-full flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors"
+            >
+              <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
+              {isLogin ? "Sign in with Google" : "Sign up with Google"}
+            </button>
           </div>
 
           <div className="mt-8 text-center">
