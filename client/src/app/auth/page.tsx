@@ -24,11 +24,7 @@ function AuthForm() {
   const router = useRouter();
   const setAuth = useAuthStore((state) => state.setAuth);
 
-  const loginWithGoogle = () => {
-    const redirectUri = encodeURIComponent("https://apk-flame.vercel.app/api/auth/google-redirect");
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile&prompt=select_account`;
-    window.location.href = authUrl;
-  };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,14 +121,13 @@ function AuthForm() {
           </div>
 
           <div className="mt-6 flex justify-center w-full">
-            <button 
-              type="button" 
-              onClick={() => loginWithGoogle()}
-              className="w-full bg-white text-black font-semibold py-3 rounded-full flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors"
+            <a 
+              href={`https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent("https://apk-flame.vercel.app/auth/callback")}&response_type=token&scope=email%20profile&prompt=select_account`}
+              className="w-full bg-white text-black font-semibold py-3 rounded-full flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors cursor-pointer"
             >
               <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" className="w-5 h-5" />
               {isLogin ? "Sign in with Google" : "Sign up with Google"}
-            </button>
+            </a>
           </div>
 
           <div className="mt-8 text-center">
