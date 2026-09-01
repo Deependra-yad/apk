@@ -106,89 +106,94 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="h-screen overflow-y-auto bg-background text-foreground p-8">
+    <div className="h-screen overflow-y-auto bg-background text-foreground p-4 sm:p-8">
       <div className="max-w-6xl mx-auto pb-16">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-liquid-accent to-liquid-secondary">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+          <h1 className="text-2xl sm:text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-liquid-accent to-liquid-secondary">
             Admin Dashboard
           </h1>
-          <div className="flex gap-4">
+          <div className="flex gap-4 w-full sm:w-auto justify-between sm:justify-end">
             <button onClick={() => router.push('/')} className="text-liquid-accent hover:underline">Back to App</button>
             <button onClick={() => { sessionStorage.removeItem('adminAuth'); setIsLoggedIn(false); }} className="text-rose-400 hover:underline">Logout</button>
           </div>
         </div>
 
-        <div className="flex gap-4 mb-8">
-          <button onClick={() => setActiveTab('overview')} className={`px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'overview' ? 'bg-liquid-accent text-background' : 'bg-foreground/5 hover:bg-foreground/10'}`}>Overview</button>
-          <button onClick={() => setActiveTab('users')} className={`px-6 py-2 rounded-xl font-semibold transition-all ${activeTab === 'users' ? 'bg-liquid-accent text-background' : 'bg-foreground/5 hover:bg-foreground/10'}`}>Manage Users</button>
+        <div className="flex flex-wrap gap-2 sm:gap-4 mb-8">
+          <button onClick={() => setActiveTab('overview')} className={`px-4 sm:px-6 py-2 rounded-xl font-semibold transition-all flex-1 sm:flex-none text-center ${activeTab === 'overview' ? 'bg-liquid-accent text-background' : 'bg-foreground/5 hover:bg-foreground/10'}`}>Overview</button>
+          <button onClick={() => setActiveTab('users')} className={`px-4 sm:px-6 py-2 rounded-xl font-semibold transition-all flex-1 sm:flex-none text-center ${activeTab === 'users' ? 'bg-liquid-accent text-background' : 'bg-foreground/5 hover:bg-foreground/10'}`}>Manage Users</button>
         </div>
 
         {activeTab === 'overview' && stats && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <div className="bg-foreground/5 p-6 rounded-2xl border border-foreground/5">
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-2">
               <div className="flex items-center gap-3 mb-2 text-liquid-accent"><Users /> <h3>Total Users</h3></div>
-              <p className="text-4xl font-bold">{stats.totalUsers}</p>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.totalUsers}</p>
             </div>
-            <div className="bg-foreground/5 p-6 rounded-2xl border border-foreground/5">
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-2">
               <div className="flex items-center gap-3 mb-2 text-purple-400"><Database /> <h3>Total Messages</h3></div>
-              <p className="text-4xl font-bold">{stats.totalMessages}</p>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.totalMessages}</p>
             </div>
-            <div className="bg-foreground/5 p-6 rounded-2xl border border-foreground/5">
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-1 lg:col-span-1 xl:col-span-1">
+              <div className="flex items-center gap-2 mb-2 text-blue-400"><h3>Groups</h3></div>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalGroups}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-1 lg:col-span-1 xl:col-span-1">
+              <div className="flex items-center gap-2 mb-2 text-green-400"><h3>Stories</h3></div>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalStories}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-3">
               <div className="flex items-center gap-3 mb-2 text-pink-400"><FileVideo /> <h3>Media Files</h3></div>
-              <p className="text-4xl font-bold">{stats.fileCount}</p>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.fileCount}</p>
             </div>
-            <div className="bg-foreground/5 p-6 rounded-2xl border border-foreground/5">
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-3">
               <div className="flex items-center gap-3 mb-2 text-rose-400"><Database /> <h3>Storage Used</h3></div>
-              <p className="text-4xl font-bold">{stats.uploadsSizeMb} MB</p>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.uploadsSizeMb} MB</p>
             </div>
 
-            <div className="col-span-full mt-8 bg-rose-500/10 border border-rose-500/20 p-8 rounded-2xl">
+            <div className="col-span-full mt-4 sm:mt-8 bg-rose-500/10 border border-rose-500/20 p-4 sm:p-8 rounded-2xl">
               <h3 className="text-xl font-bold text-rose-400 mb-2">Danger Zone</h3>
-              <p className="text-foreground/60 mb-6">Clearing server storage will delete all uploaded files and free up disk space.</p>
-              <button onClick={handleClearStorage} className="bg-rose-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-600 transition-colors flex items-center gap-2">
-                <Trash2 /> Clear Server Storage Now
+              <p className="text-foreground/60 mb-6 text-sm sm:text-base">Clearing server storage will delete all uploaded files and free up disk space.</p>
+              <button onClick={handleClearStorage} className="w-full sm:w-auto bg-rose-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-600 transition-colors flex items-center justify-center gap-2">
+                <Trash2 size={20} /> Clear Server Storage Now
               </button>
             </div>
           </div>
         )}
 
         {activeTab === 'users' && (
-          <div className="bg-foreground/5 rounded-2xl border border-foreground/5 overflow-hidden">
-            <table className="w-full text-left">
-              <thead className="bg-foreground/10">
-                <tr>
-                  <th className="p-4 font-semibold">User</th>
-                  <th className="p-4 font-semibold">Role</th>
-                  <th className="p-4 font-semibold">Messages Sent</th>
-                  <th className="p-4 font-semibold">Joined</th>
-                  <th className="p-4 font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map(u => (
-                  <tr key={u.id} className="border-t border-foreground/5">
-                    <td className="p-4">
-                      <div className="font-semibold">{u.username}</div>
-                      <div className="text-xs text-foreground/50">{u.email || 'No email'}</div>
-                    </td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs ${u.isAdmin ? 'bg-liquid-accent/20 text-liquid-accent' : 'bg-foreground/10 text-foreground/70'}`}>
-                        {u.isAdmin ? 'Admin' : 'User'}
-                      </span>
-                    </td>
-                    <td className="p-4 text-foreground/70">{u._count.messagesSent}</td>
-                    <td className="p-4 text-foreground/70">{new Date(u.createdAt).toLocaleDateString()}</td>
-                    <td className="p-4">
-                      {!u.isAdmin && (
-                        <button onClick={() => handleDeleteUser(u.id)} className="text-red-400 hover:text-red-300 p-2 bg-red-400/10 rounded-lg">
-                          <Trash2 size={16} />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {users.map(u => (
+              <div key={u.id} className="bg-foreground/5 p-4 rounded-2xl border border-foreground/10 flex flex-col justify-between">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-lg truncate max-w-[200px]">{u.username}</h3>
+                    <p className="text-sm text-foreground/50 truncate max-w-[200px]">{u.email || 'No email'}</p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs shrink-0 ${u.isAdmin ? 'bg-liquid-accent/20 text-liquid-accent' : 'bg-foreground/10 text-foreground/70'}`}>
+                    {u.isAdmin ? 'Admin' : 'User'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-sm text-foreground/70 mb-4 bg-background/50 p-3 rounded-xl">
+                  <div>
+                    <span className="block text-xs opacity-70">Messages</span>
+                    <span className="font-semibold text-foreground">{u._count.messagesSent}</span>
+                  </div>
+                  <div>
+                    <span className="block text-xs opacity-70">Joined</span>
+                    <span className="font-semibold text-foreground">{new Date(u.createdAt).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <div className="flex justify-end mt-auto">
+                  {!u.isAdmin ? (
+                    <button onClick={() => handleDeleteUser(u.id)} className="text-red-400 hover:text-red-300 px-4 py-2 bg-red-400/10 hover:bg-red-400/20 rounded-xl transition-colors flex items-center gap-2 text-sm font-semibold">
+                      <Trash2 size={16} /> Delete User
+                    </button>
+                  ) : (
+                    <div className="px-4 py-2 text-sm text-foreground/40 font-medium">Cannot delete admin</div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

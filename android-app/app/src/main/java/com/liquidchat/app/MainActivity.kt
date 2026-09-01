@@ -35,7 +35,6 @@ import androidx.webkit.WebViewFeature
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
-    private lateinit var swipeRefresh: SwipeRefreshLayout
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
@@ -103,24 +102,19 @@ class MainActivity : AppCompatActivity() {
         requestEssentialPermissions()
 
         // Create layout
-        swipeRefresh = SwipeRefreshLayout(this).apply {
-            setColorSchemeColors(Color.parseColor("#00d2ff"))
-            setProgressBackgroundColorSchemeColor(Color.parseColor("#121218"))
+        val rootLayout = FrameLayout(this).apply {
+            setBackgroundColor(Color.parseColor("#0a0a0f"))
         }
 
         webView = WebView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(
-                FrameLayout.LayoutParams.MATCH_PARENT,
-                FrameLayout.LayoutParams.MATCH_PARENT
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
 
-        swipeRefresh.addView(webView)
-        setContentView(swipeRefresh)
-
-        swipeRefresh.setOnRefreshListener {
-            webView.reload()
-        }
+        rootLayout.addView(webView)
+        setContentView(rootLayout)
 
         setupWebView()
 
@@ -205,8 +199,6 @@ class MainActivity : AppCompatActivity() {
 
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
-                swipeRefresh.isRefreshing = false
-
                 // Inject CSS to fix viewport and hide browser-specific elements
                 view?.evaluateJavascript("""
                     (function() {

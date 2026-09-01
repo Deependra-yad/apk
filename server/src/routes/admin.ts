@@ -87,12 +87,23 @@ router.get('/users', adminAuth, async (req, res) => {
 });
 
 router.delete('/users/:id', adminAuth, async (req, res) => {
+  const userId = req.params.id;
   try {
-    await prisma.user.delete({
-      where: { id: req.params.id }
-    });
-    res.json({ message: 'User deleted' });
-  } catch (e) {
+    // Delete all related records in a transaction to avoid foreign key constraint errors
+    await prisma.$transaction([
+      prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } }),
+      prisma.groupMember.deleteMany({ where: { userId } }),
+      prisma.chatMeta.deleteMany({ where: { OR: [{ userId }, { targetId: userId }] } }),
+      prisma.blockList.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } }),
+      prisma.userSettings.deleteMany({ where: { userId } }),
+      prisma.pushSubscription.deleteMany({ where: { userId } }),
+      prisma.story.deleteMany({ where: { userId } }),
+      prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } }),
+      prisma.user.delete({ where: { id: userId } })
+    ]);
+    res.json({ message: 'User completely deleted' });
+  } catch (e: any) {
+    console.error('Delete user error:', e);
     res.status(500).json({ error: 'Failed to delete user' });
   }
 });

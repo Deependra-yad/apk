@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -153,7 +153,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   }, [activeContact, activeGroup, token, user, socket, setMessages]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'auto' });
   }, [messages, typingUsers, groupTypingUsers]);
 
   // Handle mobile keyboard open/close scroll jumping
