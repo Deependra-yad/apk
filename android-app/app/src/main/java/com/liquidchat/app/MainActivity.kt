@@ -161,6 +161,9 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 safeBrowsingEnabled = true
             }
+            
+            // Hardcode standard Chrome user agent to bypass Google's strict WebView block
+            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
         }
 
         // Force dark mode in WebView to match the app's dark theme
@@ -203,12 +206,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-
         webView.webViewClient = object : WebViewClient() {
-            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                super.onPageStarted(view, url, favicon)
-            }
-
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 // Inject CSS to fix viewport and hide browser-specific elements
@@ -221,6 +219,16 @@ class MainActivity : AppCompatActivity() {
                             document.head.appendChild(meta);
                         }
                         meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
+
+                        var style = document.createElement('style');
+                        style.innerHTML = `
+                            /* Prevent horizontal scroll */
+                            body { overflow-x: hidden !important; }
+                            
+                            /* Hide Install PWA banners inside the native app */
+                            .install-prompt, [data-testid="install-pwa"] { display: none !important; }
+                        `;
+                        document.head.appendChild(style);
                     })();
                 """.trimIndent(), null)
             }
@@ -228,9 +236,10 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
 
-                // Keep navigation within the app for our domains
+                // Keep navigation within the app for our domains AND Google Auth
                 if (url.contains("apk-flame.vercel.app") ||
-                    url.contains("apk-production-740c.up.railway.app")) {
+                    url.contains("apk-production-740c.up.railway.app") ||
+                    url.contains("accounts.google.com")) {
                     return false
                 }
 
