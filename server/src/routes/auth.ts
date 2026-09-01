@@ -81,7 +81,22 @@ router.post('/google', async (req, res) => {
   }
 });
 
-router.post('/google-redirect', async (req, res) => {
+  router.get('/google-redirect', (req, res) => {
+    res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Redirecting...</title></head>
+      <body>
+        <script>
+          // Pass the hash fragment (which contains access_token) to the frontend callback
+          window.location.href = "https://apk-flame.vercel.app/auth/callback" + window.location.hash;
+        </script>
+      </body>
+      </html>
+    `);
+  });
+
+  router.post('/google-redirect', async (req, res) => {
   const credential = req.body.credential;
   if (!credential) {
     return res.redirect('https://apk-flame.vercel.app/auth?error=MissingCredential');

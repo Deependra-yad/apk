@@ -25,7 +25,7 @@ function AuthForm() {
   const setAuth = useAuthStore((state) => state.setAuth);
 
   const loginWithGoogle = () => {
-    const redirectUri = encodeURIComponent("https://apk-flame.vercel.app/auth/callback");
+    const redirectUri = encodeURIComponent("https://apk-flame.vercel.app/api/auth/google-redirect");
     const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${redirectUri}&response_type=token&scope=email%20profile&prompt=select_account`;
     window.location.href = authUrl;
   };
