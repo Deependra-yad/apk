@@ -4,18 +4,19 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import webpush from 'web-push';
-import * as admin from 'firebase-admin';
-import path from 'path';
+import { initializeApp, cert } from 'firebase-admin/app';
+import { getMessaging } from 'firebase-admin/messaging';
 
 try {
   let serviceAccount;
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   } else {
+    const path = require('path');
     serviceAccount = require(path.join(__dirname, '../../firebase-adminsdk.json'));
   }
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+  initializeApp({
+    credential: cert(serviceAccount)
   });
   console.log('Firebase Admin initialized');
 } catch (err) {
@@ -111,7 +112,7 @@ const sendPushNotification = async (userId: string, title: string, body: string,
       if (sub.endpoint.startsWith('fcm://')) {
         const fcmToken = sub.endpoint.replace('fcm://', '');
         try {
-          await admin.messaging().send({
+          await getMessaging().send({
             token: fcmToken,
             data: { title, body, url },
             notification: { title, body }

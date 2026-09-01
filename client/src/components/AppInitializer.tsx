@@ -42,28 +42,35 @@ export default function AppInitializer() {
     });
 
     // Native Android FCM Subscription
-    if (token && typeof window !== 'undefined') {
-      // 1. Check if token is already available via bridge
-      if ((window as any).Android) {
+    if (token && typeof window !== 'undefined' && (window as any).Android) {
+      const syncFCMToken = () => {
         try {
           const fcmToken = (window as any).Android.getFCMToken();
           if (fcmToken) {
             axios.post('/api/push/fcm-subscribe', { token: fcmToken }, {
               headers: { Authorization: `Bearer ${token}` }
-            }).catch(err => console.warn('Failed to subscribe FCM token', err));
+            }).catch(err => console.warn('FCM sync error', err));
           }
         } catch (e) {}
-      }
+      };
+      
+      // Sync immediately and then every 5 seconds
+      syncFCMToken();
+      const interval = setInterval(syncFCMToken, 5000);
 
-      // 2. Listen for injected token from Android (when Firebase is ready)
       const handleFcmMessage = (event: MessageEvent) => {
         if (event.data?.type === 'FCM_TOKEN' && event.data?.token) {
           axios.post('/api/push/fcm-subscribe', { token: event.data.token }, {
             headers: { Authorization: `Bearer ${token}` }
-          }).catch(err => console.warn('Failed to subscribe injected FCM token', err));
+          });
         }
       };
       window.addEventListener('message', handleFcmMessage);
+      
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('message', handleFcmMessage);
+      };
     }
 
     // Privacy Locks
