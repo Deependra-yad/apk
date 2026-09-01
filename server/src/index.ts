@@ -105,6 +105,7 @@ const sendPushNotification = async (userId: string, title: string, body: string,
   try {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
     const payload = JSON.stringify({ title, body, url });
+    const isConnected = !!connectedUsers.get(userId);
     
     for (const sub of subscriptions) {
       if (sub.endpoint.startsWith('fcm://')) {
@@ -122,6 +123,7 @@ const sendPushNotification = async (userId: string, title: string, body: string,
           console.error('FCM Push Error:', err);
         }
       } else {
+        if (isConnected) continue; // Skip web push if user is connected via websocket
         const pushSub = {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth }
@@ -265,7 +267,6 @@ io.on('connection', (socket) => {
           // Broadcast to group room (including sender)
           io.to(`group_${data.groupId}`).emit('receive_group_message', msg);
           
-          // Send push to all group members except sender
           const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
           members.forEach((member: any) => {
             if (member.userId !== data.senderId) {
@@ -273,13 +274,14 @@ io.on('connection', (socket) => {
             }
           });
         } else {
-          io.to(`user_${data.receiverId}`).emit('receive_message', msg);
-          io.to(`user_${data.senderId}`).emit('message_sent', msg);
+          // Always try sending push (sendPushNotification handles FCM vs WebPush logic internally)
+          sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
           
-          // Send push to receiver
-          if (data.receiverId) {
-            sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
+          const receiverSocket = connectedUsers.get(data.receiverId);
+          if (receiverSocket) {
+            io.to(`user_${data.receiverId}`).emit('receive_message', msg);
           }
+          io.to(`user_${data.senderId}`).emit('message_sent', msg);
         }
     } catch (err) {
       console.error('Error sending message:', err);

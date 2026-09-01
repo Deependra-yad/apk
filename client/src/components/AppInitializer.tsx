@@ -43,16 +43,24 @@ export default function AppInitializer() {
 
     // Native Android FCM Subscription
     if (token && typeof window !== 'undefined' && (window as any).Android) {
-      try {
-        const fcmToken = (window as any).Android.getFCMToken();
-        if (fcmToken) {
-          axios.post('/api/push/fcm-subscribe', { token: fcmToken }, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).catch(err => console.warn('Failed to subscribe FCM token', err));
+      let attempts = 0;
+      const interval = setInterval(() => {
+        try {
+          const fcmToken = (window as any).Android.getFCMToken();
+          if (fcmToken) {
+            clearInterval(interval);
+            axios.post('/api/push/fcm-subscribe', { token: fcmToken }, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).catch(err => console.warn('Failed to subscribe FCM token', err));
+          } else {
+            attempts++;
+            if (attempts > 5) clearInterval(interval);
+          }
+        } catch (e) {
+          console.warn('Error fetching FCM token from Android bridge', e);
+          clearInterval(interval);
         }
-      } catch (e) {
-        console.warn('Error fetching FCM token from Android bridge', e);
-      }
+      }, 2000);
     }
 
     // Privacy Locks
