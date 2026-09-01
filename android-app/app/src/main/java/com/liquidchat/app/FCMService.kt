@@ -14,6 +14,11 @@ class FCMService : FirebaseMessagingService() {
         // We will pass this to the frontend via MainActivity
         val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
         prefs.edit().putString("fcm_token", token).apply()
+        
+        // Broadcast it
+        val intent = android.content.Intent("FCM_TOKEN_REFRESH")
+        intent.putExtra("token", token)
+        sendBroadcast(intent)
     }
 
     override fun onMessageReceived(remoteMessage: RemoteMessage) {

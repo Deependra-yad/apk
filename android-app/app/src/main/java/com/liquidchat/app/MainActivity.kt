@@ -190,6 +190,10 @@ class MainActivity : AppCompatActivity() {
             if (task.isSuccessful) {
                 val token = task.result
                 getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("fcm_token", token).apply()
+                // Inject token directly into the web app
+                runOnUiThread {
+                    webView.evaluateJavascript("window.postMessage({type: 'FCM_TOKEN', token: '$token'}, '*');", null)
+                }
             }
         }
 
