@@ -134,8 +134,32 @@ class MainActivity : AppCompatActivity() {
             webView.loadUrl(WEB_URL)
         }
         
+        // Handle deep links when app starts
+        handleIntent(intent)
+        
         // Check for updates
         checkForUpdates()
+    }
+    
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        val action = intent?.action
+        val data = intent?.data
+        if (Intent.ACTION_VIEW == action && data != null) {
+            if (data.scheme == "liquidchat" && data.host == "auth") {
+                val token = data.getQueryParameter("token")
+                val userStr = data.getQueryParameter("user")
+                val url = "$WEB_URL/auth/callback?token=$token&user=${Uri.encode(userStr)}"
+                webView.loadUrl(url)
+            } else if (data.host?.contains("apk-flame.vercel.app") == true) {
+                webView.loadUrl(data.toString())
+            }
+        }
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -236,10 +260,9 @@ class MainActivity : AppCompatActivity() {
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
 
-                // Keep navigation within the app for our domains AND Google Auth
+                // Keep navigation within the app for our domains
                 if (url.contains("apk-flame.vercel.app") ||
-                    url.contains("apk-production-740c.up.railway.app") ||
-                    url.contains("accounts.google.com")) {
+                    url.contains("apk-production-740c.up.railway.app")) {
                     return false
                 }
 

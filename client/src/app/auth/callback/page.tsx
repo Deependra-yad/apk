@@ -23,7 +23,18 @@ function CallbackLogic() {
       try {
         const user = JSON.parse(decodeURIComponent(userStr));
         setAuth(user, token);
-        router.push("/");
+        
+        // If we are in an external mobile browser, jump back to the native app
+        if (typeof window !== 'undefined' && !(window as any).Android) {
+            window.location.href = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
+            
+            // Fallback for PC web users
+            setTimeout(() => {
+                router.push("/");
+            }, 800);
+        } else {
+            router.push("/");
+        }
       } catch (err) {
         console.error("Failed to parse user data:", err);
         router.push("/auth?error=ParseError");
