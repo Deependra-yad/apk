@@ -8,13 +8,18 @@ import * as admin from 'firebase-admin';
 import path from 'path';
 
 try {
-  const serviceAccount = require(path.join(__dirname, '../../firebase-adminsdk.json'));
+  let serviceAccount;
+  if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  } else {
+    serviceAccount = require(path.join(__dirname, '../../firebase-adminsdk.json'));
+  }
   admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
   });
   console.log('Firebase Admin initialized');
 } catch (err) {
-  console.warn('Firebase Admin init failed (missing or invalid firebase-adminsdk.json):', err);
+  console.warn('Firebase Admin init failed. Please set FIREBASE_SERVICE_ACCOUNT environment variable in Railway with the contents of the JSON file.', err);
 }
 
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB3IQWwegwE3yB-kLNlU_ZPUY';
