@@ -4,6 +4,18 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import webpush from 'web-push';
+import * as admin from 'firebase-admin';
+import path from 'path';
+
+try {
+  const serviceAccount = require(path.join(__dirname, '../../firebase-adminsdk.json'));
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+  console.log('Firebase Admin initialized');
+} catch (err) {
+  console.warn('Firebase Admin init failed (missing or invalid firebase-adminsdk.json):', err);
+}
 
 const publicVapidKey = process.env.VAPID_PUBLIC_KEY || 'BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuB3IQWwegwE3yB-kLNlU_ZPUY';
 const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'QvT_0R6KozjHlHh_6gD_U28XkK3E5ZzK-U2NnF8pE10';
@@ -68,7 +80,6 @@ app.get('/', (req, res) => {
   res.status(200).send('Liquid Chat Backend is running successfully.');
 });
 
-// Catch-all for undefined routes
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
@@ -91,16 +102,31 @@ const sendPushNotification = async (userId: string, title: string, body: string,
     const payload = JSON.stringify({ title, body, url });
     
     for (const sub of subscriptions) {
-      const pushSub = {
-        endpoint: sub.endpoint,
-        keys: { p256dh: sub.p256dh, auth: sub.auth }
-      };
-      try {
-        await webpush.sendNotification(pushSub, payload);
-      } catch (err: any) {
-        if (err.statusCode === 404 || err.statusCode === 410) {
-          // Subscription has expired or is no longer valid
-          await prisma.pushSubscription.delete({ where: { id: sub.id } });
+      if (sub.endpoint.startsWith('fcm://')) {
+        const fcmToken = sub.endpoint.replace('fcm://', '');
+        try {
+          await admin.messaging().send({
+            token: fcmToken,
+            data: { title, body, url },
+            notification: { title, body }
+          });
+        } catch (err: any) {
+          if (err.code === 'messaging/registration-token-not-registered' || err.code === 'messaging/invalid-argument') {
+            await prisma.pushSubscription.delete({ where: { id: sub.id } });
+          }
+          console.error('FCM Push Error:', err);
+        }
+      } else {
+        const pushSub = {
+          endpoint: sub.endpoint,
+          keys: { p256dh: sub.p256dh, auth: sub.auth }
+        };
+        try {
+          await webpush.sendNotification(pushSub, payload);
+        } catch (err: any) {
+          if (err.statusCode === 404 || err.statusCode === 410) {
+            await prisma.pushSubscription.delete({ where: { id: sub.id } });
+          }
         }
       }
     }

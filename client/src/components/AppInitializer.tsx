@@ -41,6 +41,20 @@ export default function AppInitializer() {
       }
     });
 
+    // Native Android FCM Subscription
+    if (token && typeof window !== 'undefined' && (window as any).Android) {
+      try {
+        const fcmToken = (window as any).Android.getFCMToken();
+        if (fcmToken) {
+          axios.post('/api/push/fcm-subscribe', { token: fcmToken }, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).catch(err => console.warn('Failed to subscribe FCM token', err));
+        }
+      } catch (e) {
+        console.warn('Error fetching FCM token from Android bridge', e);
+      }
+    }
+
     // Privacy Locks
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault();

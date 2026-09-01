@@ -177,7 +177,21 @@ class MainActivity : AppCompatActivity() {
                     nm.notify(System.currentTimeMillis().toInt(), builder.build())
                 }
             }
+
+            @JavascriptInterface
+            fun getFCMToken(): String {
+                val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
+                return prefs.getString("fcm_token", "") ?: ""
+            }
         }, "Android")
+
+        // Fetch token directly on boot as well
+        com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                val token = task.result
+                getSharedPreferences("app_prefs", MODE_PRIVATE).edit().putString("fcm_token", token).apply()
+            }
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {

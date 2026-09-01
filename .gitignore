@@ -45,3 +45,6 @@ Thumbs.db
 
 LiquidChat.apk
 android-app/jdk17.zip
+
+server/firebase-adminsdk.json
+android-app/app/google-services.json

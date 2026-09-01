@@ -38,7 +38,6 @@ router.post('/subscribe', authenticate, async (req: any, res) => {
   const userId = req.userId;
 
   try {
-    // Upsert to ensure we don't duplicate endpoints
     await prisma.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
       update: {
@@ -57,6 +56,30 @@ router.post('/subscribe', authenticate, async (req: any, res) => {
   } catch (error) {
     console.error('Error saving subscription:', error);
     res.status(500).json({ error: 'Failed to save subscription' });
+  }
+});
+
+router.post('/fcm-subscribe', authenticate, async (req: any, res) => {
+  const { token } = req.body;
+  const userId = req.userId;
+  if (!token) return res.status(400).json({ error: 'No token' });
+
+  const fakeEndpoint = `fcm://${token}`;
+  
+  try {
+    await prisma.pushSubscription.upsert({
+      where: { endpoint: fakeEndpoint },
+      update: { userId, p256dh: 'fcm', auth: 'fcm' },
+      create: {
+        userId,
+        endpoint: fakeEndpoint,
+        p256dh: 'fcm',
+        auth: 'fcm',
+      }
+    });
+    res.status(201).json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to save FCM token' });
   }
 });
 
