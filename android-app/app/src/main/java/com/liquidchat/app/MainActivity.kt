@@ -28,6 +28,16 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import android.app.DownloadManager
+import android.content.Context
+import android.content.BroadcastReceiver
+import android.content.IntentFilter
+import android.os.Environment
+import org.json.JSONObject
+import java.net.URL
+import kotlin.concurrent.thread
+import android.app.AlertDialog
+import android.util.Log
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -107,9 +117,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView = WebView(this).apply {
-            layoutParams = ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT
+            layoutParams = android.widget.FrameLayout.LayoutParams(
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
+                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
             )
         }
 
@@ -123,6 +133,9 @@ class MainActivity : AppCompatActivity() {
         } else {
             webView.loadUrl(WEB_URL)
         }
+        
+        // Check for updates
+        checkForUpdates()
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -194,7 +207,6 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                swipeRefresh.isRefreshing = true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -502,5 +514,84 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         webView.destroy()
         super.onDestroy()
+    }
+    
+    private fun checkForUpdates() {
+        thread {
+            try {
+                val response = URL("https://apk-flame.vercel.app/version.json").readText()
+                val json = JSONObject(response)
+                val serverVersionCode = json.optInt("versionCode", 1)
+                val url = json.optString("url")
+                val releaseNotes = json.optString("releaseNotes", "A new update is available.")
+                
+                // Get current version code
+                val pInfo = packageManager.getPackageInfo(packageName, 0)
+                val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pInfo.longVersionCode.toInt()
+                } else {
+                    pInfo.versionCode
+                }
+                
+                if (serverVersionCode > currentVersionCode && url.isNotEmpty()) {
+                    runOnUiThread {
+                        AlertDialog.Builder(this)
+                            .setTitle("Update Available")
+                            .setMessage(releaseNotes)
+                            .setPositiveButton("Update") { _, _ ->
+                                downloadAndInstallUpdate(url)
+                            }
+                            .setNegativeButton("Later", null)
+                            .setCancelable(false)
+                            .show()
+                    }
+                }
+            } catch (e: Exception) {
+                Log.e("MainActivity", "Update check failed", e)
+            }
+        }
+    }
+
+    private fun downloadAndInstallUpdate(url: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(url))
+                .setTitle("LiquidChat Update")
+                .setDescription("Downloading new version...")
+                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "LiquidChat_Update.apk")
+                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                .setAllowedOverMetered(true)
+                .setAllowedOverRoaming(true)
+            
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            val downloadId = manager.enqueue(request)
+            
+            Toast.makeText(this, "Downloading update...", Toast.LENGTH_SHORT).show()
+            
+            val onComplete = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (id == downloadId) {
+                        try {
+                            val uri = manager.getUriForDownloadedFile(downloadId)
+                            val installIntent = Intent(Intent.ACTION_VIEW).apply {
+                                setDataAndType(uri, "application/vnd.android.package-archive")
+                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                            }
+                            startActivity(installIntent)
+                        } catch (e: Exception) {
+                            Toast.makeText(this@MainActivity, "Failed to start install: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                        unregisterReceiver(this)
+                    }
+                }
+            }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 }
