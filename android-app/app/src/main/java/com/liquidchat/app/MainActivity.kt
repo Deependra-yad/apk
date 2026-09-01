@@ -258,17 +258,18 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val url = request?.url?.toString() ?: return false
+                val uri = request?.url ?: return false
+                val host = uri.host ?: ""
 
                 // Keep navigation within the app for our domains
-                if (url.contains("apk-flame.vercel.app") ||
-                    url.contains("apk-production-740c.up.railway.app")) {
+                if (host.contains("apk-flame.vercel.app") ||
+                    host.contains("apk-production-740c.up.railway.app")) {
                     return false
                 }
 
                 // Open external links in the system browser
                 try {
-                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+                    startActivity(Intent(Intent.ACTION_VIEW, uri))
                 } catch (e: ActivityNotFoundException) {
                     // Ignore
                 }
