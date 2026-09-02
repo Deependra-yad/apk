@@ -28,6 +28,7 @@ const privateVapidKey = process.env.VAPID_PRIVATE_KEY || 'QvT_0R6KozjHlHh_6gD_U2
 webpush.setVapidDetails('mailto:support@liquidchat.com', publicVapidKey, privateVapidKey);
 
 import authRoutes from './routes/auth';
+import otpAuthRoutes from './routes/otpAuth';
 import messageRoutes from './routes/messages';
 import uploadRoutes from './routes/upload';
 import storyRoutes from './routes/stories';
@@ -68,6 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // API Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/otp', otpAuthRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/stories', storyRoutes);
