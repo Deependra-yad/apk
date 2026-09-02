@@ -124,6 +124,30 @@ export default function AdminDashboard() {
         </div>
 
         {activeTab === 'overview' && stats && (
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 sm:gap-6">
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-2">
+              <div className="flex items-center gap-3 mb-2 text-liquid-accent"><Users /> <h3>Total Users</h3></div>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.totalUsers}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-2">
+              <div className="flex items-center gap-3 mb-2 text-purple-400"><Database /> <h3>Total Messages</h3></div>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.totalMessages}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-1 lg:col-span-1 xl:col-span-1">
+              <div className="flex items-center gap-2 mb-2 text-blue-400"><h3>Groups</h3></div>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalGroups}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-1 lg:col-span-1 xl:col-span-1">
+              <div className="flex items-center gap-2 mb-2 text-green-400"><h3>Stories</h3></div>
+              <p className="text-2xl sm:text-3xl font-bold">{stats.totalStories}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-3">
+              <div className="flex items-center gap-3 mb-2 text-pink-400"><FileVideo /> <h3>Media Files</h3></div>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.fileCount}</p>
+            </div>
+            <div className="bg-foreground/5 p-4 sm:p-6 rounded-2xl border border-foreground/5 col-span-2 lg:col-span-1 xl:col-span-3">
+              <div className="flex items-center gap-3 mb-2 text-rose-400"><Database /> <h3>Storage Used</h3></div>
+              <p className="text-3xl sm:text-4xl font-bold">{stats.uploadsSizeMb} MB</p>
             </div>
 
             <div className="col-span-full mt-4 sm:mt-8 bg-rose-500/10 border border-rose-500/20 p-4 sm:p-8 rounded-2xl">

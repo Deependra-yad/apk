@@ -895,7 +895,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                             <div className={`p-2.5 rounded-xl border ${fileColorBadge} shrink-0`}>
                               <FileIcon size={22} />
                             </div>
-                            <div className="flex-1 overflow-hidden">
+                            <div className="flex-1 overflow-hidden min-w-0">
                               <p className="text-xs font-semibold truncate text-foreground">{msg.fileName || 'Document'}</p>
                               <div className="flex items-center gap-1.5 mt-0.5">
                                 <span className="px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-foreground/10 text-foreground/80">
