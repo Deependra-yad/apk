@@ -1,4 +1,4 @@
-ï»¿'use client';
+'use client';
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -62,7 +62,7 @@ function AuthForm() {
 
   const handleLoginRequest = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) return setError('Email and password required');
+    if (!email) return setError('Email is required');
     requestOtp('login');
   };
 
@@ -205,7 +205,7 @@ function AuthForm() {
                 <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="••••••••" />
                 </div>
               </div>
               <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mt-2">
@@ -239,7 +239,7 @@ function AuthForm() {
             <form onSubmit={verifyOtp} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block text-center">Enter 6-Digit OTP</label>
-                <input type="text" required value={otp} onChange={e => setOtp(e.target.value)} maxLength={6} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-4 px-4 text-2xl font-bold tracking-[0.5em] text-center focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢" />
+                <input type="text" required value={otp} onChange={e => setOtp(e.target.value)} maxLength={6} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-4 px-4 text-2xl font-bold tracking-[0.5em] text-center focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="••••••" />
               </div>
               <button type="submit" disabled={isLoading || otp.length !== 6} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 disabled:opacity-50">
                 {isLoading ? 'Verifying...' : 'Verify OTP'} <CheckCircle2 size={18} />
@@ -259,7 +259,7 @@ function AuthForm() {
                 <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">New Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors" placeholder="••••••••" />
                 </div>
               </div>
               <button type="submit" disabled={isLoading || !password} className="w-full bg-gradient-to-r from-emerald-400 to-emerald-500 text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">

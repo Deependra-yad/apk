@@ -1,4 +1,4 @@
-﻿import express from 'express';
+import express from 'express';
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
@@ -74,7 +74,7 @@ router.post('/verify-otp', async (req, res) => {
       if (existingUser) return res.status(400).json({ error: 'Username or email already taken' });
 
       const passwordHash = await bcrypt.hash(password, 10);
-      const avatar = \https://api.dicebear.com/7.x/avataaars/svg?seed=\\;
+      const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
       
       const user = await prisma.user.create({
         data: { username, email, passwordHash, avatar }
