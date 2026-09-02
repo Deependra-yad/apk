@@ -64,11 +64,11 @@ function renderFormattedMessage(text: string) {
           </div>
         );
       }
-      return <span key={index} className="whitespace-pre-wrap">{part}</span>;
+      return <span key={index} className="whitespace-pre-wrap break-words">{part}</span>;
     });
   }
 
-  return <span className="whitespace-pre-wrap">{text}</span>;
+  return <span className="whitespace-pre-wrap break-words">{text}</span>;
 }
 
 export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: ChatAreaProps) {
@@ -572,7 +572,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 )}
               </div>
 
-              <div className="overflow-hidden">
+              <div className="overflow-hidden min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
                   <h2 className="text-foreground font-semibold text-sm sm:text-base truncate">
                     {isGroup ? activeGroup?.name : activeContact?.username}
@@ -720,7 +720,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-4">
         {/* E2EE Disclaimer */}
         <div className="w-full flex justify-center mb-2 mt-2">
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center">
@@ -787,7 +787,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               )}
 
               {/* Message Content Container */}
-              <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-full`}>
+              <div className={`flex flex-col ${isMe ? 'items-end' : 'items-start'} max-w-full min-w-0`}>
                 {/* Group Sender Avatar & Name */}
                 {isGroup && !isMe && msg.sender && (
                   <div className="flex items-center gap-1.5 mb-1 px-1">
@@ -803,7 +803,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     e.preventDefault();
                     setMessageContextMenu({ msg, x: e.clientX, y: e.clientY });
                   }}
-                  className={`p-3.5 rounded-2xl relative transition-all select-none sm:select-text [-webkit-touch-callout:none] ${
+                  className={`p-3.5 rounded-2xl relative transition-all select-none sm:select-text [-webkit-touch-callout:none] min-w-0 break-words ${
                     isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
                   } ${
                     isMe
@@ -992,9 +992,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             exit={{ height: 0, opacity: 0 }}
             className="bg-cyan-950/90 border-t border-cyan-500/30 px-6 py-2 flex items-center justify-between z-20 backdrop-blur-xl"
           >
-            <div className="flex items-center gap-2 overflow-hidden text-xs text-cyan-200">
+            <div className="flex items-center gap-2 overflow-hidden text-xs text-cyan-200 min-w-0 flex-1">
               <Edit2 size={14} className="text-cyan-400 shrink-0" />
-              <span>Editing message: <strong className="truncate max-w-sm">{editingMessage.text}</strong></span>
+              <div className="truncate flex-1">
+                <span>Editing message: </span>
+                <strong className="font-semibold">{editingMessage.text}</strong>
+              </div>
             </div>
             <button onClick={() => { setEditingMessage(null); setText(''); }} className="text-cyan-400 hover:text-foreground p-1">
               <X size={16} />
@@ -1012,11 +1015,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             exit={{ height: 0, opacity: 0 }}
             className="bg-liquid-base/95 border-t border-foreground/10 px-6 py-2.5 flex items-center justify-between z-10 backdrop-blur-xl"
           >
-            <div className="flex items-center gap-3 overflow-hidden">
+            <div className="flex items-center gap-3 overflow-hidden min-w-0 flex-1">
               <div className="p-2 rounded-lg bg-liquid-accent/20 text-liquid-accent">
                 <Reply size={16} />
               </div>
-              <div className="overflow-hidden">
+              <div className="overflow-hidden min-w-0 flex-1">
                 <span className="text-xs font-bold text-liquid-accent">
                   Replying to message
                 </span>
@@ -1057,7 +1060,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 </div>
               )}
 
-              <div className="overflow-hidden">
+              <div className="overflow-hidden min-w-0 flex-1">
                 <span className="text-xs font-bold text-foreground block truncate max-w-sm">{file.name}</span>
                 <span className="text-[11px] text-liquid-accent font-mono">
                   {(file.size / (1024 * 1024)).toFixed(1)} MB â€¢ {file.type || 'Document'}
