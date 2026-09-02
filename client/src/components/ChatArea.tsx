@@ -258,7 +258,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       if (textareaRef.current) textareaRef.current.style.height = '20px';
       // Emit user prompt first
       emitSendMessage({
-        text: `ðŸ¤– /ai ${aiPrompt}`,
+        text: `Ã°Å¸Â¤â€“ /ai ${aiPrompt}`,
         senderId: user.id,
         receiverId: isGroup ? null : activeContact?.id,
         groupId: isGroup ? activeGroup?.id : null,
@@ -269,7 +269,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       try {
         const aiRes = await axios.post('/api/ai/chat', { prompt: aiPrompt });
         emitSendMessage({
-          text: `âœ¨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
+          text: `Ã¢Å“Â¨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
           senderId: user.id,
           receiverId: isGroup ? null : activeContact?.id,
           groupId: isGroup ? activeGroup?.id : null,
@@ -338,7 +338,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       fileSize,
       mimeType,
       replyToId: replyingTo?.id || null,
-      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? 'ðŸ“· Image' : replyingTo?.type === 'video' ? 'ðŸŽ¥ Video' : replyingTo?.type === 'audio' ? 'ðŸŽµ Voice Note' : replyingTo?.fileName) || null
+      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? 'Ã°Å¸â€œÂ· Image' : replyingTo?.type === 'video' ? 'Ã°Å¸Å½Â¥ Video' : replyingTo?.type === 'audio' ? 'Ã°Å¸Å½Âµ Voice Note' : replyingTo?.fileName) || null
     });
 
     setText('');
@@ -496,7 +496,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           className="w-28 h-28 mb-8 rounded-full bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary shadow-[0_0_50px_rgba(0,210,255,0.4)] flex items-center justify-center p-1"
         >
           <div className="w-full h-full bg-liquid-base rounded-full flex items-center justify-center">
-            <span className="text-4xl">ðŸŒŠ</span>
+            <span className="text-4xl">Ã°Å¸Å’Å </span>
           </div>
         </motion.div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Liquid Chat</h2>
@@ -1005,7 +1005,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           >
             <div className="flex items-center gap-2 overflow-hidden text-xs text-cyan-200 min-w-0 flex-1">
               <Edit2 size={14} className="text-cyan-400 shrink-0" />
-              <div className="truncate flex-1">
+              <div className="flex-1 whitespace-pre-wrap break-words line-clamp-3">
                 <span>Editing message: </span>
                 <strong className="font-semibold">{editingMessage.text}</strong>
               </div>
@@ -1035,8 +1035,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 <span className="text-xs font-bold text-liquid-accent">
                   Replying to message
                 </span>
-                <p className="text-xs text-foreground/80 truncate">
-                  {replyingTo.text || (replyingTo.type === 'image' ? 'ðŸ“· Image' : replyingTo.type === 'video' ? 'ðŸŽ¥ Video' : replyingTo.type === 'audio' ? 'ðŸŽµ Voice Note' : replyingTo.fileName)}
+                <p className="text-xs text-foreground/80 whitespace-pre-wrap break-words line-clamp-3">
+                  {replyingTo.text || (replyingTo.type === 'image' ? 'Ã°Å¸â€œÂ· Image' : replyingTo.type === 'video' ? 'Ã°Å¸Å½Â¥ Video' : replyingTo.type === 'audio' ? 'Ã°Å¸Å½Âµ Voice Note' : replyingTo.fileName)}
                 </p>
               </div>
             </div>
@@ -1075,7 +1075,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <div className="overflow-hidden min-w-0 flex-1">
                 <span className="text-xs font-bold text-foreground block truncate max-w-sm">{file.name}</span>
                 <span className="text-[11px] text-liquid-accent font-mono">
-                  {(file.size / (1024 * 1024)).toFixed(1)} MB â€¢ {file.type || 'Document'}
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB Ã¢â‚¬Â¢ {file.type || 'Document'}
                 </span>
               </div>
             </div>
@@ -1564,4 +1564,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     </div>
   );
 }
+
+
 

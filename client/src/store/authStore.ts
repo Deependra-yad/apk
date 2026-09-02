@@ -27,7 +27,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
   logout: () => {
     localStorage.removeItem('liquid_token');
+    localStorage.removeItem('token');
     localStorage.removeItem('liquid_user');
+    localStorage.removeItem('user');
     set({ user: null, token: null });
   },
   initAuth: () => {
@@ -43,3 +45,4 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   }
 }));
+
