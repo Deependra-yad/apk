@@ -838,13 +838,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Media: Image with Click-to-Lightbox */}
                       {msg.type === 'image' && msg.fileUrl && (
                         <div 
-                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-background/40" 
+                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-background/40 max-w-full" 
                           onClick={() => setSelectedLightboxMedia({ url: resolveMediaUrl(msg.fileUrl), type: 'image', name: msg.fileName || 'Image' })}
                         >
                           <img 
                             src={resolveMediaUrl(msg.fileUrl)} 
                             alt="attachment" 
-                            className="rounded-xl max-h-80 w-full object-cover hover:scale-105 transition-transform duration-300" 
+                            className="rounded-xl max-h-80 w-full max-w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
                           <div className="absolute inset-0 bg-background/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
                             <Maximize2 size={24} className="text-foreground drop-shadow-md" />
@@ -861,13 +861,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                       {/* Media: Video Player with Inline Controls & Fullscreen */}
                       {msg.type === 'video' && msg.fileUrl && (
-                        <div className="mb-2 rounded-xl overflow-hidden relative bg-background/80 max-h-80">
+                        <div className="mb-2 rounded-xl overflow-hidden relative bg-background/80 max-h-80 max-w-full">
                           <video 
                             src={resolveMediaUrl(msg.fileUrl)} 
                             controls 
                             playsInline
                             preload="metadata"
-                            className="w-full max-h-80 rounded-xl object-contain" 
+                            className="w-full max-w-full max-h-80 rounded-xl object-contain" 
                           />
                         </div>
                       )}
