@@ -48,6 +48,7 @@ export default function Home() {
   const router = useRouter();
 
   const [isClient, setIsClient] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
   const [users, setUsers] = useState<any[]>([]);
   const [contactSearch, setContactSearch] = useState('');
   const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'groups' | 'archived'>('all');
@@ -65,6 +66,7 @@ export default function Home() {
   useEffect(() => {
     initAuth();
     setIsClient(true);
+    setAuthChecked(true);
   }, [initAuth]);
 
   // Handle hardware back button
@@ -207,7 +209,18 @@ export default function Home() {
     return () => window.removeEventListener('contextmenu', lockContextMenu);
   }, []);
 
-  if (!isClient || !user) return null;
+  if (!isClient || !authChecked || !user) {
+    return (
+      <div className="min-h-screen bg-liquid-dark flex flex-col items-center justify-center">
+        <div className="w-16 h-16 bg-gradient-to-tr from-liquid-accent to-liquid-secondary rounded-full flex items-center justify-center p-[2px] mb-6 shadow-[0_0_30px_rgba(0,210,255,0.3)]">
+          <div className="w-full h-full bg-liquid-dark rounded-full flex items-center justify-center">
+            <div className="w-8 h-8 border-3 border-liquid-accent border-t-transparent rounded-full animate-spin" />
+          </div>
+        </div>
+        <p className="text-foreground/50 text-sm font-medium">Loading Liquid Chat...</p>
+      </div>
+    );
+  }
 
   const handleLogout = () => {
     logout();
