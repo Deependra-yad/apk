@@ -98,6 +98,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const fileTypeFilterRef = useRef<string>('*/*');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<any>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { user, token } = useAuthStore();
   const { 
@@ -195,8 +196,15 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   }, [editingMessage]);
 
   // Typing debounce
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setText(e.target.value);
+    
+    // Auto-resize textarea logic
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '20px';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+    }
+
     if (!socket || !user) return;
 
     if (isGroup && activeGroup) {
@@ -247,6 +255,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     if (text.trim().startsWith('/ai ')) {
       const aiPrompt = text.trim().slice(4);
       setText('');
+      if (textareaRef.current) textareaRef.current.style.height = '20px';
       // Emit user prompt first
       emitSendMessage({
         text: `ðŸ¤– /ai ${aiPrompt}`,
@@ -295,6 +304,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
         setEditingMessage(null);
         setText('');
+      if (textareaRef.current) textareaRef.current.style.height = '20px';
       } catch (e) {}
       return;
     }
@@ -332,6 +342,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     });
 
     setText('');
+      if (textareaRef.current) textareaRef.current.style.height = '20px';
     setFile(null);
     setFilePreviewUrl(null);
     setReplyingTo(null);
@@ -999,7 +1010,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 <strong className="font-semibold">{editingMessage.text}</strong>
               </div>
             </div>
-            <button onClick={() => { setEditingMessage(null); setText(''); }} className="text-cyan-400 hover:text-foreground p-1">
+            <button onClick={() => { setEditingMessage(null); setText('');
+      if (textareaRef.current) textareaRef.current.style.height = '20px'; }} className="text-cyan-400 hover:text-foreground p-1">
               <X size={16} />
             </button>
           </motion.div>
@@ -1206,18 +1218,21 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               </div>
 
             {/* Text Input */}
-            <div className="flex-1 bg-background/40 rounded-full h-10 sm:h-12 flex items-center px-3 sm:px-5 border border-foreground/10 focus-within:border-liquid-accent/50 transition-colors">
-              <input 
-                type="text" 
+            <div className="flex-1 bg-background/40 rounded-3xl min-h-[40px] sm:min-h-[48px] py-2 flex items-center px-3 sm:px-5 border border-foreground/10 focus-within:border-liquid-accent/50 transition-colors">
+              <textarea 
+                ref={textareaRef}
                 value={text}
                 onChange={handleInputChange}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && enterToSend) {
+                  if (e.key === 'Enter' && !e.shiftKey && enterToSend) {
+                    e.preventDefault();
                     handleSend();
                   }
                 }}
+                rows={1}
                 placeholder="Message or /ai..."
-                className="flex-1 bg-transparent border-none outline-none text-foreground text-sm"
+                className="flex-1 bg-transparent border-none outline-none text-foreground text-sm resize-none overflow-y-auto"
+                style={{ height: '20px', minHeight: '20px', maxHeight: '120px' }}
               />
             </div>
 
@@ -1549,3 +1564,4 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     </div>
   );
 }
+
