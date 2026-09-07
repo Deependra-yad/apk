@@ -27,3 +27,35 @@ export const resolveMediaUrl = (url?: string | null): string => {
   const backend = getApiUrl();
   return `${backend}${url.startsWith('/') ? '' : '/'}${url}`;
 };
+
+// Download helper that works inside Android WebView (where <a download> is silently ignored)
+export const downloadFile = async (url: string, filename: string) => {
+  try {
+    // For Android WebView: try the Android bridge first
+    if (typeof window !== 'undefined' && (window as any).Android?.downloadFile) {
+      (window as any).Android.downloadFile(url, filename);
+      return;
+    }
+
+    // Fetch the file as a blob and trigger a programmatic download
+    const response = await fetch(url);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = blobUrl;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    
+    // Cleanup
+    setTimeout(() => {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    }, 1000);
+  } catch (e) {
+    // Fallback: open in new tab
+    window.open(url, '_blank');
+  }
+};
+

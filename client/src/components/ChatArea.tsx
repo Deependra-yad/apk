@@ -25,7 +25,7 @@ import GroupInfoDrawer from './GroupInfoDrawer';
 import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
-import { resolveMediaUrl } from '@/utils/apiUrl';
+import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -931,16 +931,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                               <span>Preview</span>
                             </button>
 
-                            <a
-                              href={resolveMediaUrl(msg.fileUrl)}
-                              download={msg.fileName || 'file'}
-                              target="_blank"
-                              rel="noreferrer"
+                            <button
+                              onClick={(e) => { e.stopPropagation(); downloadFile(resolveMediaUrl(msg.fileUrl), msg.fileName || 'file'); }}
                               className="px-3 h-8 rounded-lg bg-liquid-accent/20 hover:bg-liquid-accent/30 text-liquid-accent text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
                             >
                               <Download size={13} />
                               <span>Save</span>
-                            </a>
+                            </button>
                           </div>
                         </div>
                       )}
@@ -1431,14 +1428,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 {selectedLightboxMedia.name || 'Media Viewer'}
               </span>
               <div className="flex items-center gap-4">
-                <a
-                  href={selectedLightboxMedia.url}
-                  download
-                  onClick={(e) => e.stopPropagation()}
+                <button
+                  onClick={(e) => { e.stopPropagation(); downloadFile(selectedLightboxMedia.url, selectedLightboxMedia.name || 'media'); }}
                   className="p-2.5 rounded-xl bg-foreground/10 hover:bg-foreground/20 text-foreground flex items-center gap-1 text-xs"
                 >
                   <Download size={16} /> Download
-                </a>
+                </button>
                 <button 
                   onClick={() => setSelectedLightboxMedia(null)}
                   className="p-2.5 rounded-full bg-foreground/10 text-foreground hover:bg-foreground/20"
