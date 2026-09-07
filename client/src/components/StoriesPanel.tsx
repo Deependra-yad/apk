@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, Image as ImageIcon, Clock, Eye, Trash2, X, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Sparkles, Image as ImageIcon, Clock, Eye, Trash2, X, Send, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
@@ -19,6 +19,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
   const [stories, setStories] = useState<any[]>([]);
 
   const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [newCaption, setNewCaption] = useState('');
   const [newFile, setNewFile] = useState<File | null>(null);
@@ -28,8 +29,13 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyTimerRef = useRef<any>(null);
 
+  const currentStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null;
+
   useEffect(() => {
-    if (activeStoryIndex !== null) {
+    if (activeStoryIndex !== null && currentStory) {
+      if (isPaused) return;
+      if (currentStory.type === 'video') return; // For videos, the <video> element's onTimeUpdate controls progress!
+
       setStoryProgress(0);
       const interval = setInterval(() => {
         setStoryProgress(p => {
@@ -37,13 +43,13 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
             handleNextStory();
             return 0;
           }
-          return p + 2;
+          return p + 2; // ~5 seconds for images/text
         });
       }, 100);
       storyTimerRef.current = interval;
       return () => clearInterval(interval);
     }
-  }, [activeStoryIndex]);
+  }, [activeStoryIndex, isPaused, currentStory]);
 
   const handleNextStory = () => {
     if (activeStoryIndex !== null && activeStoryIndex < stories.length - 1) {
@@ -94,7 +100,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     }
   };
 
-  const currentStory = activeStoryIndex !== null ? stories[activeStoryIndex] : null;
+
 
   useEffect(() => {
     if (currentStory && currentStory.user?.id !== user?.id && token) {
@@ -373,6 +379,13 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setIsPaused(!isPaused)}
+                    className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
+                    title={isPaused ? "Play" : "Pause"}
+                  >
+                    {isPaused ? <Play size={20} /> : <Pause size={20} />}
+                  </button>
                   {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
                     <button
                       onClick={() => handleDeleteStory(currentStory.id)}
@@ -395,7 +408,25 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               <div className="flex-1 relative flex items-center justify-center my-4 overflow-hidden rounded-2xl">
                 {currentStory.mediaUrl ? (
                   currentStory.type === 'video' ? (
-                    <video src={resolveMediaUrl(currentStory.mediaUrl)} autoPlay playsInline controls className="max-w-full max-h-full object-contain rounded-xl" />
+                    <video 
+                      src={resolveMediaUrl(currentStory.mediaUrl)} 
+                      autoPlay={!isPaused}
+                      playsInline 
+                      controls={false}
+                      className="max-w-full max-h-full object-contain rounded-xl"
+                      onTimeUpdate={(e) => {
+                        const vid = e.currentTarget;
+                        if (vid.duration) {
+                           setStoryProgress((vid.currentTime / vid.duration) * 100);
+                        }
+                      }}
+                      onEnded={handleNextStory}
+                      ref={(el) => {
+                        if (el) {
+                          if (isPaused) el.pause(); else el.play().catch(()=>{});
+                        }
+                      }}
+                    />
                   ) : (
                     <img src={resolveMediaUrl(currentStory.mediaUrl)} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
                   )
@@ -475,7 +506,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               {(currentStory.userId !== user?.id && currentStory.user?.id !== user?.id) && (
                 <div className="flex flex-col gap-3 mt-4 z-30">
                   <div className="flex justify-center gap-4">
-                    {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                    {['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸ”¥'].map(emoji => (
                       <button
                         key={emoji}
                         onClick={() => handleReact(emoji)}

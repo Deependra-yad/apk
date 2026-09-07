@@ -37,7 +37,24 @@ export const downloadFile = async (url: string, filename: string) => {
       return;
     }
 
-    // Fetch the file as a blob and trigger a programmatic download
+    // Attempt Web Share API for Mobile devices (works in many Android WebViews)
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        const file = new File([blob], filename, { type: blob.type });
+        await navigator.share({
+          files: [file],
+          title: filename
+        });
+        return; // Success with native share sheet!
+      } catch (shareError) {
+        console.warn("Web Share API failed or was cancelled:", shareError);
+        // Fall through to blob download
+      }
+    }
+
+    // Fetch the file as a blob and trigger a programmatic download (Browser fallback)
     const response = await fetch(url);
     const blob = await response.blob();
     const blobUrl = URL.createObjectURL(blob);
@@ -54,7 +71,7 @@ export const downloadFile = async (url: string, filename: string) => {
       URL.revokeObjectURL(blobUrl);
     }, 1000);
   } catch (e) {
-    // Fallback: open in new tab
+    // Ultimate fallback: open in new tab
     window.open(url, '_blank');
   }
 };
