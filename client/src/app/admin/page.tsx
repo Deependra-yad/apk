@@ -175,9 +175,9 @@ export default function AdminDashboard() {
   );
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-gray-200 flex">
+    <div className="h-screen bg-[#0a0a0f] text-gray-200 flex overflow-hidden">
       {/* Sidebar (WordPress Style) */}
-      <div className="w-64 bg-[#13131a] border-r border-white/5 flex flex-col hidden md:flex sticky top-0 h-screen shrink-0">
+      <div className="w-64 bg-[#13131a] border-r border-white/5 flex-col hidden md:flex h-full shrink-0">
         <div className="p-6 border-b border-white/5">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-blue-500/20 rounded-xl flex items-center justify-center border border-blue-500/30">
@@ -207,8 +207,8 @@ export default function AdminDashboard() {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 overflow-x-hidden">
-        <div className="p-4 md:p-8 max-w-7xl mx-auto">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden h-full relative">
+        <div className="p-4 md:p-8 max-w-7xl mx-auto pb-24">
           
           {/* Mobile Header (Hidden on Desktop) */}
           <div className="md:hidden flex items-center justify-between mb-6 bg-[#13131a] p-4 rounded-2xl border border-white/5">

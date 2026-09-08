@@ -217,7 +217,51 @@ class MainActivity : AppCompatActivity() {
                 val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
                 return prefs.getString("fcm_token", "") ?: ""
             }
+
+            @JavascriptInterface
+            fun downloadFile(url: String, filename: String) {
+                runOnUiThread {
+                    try {
+                        val request = android.app.DownloadManager.Request(Uri.parse(url))
+                        request.setMimeType(android.webkit.MimeTypeMap.getFileExtensionFromUrl(url))
+                        request.setTitle(filename)
+                        request.setDescription("Downloading file...")
+                        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                        
+                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                        dm.enqueue(request)
+                        Toast.makeText(this@MainActivity, "Downloading $filename...", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Download failed", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }, "Android")
+
+        // Add Download Listener to catch file downloads natively without opening Chrome
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+            try {
+                val request = android.app.DownloadManager.Request(Uri.parse(url))
+                val filename = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype)
+                request.setMimeType(mimetype)
+                // Need to pass cookies if downloading authenticated files
+                val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
+                request.addRequestHeader("cookie", cookies)
+                request.addRequestHeader("User-Agent", userAgent)
+                request.setDescription("Downloading file...")
+                request.setTitle(filename)
+                request.allowScanningByMediaScanner()
+                request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                
+                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
+                dm.enqueue(request)
+                Toast.makeText(this@MainActivity, "Downloading $filename...", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Download failed", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         // Fetch token directly on boot as well
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->

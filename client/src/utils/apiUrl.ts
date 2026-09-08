@@ -56,22 +56,13 @@ export const downloadFile = async (url: string, filename: string) => {
 
     const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
     
-    // For Android WebViews, Blob downloads will fail silently. 
-    // We bypass the Android native WebView host restriction by shortening the URL to an external domain (is.gd).
-    // This forces Android to open the device's native Chrome browser which can download the file!
+    // Fallback: If not in WebView, try to use a direct link click
     if (isMobile) {
-      try {
-        const res = await fetch(`/api/shorten?url=${encodeURIComponent(url)}`);
-        const data = await res.json();
-        if (data.shorturl) {
-          window.open(data.shorturl, '_system'); // Bypass webview
-          return;
-        }
-      } catch (e) {
-        console.warn("URL shortening failed:", e);
-      }
-      // Ultimate Fallback for Android WebView if is.gd fails: Google Redirect
-      window.open('https://www.google.com/url?q=' + encodeURIComponent(url), '_system');
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.target = '_blank';
+      a.click();
       return;
     }
 
