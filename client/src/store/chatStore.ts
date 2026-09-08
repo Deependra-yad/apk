@@ -139,9 +139,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     requestNotificationPermission();
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null;
+
     const socketUrl = getApiUrl();
     const socket = io(socketUrl, {
-      query: { userId },
+      query: { userId, token },
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,

@@ -150,6 +150,27 @@ const connectedUsers = new Map<string, string>();
 // Map of socketId -> userId
 const socketToUser = new Map<string, string>();
 
+const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
+import jwt from 'jsonwebtoken';
+
+io.use(async (socket, next) => {
+  try {
+    const token = socket.handshake.query.token as string;
+    if (!token) return next(new Error('Authentication required'));
+
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    if (!decoded.userId) return next(new Error('Invalid token'));
+
+    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+    if (!user) return next(new Error('User not found'));
+    if (user.isBanned) return next(new Error('Your account is banned'));
+
+    next();
+  } catch (err) {
+    next(new Error('Authentication failed'));
+  }
+});
+
 io.on('connection', (socket) => {
   const registerUser = async (uid: string) => {
     if (!uid) return;

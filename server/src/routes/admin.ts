@@ -38,19 +38,21 @@ router.get('/stats', adminAuth, async (req, res) => {
     const totalGroups = await prisma.group.count();
     const totalStories = await prisma.story.count();
 
-    let uploadsSizeMb = 0;
-    let fileCount = 0;
+    // Sum storage from Media table
+    const mediaFiles = await prisma.media.findMany({ select: { data: true } });
+    let totalBytes = mediaFiles.reduce((acc, curr) => acc + curr.data.byteLength, 0);
+    const fileCount = mediaFiles.length;
+
+    // Check old uploads folder too
     const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
-    
     if (fs.existsSync(UPLOAD_DIR)) {
       const files = fs.readdirSync(UPLOAD_DIR);
-      fileCount = files.length;
-      let totalBytes = 0;
       files.forEach(file => {
         totalBytes += fs.statSync(path.join(UPLOAD_DIR, file)).size;
       });
-      uploadsSizeMb = +(totalBytes / (1024 * 1024)).toFixed(2);
     }
+
+    const uploadsSizeMb = +(totalBytes / (1024 * 1024)).toFixed(2);
 
     res.json({
       totalUsers,
@@ -73,9 +75,12 @@ router.get('/users', adminAuth, async (req, res) => {
         username: true,
         email: true,
         isAdmin: true,
+        isBanned: true,
+        lastIpAddress: true,
+        lastSeen: true,
         createdAt: true,
         _count: {
-          select: { messagesSent: true }
+          select: { messagesSent: true, loginLogs: true, mediaUploaded: true }
         }
       },
       orderBy: { createdAt: 'desc' }
@@ -86,10 +91,25 @@ router.get('/users', adminAuth, async (req, res) => {
   }
 });
 
+router.post('/users/:id/ban', adminAuth, async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const updatedUser = await prisma.user.update({
+      where: { id: req.params.id },
+      data: { isBanned: !user.isBanned }
+    });
+    
+    res.json({ message: updatedUser.isBanned ? 'User banned successfully' : 'User unbanned successfully', isBanned: updatedUser.isBanned });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update ban status' });
+  }
+});
+
 router.delete('/users/:id', adminAuth, async (req, res) => {
   const userId = req.params.id;
   try {
-    // Delete all related records in a transaction to avoid foreign key constraint errors
     await prisma.$transaction([
       prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } }),
       prisma.groupMember.deleteMany({ where: { userId } }),
@@ -99,6 +119,7 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
       prisma.pushSubscription.deleteMany({ where: { userId } }),
       prisma.story.deleteMany({ where: { userId } }),
       prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } }),
+      prisma.loginLog.deleteMany({ where: { userId } }),
       prisma.user.delete({ where: { id: userId } })
     ]);
     res.json({ message: 'User completely deleted' });
@@ -108,37 +129,72 @@ router.delete('/users/:id', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/clear-storage', adminAuth, async (req, res) => {
+router.get('/logs', adminAuth, async (req, res) => {
   try {
-    const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
-    let deletedCount = 0;
-    
-    if (fs.existsSync(UPLOAD_DIR)) {
-      const files = fs.readdirSync(UPLOAD_DIR);
-      files.forEach(file => {
-        fs.unlinkSync(path.join(UPLOAD_DIR, file));
-        deletedCount++;
-      });
-    }
-
-    res.json({ message: `Successfully deleted ${deletedCount} files to free up space.` });
+    const logs = await prisma.loginLog.findMany({
+      include: {
+        user: { select: { username: true, email: true, avatar: true } }
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 200
+    });
+    res.json(logs);
   } catch (e) {
-    res.status(500).json({ error: 'Failed to clear storage' });
+    res.status(500).json({ error: 'Failed to fetch logs' });
+  }
+});
+
+router.get('/media', adminAuth, async (req, res) => {
+  try {
+    const media = await prisma.media.findMany({
+      include: {
+        user: { select: { username: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    
+    // We do NOT send the raw `data` buffer to the admin panel list API to save bandwidth.
+    const safeMedia = media.map(m => ({
+      id: m.id,
+      fileName: m.fileName,
+      mimeType: m.mimeType,
+      size: m.data.byteLength,
+      createdAt: m.createdAt,
+      user: m.user
+    }));
+    
+    res.json(safeMedia);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch media' });
+  }
+});
+
+router.delete('/media/:id', adminAuth, async (req, res) => {
+  try {
+    await prisma.media.delete({ where: { id: req.params.id } });
+    res.json({ message: 'Media file deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete media' });
   }
 });
 
 router.post('/clear-storage', adminAuth, async (req, res) => {
   try {
+    // Delete all DB media
+    const dbRes = await prisma.media.deleteMany({});
+    
+    // Delete old local files
     const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads');
+    let localDeleted = 0;
     if (fs.existsSync(UPLOAD_DIR)) {
       const files = fs.readdirSync(UPLOAD_DIR);
       for (const file of files) {
         fs.unlinkSync(path.join(UPLOAD_DIR, file));
+        localDeleted++;
       }
     }
-    res.json({ message: 'Server storage cleared successfully.' });
+    res.json({ message: `Successfully deleted ${dbRes.count} database files and ${localDeleted} local files.` });
   } catch (e: any) {
-    console.error('Clear storage error:', e);
     res.status(500).json({ error: 'Failed to clear storage' });
   }
 });

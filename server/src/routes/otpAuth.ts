@@ -75,30 +75,47 @@ router.post('/verify-otp', async (req, res) => {
 
       const passwordHash = await bcrypt.hash(password, 10);
       const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
       
       const user = await prisma.user.create({
-        data: { username, email, passwordHash, avatar }
+        data: { username, email, passwordHash, avatar, lastIpAddress: ip }
+      });
+      
+      await prisma.loginLog.create({
+        data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
       });
       
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
       
-      // Async notify
-      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
-      sendActivityNotification(email, 'login', ip as string, req.headers['user-agent']);
+      sendActivityNotification(email, 'login', ip, userAgent);
       
-      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar } });
+      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, isBanned: user.isBanned } });
     }
     
     if (type === 'login') {
       const user = await prisma.user.findFirst({ where: { email } });
       if (!user) return res.status(404).json({ error: 'User not found' });
       
+      if (user.isBanned) return res.status(403).json({ error: 'Your account has been banned.' });
+      
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastIpAddress: ip }
+      });
+      
+      await prisma.loginLog.create({
+        data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+      });
+      
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
       
-      const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || 'Unknown';
-      sendActivityNotification(email, 'login', ip as string, req.headers['user-agent']);
+      sendActivityNotification(email, 'login', ip, userAgent);
       
-      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar } });
+      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, isBanned: user.isBanned } });
     }
     
     if (type === 'reset_password') {

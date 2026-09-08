@@ -64,6 +64,20 @@ router.post('/google', async (req, res) => {
       }
     }
 
+    if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+
+    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastIpAddress: ip }
+    });
+
+    await prisma.loginLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+    });
+
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
     res.json({
       token,
@@ -71,7 +85,8 @@ router.post('/google', async (req, res) => {
         id: user.id,
         username: user.username,
         avatar: user.avatar,
-        about: user.about
+        about: user.about,
+        isBanned: user.isBanned
       }
     });
 
@@ -139,6 +154,20 @@ router.post('/google-redirect', async (req, res) => {
         });
       }
     }
+
+    if (user.isBanned) return res.redirect('https://apk-flame.vercel.app/auth?error=AccountBanned');
+
+    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastIpAddress: ip }
+    });
+
+    await prisma.loginLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+    });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
     
@@ -208,6 +237,20 @@ router.post('/google-redirect', async (req, res) => {
         }
       }
   
+      if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastIpAddress: ip }
+      });
+
+      await prisma.loginLog.create({
+        data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+      });
+
       const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
       
       res.json({
@@ -239,13 +282,21 @@ router.post('/google-redirect', async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 10);
     const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
 
+    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     const user = await prisma.user.create({
       data: { 
         username, 
         passwordHash, 
         avatar,
-        about: "Hey there! I am using Liquid Chat 🌊"
+        about: "Hey there! I am using Liquid Chat 🌊",
+        lastIpAddress: ip
       }
+    });
+
+    await prisma.loginLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
@@ -269,9 +320,18 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, user.passwordHash);
     if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
 
+    if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+
+    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
     await prisma.user.update({
       where: { id: user.id },
-      data: { lastSeen: new Date() }
+      data: { lastSeen: new Date(), lastIpAddress: ip }
+    });
+
+    await prisma.loginLog.create({
+      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
@@ -291,6 +351,7 @@ router.get('/me', async (req, res) => {
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
     
     res.json({ user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (err) {

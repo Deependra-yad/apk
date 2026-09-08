@@ -62,12 +62,23 @@ router.post('/', upload.single('file'), async (req, res) => {
       return res.json({ fileUrl, fileName, fileSize, mimeType, type });
     }
 
+    let userId = null;
+    const token = req.headers.authorization?.split(' ')[1];
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded: any = jwt.verify(token, process.env.JWT_SECRET || 'liquid_super_secret');
+        userId = decoded.userId;
+      } catch (e) {}
+    }
+
     // 2. FALLBACK: Highly Optimized Database Binary Storage (Supabase)
     const media = await prisma.media.create({
       data: {
         data: req.file.buffer,
         mimeType: mimeType,
         fileName: fileName,
+        userId: userId
       }
     });
 

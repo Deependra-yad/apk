@@ -15,8 +15,10 @@ model User {
   googleId     String?   @unique
   passwordHash String?
   avatar       String?
-  about        String?   @default("Hey there! I am using Liquid Chat 💧")
+  about        String?   @default("Hey there! I am using Liquid Chat dY' ")
   isAdmin      Boolean   @default(false)
+  isBanned     Boolean   @default(false)
+  lastIpAddress String?
   lastSeen     DateTime  @default(now())
   createdAt    DateTime  @default(now())
 
@@ -32,6 +34,21 @@ model User {
   blocksReceived   BlockList[]   @relation("Blocked")
   settings         UserSettings?
   pushSubscriptions PushSubscription[]
+  loginLogs        LoginLog[]
+  mediaUploaded    Media[]
+}
+
+model LoginLog {
+  id        String   @id @default(uuid())
+  userId    String
+  ipAddress String?
+  userAgent String?
+  status    String   // 'success' | 'failed'
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Group {
@@ -189,6 +206,11 @@ model Media {
   mimeType  String
   fileName  String?
   createdAt DateTime @default(now())
+  
+  userId    String?  // Optional for backwards compatibility
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
 }
 
 model OtpCode {
@@ -201,4 +223,3 @@ model OtpCode {
 
   @@index([email])
 }
-
