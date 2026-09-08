@@ -56,6 +56,7 @@ export default function Home() {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [contextMenuTarget, setContextMenuTarget] = useState<{ id: string; type: 'contact' | 'group'; name: string } | null>(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
 
   // WebRTC Calling State
   const [callState, setCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
@@ -67,6 +68,13 @@ export default function Home() {
     initAuth();
     setIsClient(true);
     setAuthChecked(true);
+    
+    // Check for Android App update
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const dismissed = localStorage.getItem('liquid_update_v2');
+    if (isAndroid && !dismissed) {
+      setShowUpdateBanner(true);
+    }
   }, [initAuth]);
 
   // Handle hardware back button
@@ -266,6 +274,40 @@ export default function Home() {
 
   return (
     <main className="w-full h-[100dvh] flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
+      <AnimatePresence>
+        {showUpdateBanner && (
+          <motion.div 
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-gradient-to-r from-blue-600/95 to-indigo-600/95 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-4 shadow-[0_0_40px_rgba(37,99,235,0.3)] flex items-center justify-between gap-4"
+          >
+            <div className="text-white text-sm font-medium">
+              <strong className="block text-base mb-0.5">🚀 New Update Available!</strong>
+              Fixes native file downloading & scrolling. Install now!
+            </div>
+            <div className="flex flex-col gap-2 shrink-0">
+              <a 
+                href="/LiquidChat.apk" 
+                download="LiquidChat.apk"
+                className="bg-white text-blue-600 font-bold px-4 py-1.5 rounded-xl text-xs text-center shadow-lg hover:bg-gray-100 transition-all active:scale-95"
+              >
+                Install
+              </a>
+              <button 
+                onClick={() => {
+                  localStorage.setItem('liquid_update_v2', 'true');
+                  setShowUpdateBanner(false);
+                }}
+                className="text-white/70 text-[10px] hover:text-white transition-colors uppercase font-bold tracking-wider"
+              >
+                Dismiss
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Background Animated Liquid Ambient Blobs */}
       <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-gradient-to-tr from-liquid-accent/10 to-blue-600/10 rounded-full blur-[140px] pointer-events-none animate-pulse -z-10" />
       <div className="absolute bottom-10 right-10 w-[500px] h-[500px] bg-gradient-to-br from-indigo-600/10 to-liquid-secondary/15 rounded-full blur-[130px] pointer-events-none -z-10" />

@@ -5,7 +5,7 @@ import axios from 'axios';
 import { 
   Trash2, Users, Database, Shield, Lock, User, 
   Activity, Image as ImageIcon, LayoutDashboard, 
-  Ban, CheckCircle, Search, LogOut, Clock, Smartphone
+  Ban, CheckCircle, Search, LogOut, Clock, Smartphone, Download
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -355,9 +355,14 @@ export default function AdminDashboard() {
                       ) : (
                         <ImageIcon className="text-gray-600" size={32} />
                       )}
-                      <button onClick={() => handleDeleteMedia(m.id)} className="absolute top-2 right-2 w-8 h-8 bg-black/60 rounded-full text-red-400 opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
-                        <Trash2 size={16} />
-                      </button>
+                      <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
+                        <a href={`/api/upload/${m.id}`} download={m.fileName} target="_blank" rel="noreferrer" className="w-8 h-8 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-blue-500 transition-all">
+                          <Download size={16} />
+                        </a>
+                        <button onClick={() => handleDeleteMedia(m.id)} className="w-8 h-8 bg-black/60 rounded-full text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
                     </div>
                     <div className="p-3">
                       <p className="text-xs text-white truncate font-medium" title={m.fileName}>{m.fileName || 'Unnamed File'}</p>
