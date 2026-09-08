@@ -40,7 +40,7 @@ router.get('/stats', adminAuth, async (req, res) => {
 
     // Sum storage from Media table
     const mediaFiles = await prisma.media.findMany({ select: { data: true } });
-    let totalBytes = mediaFiles.reduce((acc, curr) => acc + curr.data.byteLength, 0);
+    let totalBytes = mediaFiles.reduce((acc: number, curr: any) => acc + curr.data.byteLength, 0);
     const fileCount = mediaFiles.length;
 
     // Check old uploads folder too
@@ -154,7 +154,7 @@ router.get('/media', adminAuth, async (req, res) => {
     });
     
     // We do NOT send the raw `data` buffer to the admin panel list API to save bandwidth.
-    const safeMedia = media.map(m => ({
+    const safeMedia = media.map((m: any) => ({
       id: m.id,
       fileName: m.fileName,
       mimeType: m.mimeType,
