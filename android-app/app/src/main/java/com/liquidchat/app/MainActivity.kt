@@ -3,6 +3,7 @@ package com.liquidchat.app
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.ActivityNotFoundException
@@ -13,10 +14,12 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.os.Message
 import android.provider.MediaStore
 import android.view.KeyEvent
 import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
@@ -177,7 +180,36 @@ class MainActivity : AppCompatActivity() {
                 val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
                 return prefs.getString("fcm_token", "") ?: ""
             }
+
+            @JavascriptInterface
+            fun downloadFile(url: String, filename: String) {
+                runOnUiThread {
+                    downloadUrlDirectly(url, filename)
+                }
+            }
+
+            @JavascriptInterface
+            fun saveBase64File(base64Data: String, filename: String) {
+                runOnUiThread {
+                    try {
+                        val cleanBase64 = if (base64Data.contains(",")) base64Data.substringAfter(",") else base64Data
+                        val bytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT)
+                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                        val file = java.io.File(downloadsDir, filename)
+                        java.io.FileOutputStream(file).use { it.write(bytes) }
+                        android.media.MediaScannerConnection.scanFile(this@MainActivity, arrayOf(file.absolutePath), null, null)
+                        Toast.makeText(this@MainActivity, "Saved to Downloads: $filename", Toast.LENGTH_SHORT).show()
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+                    }
+                }
+            }
         }, "Android")
+
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+            val guessName = URLUtil.guessFileName(url, contentDisposition, mimetype)
+            downloadUrlDirectly(url, guessName)
+        }
 
         // Fetch token directly on boot as well
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
@@ -194,7 +226,6 @@ class MainActivity : AppCompatActivity() {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 super.onPageStarted(view, url, favicon)
-                swipeRefresh.isRefreshing = true
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -218,6 +249,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Keep navigation within the app for our domains
                 if (url.contains("apk-flame.vercel.app") ||
+                    url.contains("liquidchat.online") ||
                     url.contains("apk-production-740c.up.railway.app")) {
                     return false
                 }
@@ -465,6 +497,24 @@ class MainActivity : AppCompatActivity() {
 
     private fun requestMicPermission() {
         permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
+    }
+
+    private fun downloadUrlDirectly(url: String, filename: String) {
+        try {
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                setTitle(filename)
+                setDescription("Downloading $filename")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                setAllowedOverMetered(true)
+                setAllowedOverRoaming(true)
+            }
+            val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            dm.enqueue(request)
+            Toast.makeText(this, "Downloading $filename...", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+        }
     }
 
     // Handle back button - navigate back in WebView history

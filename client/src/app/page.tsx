@@ -100,6 +100,7 @@ export default function Home() {
     if (isClient && !user) {
       router.push('/auth');
     } else if (user && token) {
+      useAuthStore.getState().fetchMe(token);
       connectSocket(user.id);
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
@@ -346,11 +347,28 @@ export default function Home() {
           <>
             {/* Header */}
             <div className="h-20 border-b border-foreground/5 flex items-center justify-between px-6 bg-liquid-base/30">
-              <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-foreground tracking-wide">Liquid Chat</h1>
-                <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
-                  PRO
-                </span>
+              <div className="flex flex-col justify-center">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl font-bold text-foreground tracking-wide">Liquid Chat</h1>
+                  <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
+                    PRO
+                  </span>
+                </div>
+                {user?.liquidNumber ? (
+                  <button 
+                    onClick={() => {
+                      navigator.clipboard.writeText(user.liquidNumber!);
+                      alert("Copied your unique Liquid Number: " + user.liquidNumber);
+                    }}
+                    className="flex items-center gap-1.5 text-[11px] font-mono text-liquid-accent hover:underline text-left mt-0.5"
+                    title="Click to copy your unique 10-digit Liquid Number"
+                  >
+                    <span>ID: <strong className="tracking-wider">{user.liquidNumber}</strong></span>
+                    <span className="text-[9px] text-foreground/40">(Copy)</span>
+                  </button>
+                ) : (
+                  <p className="text-[10px] text-foreground/40 font-mono">@{user?.username}</p>
+                )}
               </div>
 
               <div className="flex items-center gap-2">
@@ -365,6 +383,7 @@ export default function Home() {
                 <button 
                   onClick={() => setIsProfileOpen(true)}
                   className="w-9 h-9 rounded-full overflow-hidden border border-foreground/10 hover:border-liquid-accent transition-colors shadow-sm"
+                  title="View Profile"
                 >
                   <img src={user.avatar} alt={user.username} className="w-full h-full object-cover" />
                 </button>

@@ -1,8 +1,10 @@
 import { create } from 'zustand';
+import axios from 'axios';
 
 export interface User {
   id: string;
-  username: string; liquidNumber?: string;
+  username: string;
+  liquidNumber?: string;
   avatar: string;
   about?: string;
   lastSeen?: string;
@@ -15,9 +17,10 @@ interface AuthState {
   setAuth: (user: User, token: string) => void;
   logout: () => void;
   initAuth: () => void;
+  fetchMe: (tokenOverride?: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   token: null,
   setAuth: (user, token) => {
@@ -32,7 +35,23 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('user');
     set({ user: null, token: null });
   },
+  fetchMe: async (tokenOverride?: string) => {
+    const token = tokenOverride || get().token || (typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null);
+    if (!token) return;
+    try {
+      const res = await axios.get('/api/auth/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.user) {
+        localStorage.setItem('liquid_user', JSON.stringify(res.data.user));
+        set({ user: res.data.user, token });
+      }
+    } catch (e) {
+      console.warn("Failed to refresh user profile from /api/auth/me", e);
+    }
+  },
   initAuth: () => {
+    if (typeof window === 'undefined') return;
     const token = localStorage.getItem('liquid_token');
     const userStr = localStorage.getItem('liquid_user');
     if (token && userStr) {
@@ -42,6 +61,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       } catch (e) {
         console.error("Failed to parse user from local storage");
       }
+    }
+    // Always refresh latest user data from server (including liquidNumber)
+    if (token) {
+      get().fetchMe(token);
     }
   }
 }));

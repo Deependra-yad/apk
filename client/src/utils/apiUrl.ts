@@ -28,62 +28,70 @@ export const resolveMediaUrl = (url?: string | null): string => {
   return `${backend}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-// Download helper that works inside Android WebView (where <a download> is silently ignored)
+// Reliable download helper that works inside Android APK, mobile browsers, and desktop PWAs
 export const downloadFile = async (url: string, filename: string) => {
   try {
-    // For Android WebView: try the Android bridge first
-    if (typeof window !== 'undefined' && (window as any).Android?.downloadFile) {
-      (window as any).Android.downloadFile(url, filename);
-      return;
-    }
-
-    // Attempt Web Share API for Mobile devices (works in many Android WebViews)
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        const response = await fetch(url);
-        const blob = await response.blob();
-        const file = new File([blob], filename, { type: blob.type });
-        await navigator.share({
-          files: [file],
-          title: filename
-        });
-        return; // Success with native share sheet!
-      } catch (shareError) {
-        console.warn("Web Share API failed or was cancelled:", shareError);
-        // Fall through to blob download
-      }
-    }
-
-    const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (!url || typeof window === 'undefined') return;
     
-    // IF WE ARE HERE, THE USER IS ON THE OLD APK WITHOUT THE BRIDGE!
-    // We MUST bypass the Android native WebView host restriction by shortening the URL to an external domain (is.gd).
-    // This forces Android to open the device's native Chrome browser which can download the file!
-    if (isMobile) {
-      // Ultimate Fallback: Open via an external proxy so Android Intent Filter doesn't trap the domain
-      const absUrl = url.startsWith('/') ? `${getApiUrl()}${url}` : url;
-      window.open('https://corsproxy.io/?' + encodeURIComponent(absUrl), '_system');
+    // Ensure URL is absolute
+    const absUrl = url.startsWith('/') 
+      ? `${window.location.origin}${url}` 
+      : (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:'))
+        ? url
+        : `${window.location.origin}/${url}`;
+
+    // 1. Android Native App Bridge (running inside our LiquidChat APK)
+    if ((window as any).Android?.downloadFile) {
+      (window as any).Android.downloadFile(absUrl, filename);
       return;
     }
 
-    // Fetch the file as a blob and trigger a programmatic download (Browser fallback for Desktop)
-    const response = await fetch(url);
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
+    // 2. Direct Blob Download (Standard for Chrome, Edge, Safari, Mobile Chrome)
+    try {
+      const response = await fetch(absUrl, { mode: 'cors' });
+      if (response.ok) {
+        const blob = await response.blob();
+        
+        // If Android bridge has saveBase64File for blob downloads
+        if ((window as any).Android?.saveBase64File) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            (window as any).Android.saveBase64File(base64data, filename);
+          };
+          reader.readAsDataURL(blob);
+          return;
+        }
+
+        const blobUrl = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+          window.URL.revokeObjectURL(blobUrl);
+        }, 3000);
+        return;
+      }
+    } catch (fetchErr) {
+      console.warn("Direct blob fetch failed, falling back to direct anchor", fetchErr);
+    }
+
+    // 3. Clean Fallback: standard anchor click with download attribute
     const a = document.createElement('a');
-    a.href = blobUrl;
+    a.href = absUrl;
     a.download = filename;
-    a.style.display = 'none';
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
     document.body.appendChild(a);
     a.click();
-    
-    // Cleanup
-    setTimeout(() => {
-      document.body.removeChild(a);
-      URL.revokeObjectURL(blobUrl);
-    }, 1000);
+    setTimeout(() => document.body.removeChild(a), 2000);
   } catch (e) {
-    // Ultimate fallback: open in new tab
+    console.error("Download failed:", e);
     window.open(url, '_blank');
   }
 };

@@ -593,6 +593,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   {isGroup && (
                     <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-bold bg-liquid-accent/20 text-liquid-accent shrink-0">Group</span>
                   )}
+                  {!isGroup && activeContact?.liquidNumber && (
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-liquid-accent/15 text-liquid-accent font-semibold shrink-0">
+                      ID: {activeContact.liquidNumber}
+                    </span>
+                  )}
                 </div>
 
               {/* Typing / Online / Member status */}

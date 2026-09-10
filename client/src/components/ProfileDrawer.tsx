@@ -53,6 +53,12 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (isOpen && token) {
+      useAuthStore.getState().fetchMe(token);
+    }
+  }, [isOpen, token]);
+
+  useEffect(() => {
     if (user) {
       setUsernameText(user.username);
       setAboutText(user.about || 'Hey there! I am using Liquid Chat 🌊');
@@ -345,24 +351,41 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
               </div>
 
               {/* Liquid Number Section */}
-              <div className="bg-foreground/5 p-4 rounded-2xl border border-foreground/5 space-y-2">
+              <div className="bg-foreground/5 p-4 rounded-2xl border border-liquid-accent/20 space-y-2 relative overflow-hidden">
                 <div className="flex justify-between items-center text-xs text-foreground/60">
-                  <span className="flex items-center gap-1.5">
-                    <ShieldCheck size={14} className="text-liquid-accent" />
-                    <span>Your Liquid Number</span>
+                  <span className="flex items-center gap-1.5 font-semibold text-liquid-accent">
+                    <ShieldCheck size={16} />
+                    <span>Your Unique Liquid ID</span>
                   </span>
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(user?.liquidNumber || '');
-                      showSuccess('Liquid Number copied!');
-                    }}
-                    className="text-liquid-accent hover:underline flex items-center gap-1 font-semibold"
-                  >
-                    Copy
-                  </button>
+                  {user?.liquidNumber && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(user.liquidNumber!);
+                        showSuccess('Liquid ID copied to clipboard!');
+                      }}
+                      className="text-xs text-liquid-dark bg-liquid-accent px-2.5 py-0.5 rounded-lg font-bold hover:brightness-110 active:scale-95 transition-all"
+                    >
+                      Copy
+                    </button>
+                  )}
                 </div>
-                <p className="text-xl font-bold tracking-widest text-foreground text-center py-2">{user?.liquidNumber}</p>
-                <p className="text-[10px] text-foreground/50 leading-tight">This is your permanent unique number. Share this with friends so they can add you to their contacts.</p>
+                {user?.liquidNumber ? (
+                  <p className="text-2xl font-bold tracking-widest text-foreground text-center py-2 font-mono select-all">
+                    {user.liquidNumber}
+                  </p>
+                ) : (
+                  <div className="py-2 text-center">
+                    <button 
+                      onClick={() => token && useAuthStore.getState().fetchMe(token)}
+                      className="text-xs text-liquid-accent hover:underline"
+                    >
+                      Loading your Liquid ID... (Tap to refresh)
+                    </button>
+                  </div>
+                )}
+                <p className="text-[11px] text-foreground/50 text-center leading-tight">
+                  This 10-digit number is your unique ID. Share it with anyone who wants to chat with you!
+                </p>
               </div>
 
               {/* Bio / About Status Section */}
