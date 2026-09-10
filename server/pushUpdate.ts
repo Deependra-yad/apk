@@ -45,3 +45,4 @@ async function notifyAll() {
 }
 
 notifyAll().then(() => process.exit(0));
+

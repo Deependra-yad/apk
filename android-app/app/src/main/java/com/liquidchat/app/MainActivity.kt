@@ -28,16 +28,6 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import android.app.DownloadManager
-import android.content.Context
-import android.content.BroadcastReceiver
-import android.content.IntentFilter
-import android.os.Environment
-import org.json.JSONObject
-import java.net.URL
-import kotlin.concurrent.thread
-import android.app.AlertDialog
-import android.util.Log
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
@@ -53,7 +43,7 @@ class MainActivity : AppCompatActivity() {
     private var customView: View? = null
 
     private val WEB_URL = "https://apk-flame.vercel.app"
-
+ 
     // Permission request launcher
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
 
@@ -117,9 +107,9 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView = WebView(this).apply {
-            layoutParams = android.widget.FrameLayout.LayoutParams(
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT,
-                android.widget.FrameLayout.LayoutParams.MATCH_PARENT
+            layoutParams = ViewGroup.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT
             )
         }
 
@@ -132,33 +122,6 @@ class MainActivity : AppCompatActivity() {
             webView.restoreState(savedInstanceState)
         } else {
             webView.loadUrl(WEB_URL)
-        }
-        
-        // Handle deep links when app starts
-        handleIntent(intent)
-        
-        // Check for updates
-        checkForUpdates()
-    }
-    
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: Intent?) {
-        val action = intent?.action
-        val data = intent?.data
-        if (Intent.ACTION_VIEW == action && data != null) {
-            if (data.scheme == "liquidchat" && data.host == "auth") {
-                val token = data.getQueryParameter("token")
-                val userStr = data.getQueryParameter("user")
-                val url = "$WEB_URL/auth/callback?token=$token&user=${Uri.encode(userStr)}"
-                webView.loadUrl(url)
-            } else if (data.host?.contains("apk-flame.vercel.app") == true) {
-                webView.loadUrl(data.toString())
-            }
         }
     }
 
@@ -185,9 +148,6 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 safeBrowsingEnabled = true
             }
-            
-            // Hardcode standard Chrome user agent to bypass Google's strict WebView block
-            userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
         }
 
         // Force dark mode in WebView to match the app's dark theme
@@ -217,51 +177,7 @@ class MainActivity : AppCompatActivity() {
                 val prefs = getSharedPreferences("app_prefs", MODE_PRIVATE)
                 return prefs.getString("fcm_token", "") ?: ""
             }
-
-            @JavascriptInterface
-            fun downloadFile(url: String, filename: String) {
-                runOnUiThread {
-                    try {
-                        val request = android.app.DownloadManager.Request(Uri.parse(url))
-                        request.setMimeType(android.webkit.MimeTypeMap.getFileExtensionFromUrl(url))
-                        request.setTitle(filename)
-                        request.setDescription("Downloading file...")
-                        request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                        request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
-                        
-                        val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                        dm.enqueue(request)
-                        Toast.makeText(this@MainActivity, "Downloading $filename...", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, "Download failed", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
         }, "Android")
-
-        // Add Download Listener to catch file downloads natively without opening Chrome
-        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
-            try {
-                val request = android.app.DownloadManager.Request(Uri.parse(url))
-                val filename = android.webkit.URLUtil.guessFileName(url, contentDisposition, mimetype)
-                request.setMimeType(mimetype)
-                // Need to pass cookies if downloading authenticated files
-                val cookies = android.webkit.CookieManager.getInstance().getCookie(url)
-                request.addRequestHeader("cookie", cookies)
-                request.addRequestHeader("User-Agent", userAgent)
-                request.setDescription("Downloading file...")
-                request.setTitle(filename)
-                request.allowScanningByMediaScanner()
-                request.setNotificationVisibility(android.app.DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
-                
-                val dm = getSystemService(Context.DOWNLOAD_SERVICE) as android.app.DownloadManager
-                dm.enqueue(request)
-                Toast.makeText(this@MainActivity, "Downloading $filename...", Toast.LENGTH_SHORT).show()
-            } catch (e: Exception) {
-                Toast.makeText(this@MainActivity, "Download failed", Toast.LENGTH_SHORT).show()
-            }
-        }
 
         // Fetch token directly on boot as well
         com.google.firebase.messaging.FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
@@ -274,7 +190,13 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+
         webView.webViewClient = object : WebViewClient() {
+            override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                super.onPageStarted(view, url, favicon)
+                swipeRefresh.isRefreshing = true
+            }
+
             override fun onPageFinished(view: WebView?, url: String?) {
                 super.onPageFinished(view, url)
                 // Inject CSS to fix viewport and hide browser-specific elements
@@ -287,33 +209,22 @@ class MainActivity : AppCompatActivity() {
                             document.head.appendChild(meta);
                         }
                         meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
-
-                        var style = document.createElement('style');
-                        style.innerHTML = `
-                            /* Prevent horizontal scroll */
-                            body { overflow-x: hidden !important; }
-                            
-                            /* Hide Install PWA banners inside the native app */
-                            .install-prompt, [data-testid="install-pwa"] { display: none !important; }
-                        `;
-                        document.head.appendChild(style);
                     })();
                 """.trimIndent(), null)
             }
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                val uri = request?.url ?: return false
-                val host = uri.host ?: ""
+                val url = request?.url?.toString() ?: return false
 
                 // Keep navigation within the app for our domains
-                if (host.contains("apk-flame.vercel.app") ||
-                    host.contains("apk-production-740c.up.railway.app")) {
+                if (url.contains("apk-flame.vercel.app") ||
+                    url.contains("apk-production-740c.up.railway.app")) {
                     return false
                 }
 
                 // Open external links in the system browser
                 try {
-                    startActivity(Intent(Intent.ACTION_VIEW, uri))
+                    startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
                 } catch (e: ActivityNotFoundException) {
                     // Ignore
                 }
@@ -591,84 +502,5 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         webView.destroy()
         super.onDestroy()
-    }
-    
-    private fun checkForUpdates() {
-        thread {
-            try {
-                val response = URL("https://apk-flame.vercel.app/version.json").readText()
-                val json = JSONObject(response)
-                val serverVersionCode = json.optInt("versionCode", 1)
-                val url = json.optString("url")
-                val releaseNotes = json.optString("releaseNotes", "A new update is available.")
-                
-                // Get current version code
-                val pInfo = packageManager.getPackageInfo(packageName, 0)
-                val currentVersionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    pInfo.longVersionCode.toInt()
-                } else {
-                    pInfo.versionCode
-                }
-                
-                if (serverVersionCode > currentVersionCode && url.isNotEmpty()) {
-                    runOnUiThread {
-                        AlertDialog.Builder(this)
-                            .setTitle("Update Available")
-                            .setMessage(releaseNotes)
-                            .setPositiveButton("Update") { _, _ ->
-                                downloadAndInstallUpdate(url)
-                            }
-                            .setNegativeButton("Later", null)
-                            .setCancelable(false)
-                            .show()
-                    }
-                }
-            } catch (e: Exception) {
-                Log.e("MainActivity", "Update check failed", e)
-            }
-        }
-    }
-
-    private fun downloadAndInstallUpdate(url: String) {
-        try {
-            val request = DownloadManager.Request(Uri.parse(url))
-                .setTitle("LiquidChat Update")
-                .setDescription("Downloading new version...")
-                .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "LiquidChat_Update.apk")
-                .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                .setAllowedOverMetered(true)
-                .setAllowedOverRoaming(true)
-            
-            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            val downloadId = manager.enqueue(request)
-            
-            Toast.makeText(this, "Downloading update...", Toast.LENGTH_SHORT).show()
-            
-            val onComplete = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                    if (id == downloadId) {
-                        try {
-                            val uri = manager.getUriForDownloadedFile(downloadId)
-                            val installIntent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, "application/vnd.android.package-archive")
-                                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                            }
-                            startActivity(installIntent)
-                        } catch (e: Exception) {
-                            Toast.makeText(this@MainActivity, "Failed to start install: ${e.message}", Toast.LENGTH_LONG).show()
-                        }
-                        unregisterReceiver(this)
-                    }
-                }
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
-            } else {
-                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
-        }
     }
 }

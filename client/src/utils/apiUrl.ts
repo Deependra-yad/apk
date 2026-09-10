@@ -56,13 +56,23 @@ export const downloadFile = async (url: string, filename: string) => {
 
     const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
     
-    // Fallback: If not in WebView, try to use a direct link click
+    // IF WE ARE HERE, THE USER IS ON THE OLD APK WITHOUT THE BRIDGE!
+    // We MUST bypass the Android native WebView host restriction by shortening the URL to an external domain (is.gd).
+    // This forces Android to open the device's native Chrome browser which can download the file!
     if (isMobile) {
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      a.target = '_blank';
-      a.click();
+      try {
+        const absUrl = url.startsWith('/') ? `${getApiUrl()}${url}` : url;
+        const res = await fetch(`/api/shorten?url=${encodeURIComponent(absUrl)}`);
+        const data = await res.json();
+        if (data.shorturl) {
+          window.open(data.shorturl, '_system'); // Bypass webview
+          return;
+        }
+      } catch (e) {
+        console.warn("URL shortening failed:", e);
+      }
+      // Ultimate Fallback: Google Redirect
+      window.open('https://www.google.com/url?q=' + encodeURIComponent(url), '_system');
       return;
     }
 
