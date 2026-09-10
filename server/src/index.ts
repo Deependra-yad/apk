@@ -67,6 +67,25 @@ app.use('/uploads', (req, res, next) => {
   next();
 }, express.static(UPLOAD_DIR));
 
+// APK direct download route for Android updates & installations
+app.get(['/LiquidChat.apk', '/download/apk', '/api/download/apk'], (req, res) => {
+  const possiblePaths = [
+    path.resolve(__dirname, '../LiquidChat.apk'),
+    path.resolve(process.cwd(), 'LiquidChat.apk'),
+    path.resolve(UPLOAD_DIR, 'LiquidChat.apk'),
+    path.resolve(process.cwd(), 'uploads/LiquidChat.apk'),
+    path.resolve(__dirname, '../../client/public/LiquidChat.apk'),
+    path.resolve(__dirname, '../../LiquidChat.apk')
+  ];
+  const target = possiblePaths.find(p => fs.existsSync(p));
+  if (target) {
+    res.setHeader('Content-Disposition', 'attachment; filename="LiquidChat.apk"');
+    res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+    return res.sendFile(target);
+  }
+  res.status(404).send('APK file not found on server');
+});
+
 // Express JSON parser for API routes (Increased limit for Base64 image handling)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));

@@ -194,11 +194,30 @@ class MainActivity : AppCompatActivity() {
                     try {
                         val cleanBase64 = if (base64Data.contains(",")) base64Data.substringAfter(",") else base64Data
                         val bytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT)
+                        val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                            .trim()
+                            .ifBlank { "file_${System.currentTimeMillis()}" }
+
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                            val values = android.content.ContentValues().apply {
+                                put(MediaStore.MediaColumns.DISPLAY_NAME, cleanFilename)
+                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                            }
+                            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                            if (uri != null) {
+                                contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                                Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
+                                return@runOnUiThread
+                            }
+                        }
+
                         val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        val file = java.io.File(downloadsDir, filename)
+                        if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                        val file = java.io.File(downloadsDir, cleanFilename)
                         java.io.FileOutputStream(file).use { it.write(bytes) }
                         android.media.MediaScannerConnection.scanFile(this@MainActivity, arrayOf(file.absolutePath), null, null)
-                        Toast.makeText(this@MainActivity, "Saved to Downloads: $filename", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
                     } catch (e: Exception) {
                         Toast.makeText(this@MainActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
                     }
@@ -480,6 +499,12 @@ class MainActivity : AppCompatActivity() {
             != PackageManager.PERMISSION_GRANTED) {
             perms.add(Manifest.permission.RECORD_AUDIO)
         }
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED) {
+                perms.add(Manifest.permission.WRITE_EXTERNAL_STORAGE)
+            }
+        }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
                 != PackageManager.PERMISSION_GRANTED) {
@@ -513,12 +538,16 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
-            val safeFilename = if (filename.isNotBlank()) filename else "download_${System.currentTimeMillis()}"
+            val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                .trim()
+                .ifBlank { "download_${System.currentTimeMillis()}" }
+
             val request = DownloadManager.Request(Uri.parse(url)).apply {
-                setTitle(safeFilename)
-                setDescription("Downloading $safeFilename")
+                setTitle(cleanFilename)
+                setDescription("Downloading $cleanFilename")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFilename)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, cleanFilename)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
                 
@@ -529,9 +558,10 @@ class MainActivity : AppCompatActivity() {
                 }
                 addRequestHeader("User-Agent", webView.settings.userAgentString)
                 
-                val extension = MimeTypeMap.getFileExtensionFromUrl(url)
-                if (!extension.isNullOrEmpty()) {
-                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                val extension = MimeTypeMap.getFileExtensionFromUrl(url.substringBefore("?"))
+                val ext = if (!extension.isNullOrEmpty()) extension else cleanFilename.substringAfterLast('.', "")
+                if (!ext.isNullOrEmpty()) {
+                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
                     if (!mime.isNullOrEmpty()) {
                         setMimeType(mime)
                     }
@@ -539,16 +569,35 @@ class MainActivity : AppCompatActivity() {
             }
             val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
-            Toast.makeText(this, "Downloading $safeFilename to Downloads folder...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Downloading $cleanFilename to Downloads folder...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            // Fallback: Open in system browser so user can download directly
+            // Secondary attempt using app-specific external files dir (scoped storage fallback)
             try {
-                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                startActivity(browserIntent)
-                Toast.makeText(this, "Opening in browser to download...", Toast.LENGTH_SHORT).show()
-            } catch (ex: Exception) {
-                Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    .trim()
+                    .ifBlank { "download_${System.currentTimeMillis()}" }
+                val request = DownloadManager.Request(Uri.parse(url)).apply {
+                    setTitle(cleanFilename)
+                    setDescription("Downloading $cleanFilename")
+                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                    setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, cleanFilename)
+                    setAllowedOverMetered(true)
+                    setAllowedOverRoaming(true)
+                }
+                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+                dm.enqueue(request)
+                Toast.makeText(this, "Downloading $cleanFilename...", Toast.LENGTH_SHORT).show()
+            } catch (e2: Exception) {
+                // Final Fallback: Open in system browser
+                try {
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    startActivity(browserIntent)
+                    Toast.makeText(this, "Opening in browser to download...", Toast.LENGTH_SHORT).show()
+                } catch (ex: Exception) {
+                    Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+                }
             }
         }
     }

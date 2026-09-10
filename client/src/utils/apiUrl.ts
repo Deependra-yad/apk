@@ -33,6 +33,9 @@ export const downloadFile = async (url: string, filename: string) => {
   try {
     if (!url || typeof window === 'undefined') return;
     
+    // Direct Railway domain to guarantee zero Chrome deep-link bouncing into the old APK
+    const RAILWAY_HOST = 'https://apk-production-740c.up.railway.app';
+
     // Ensure URL is absolute
     const absUrl = url.startsWith('/') 
       ? `${window.location.origin}${url}` 
@@ -40,37 +43,60 @@ export const downloadFile = async (url: string, filename: string) => {
         ? url
         : `${window.location.origin}/${url}`;
 
-    // 1. Android Native App Bridge (running inside our LiquidChat APK)
+    // 1. Android Native App Bridge (running inside updated LiquidChat APK)
     if ((window as any).Android?.downloadFile) {
       (window as any).Android.downloadFile(absUrl, filename);
       return;
     }
 
-    // 2. Android WebView without bridge: direct navigation opens system browser to download without intent loop
     const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
-    const isWebView = typeof window !== 'undefined' && (/(wv|WebView)/i.test(navigator.userAgent) || !(window as any).chrome?.runtime);
-    if (isAndroid && isWebView && !(window as any).Android) {
-      window.location.href = absUrl;
+
+    // 2. If running on Android without native downloadFile bridge (e.g. older APK or Android browser):
+    // If the URL is hosted on liquidchat.online, Android App Links will intercept it and loop into the app!
+    // By rewriting the download URL to the Railway backend domain with download=1, Chrome downloads directly without deep-link loop!
+    if (isAndroid && !(window as any).Android?.downloadFile) {
+      let directDownloadUrl = absUrl;
+      if (absUrl.includes('/LiquidChat.apk')) {
+        directDownloadUrl = `${RAILWAY_HOST}/LiquidChat.apk`;
+      } else if (absUrl.includes('/uploads/')) {
+        const pathPart = absUrl.substring(absUrl.indexOf('/uploads/'));
+        const sep = pathPart.includes('?') ? '&' : '?';
+        directDownloadUrl = `${RAILWAY_HOST}${pathPart}${sep}download=1`;
+      } else if (absUrl.includes('/api/upload/')) {
+        const pathPart = absUrl.substring(absUrl.indexOf('/api/upload/'));
+        const sep = pathPart.includes('?') ? '&' : '?';
+        directDownloadUrl = `${RAILWAY_HOST}${pathPart}${sep}download=1`;
+      }
+
+      // If Android has base64 bridge:
+      if ((window as any).Android?.saveBase64File) {
+        try {
+          const res = await fetch(directDownloadUrl, { mode: 'cors' });
+          if (res.ok) {
+            const blob = await res.blob();
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              (window as any).Android.saveBase64File(reader.result as string, filename);
+            };
+            reader.readAsDataURL(blob);
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // Direct navigation to Railway endpoint:
+      // Chrome opens apk-production-740c.up.railway.app which has NO app-link registration,
+      // receives Content-Disposition: attachment, and downloads immediately!
+      window.location.href = directDownloadUrl;
       return;
     }
 
-    // 2. Direct Blob Download (Standard for Chrome, Edge, Safari, Mobile Chrome)
+    // 3. Direct Blob Download (Standard for Chrome, Edge, Safari, Mobile Chrome)
     try {
       const response = await fetch(absUrl, { mode: 'cors' });
       if (response.ok) {
         const blob = await response.blob();
         
-        // If Android bridge has saveBase64File for blob downloads
-        if ((window as any).Android?.saveBase64File) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const base64data = reader.result as string;
-            (window as any).Android.saveBase64File(base64data, filename);
-          };
-          reader.readAsDataURL(blob);
-          return;
-        }
-
         const blobUrl = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.style.display = 'none';
@@ -89,7 +115,7 @@ export const downloadFile = async (url: string, filename: string) => {
       console.warn("Direct blob fetch failed, falling back to direct anchor", fetchErr);
     }
 
-    // 3. Clean Fallback: standard anchor click with download attribute
+    // 4. Clean Fallback: standard anchor click with download attribute
     const a = document.createElement('a');
     a.href = absUrl;
     a.download = filename;
