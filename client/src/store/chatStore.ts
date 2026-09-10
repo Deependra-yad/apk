@@ -351,7 +351,13 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setActiveContact: (contact) => {
-    set({ activeContact: contact, activeGroup: null, replyingTo: null, editingMessage: null, selectedMessageIds: [] });
+    set((state) => ({ 
+      activeContact: contact, 
+      activeGroup: contact ? null : state.activeGroup, 
+      replyingTo: null, 
+      editingMessage: null, 
+      selectedMessageIds: [] 
+    }));
   },
 
   setActiveGroup: (group) => {
@@ -359,11 +365,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (group && socket) {
       socket.emit('join_group', group.id);
     }
-    set({ activeGroup: group, activeContact: null, replyingTo: null, editingMessage: null, selectedMessageIds: [] });
+    set((state) => ({ 
+      activeGroup: group, 
+      activeContact: group ? null : state.activeContact, 
+      replyingTo: null, 
+      editingMessage: null, 
+      selectedMessageIds: [] 
+    }));
   },
 
-  setGroups: (groups) => set({ groups }),
-  setMessages: (messages) => set({ messages }),
+  setGroups: (groups) => set({ groups: Array.isArray(groups) ? groups : [] }),
+  setMessages: (messages) => set({ messages: Array.isArray(messages) ? messages : [] }),
   addMessage: (message) => set((state) => {
     // If it's a 1-on-1 message, add the other party to active conversations
     const otherId = message.senderId === localStorage.getItem('userId') ? message.receiverId : message.senderId;

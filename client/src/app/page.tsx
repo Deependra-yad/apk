@@ -103,7 +103,9 @@ export default function Home() {
   // Handle hardware back button
   useEffect(() => {
     if (activeContact || activeGroup) {
-      window.history.pushState({ chatOpen: true }, '', '#chat');
+      if (typeof window !== 'undefined' && window.location.hash !== '#chat') {
+        window.history.pushState({ chatOpen: true }, '', '#chat');
+      }
     }
   }, [activeContact, activeGroup]);
 
@@ -303,7 +305,6 @@ export default function Home() {
   const handleSelectContact = (contact: any) => {
     markAsRead(contact.id);
     setActiveContact(contact);
-    setActiveGroup(null);
     useChatStore.getState().addActiveConversation(contact.id);
 
     // Persist to local storage so the contact is retained permanently
@@ -333,6 +334,7 @@ export default function Home() {
 
   // Filter Contacts
   const filteredUsers = users.filter(u => {
+    if (user && u.id === user.id) return false;
     const searchLow = contactSearch.toLowerCase().trim();
     const cleanSearchNum = contactSearch.replace(/\D/g, '');
     const matchesSearch = !searchLow || 
@@ -528,7 +530,10 @@ export default function Home() {
 
             {/* Found Contact Card */}
             {searchedContact && (
-              <div className="mx-4 my-2 p-3 rounded-2xl bg-gradient-to-r from-liquid-accent/20 to-blue-500/15 border border-liquid-accent/40 flex items-center justify-between gap-3 shadow-[0_0_20px_rgba(0,210,255,0.15)]">
+              <div 
+                onClick={() => handleSelectContact(searchedContact)}
+                className="mx-4 my-2 p-3 rounded-2xl bg-gradient-to-r from-liquid-accent/20 to-blue-500/15 border border-liquid-accent/40 flex items-center justify-between gap-3 shadow-[0_0_20px_rgba(0,210,255,0.15)] cursor-pointer hover:border-liquid-accent transition-all active:scale-[0.99]"
+              >
                 <div className="flex items-center gap-3 overflow-hidden min-w-0">
                   <div className="relative shrink-0">
                     <img 
@@ -544,7 +549,10 @@ export default function Home() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleSelectContact(searchedContact)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleSelectContact(searchedContact);
+                  }}
                   className="px-3.5 py-1.5 rounded-xl bg-liquid-accent text-liquid-dark font-bold text-xs flex items-center gap-1.5 shadow-md hover:brightness-110 active:scale-95 transition-all shrink-0"
                 >
                   <MessageSquare size={13} />

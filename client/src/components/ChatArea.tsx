@@ -129,7 +129,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const { enterToSend, blockedUsers, toggleBlockUser } = useSettingsStore();
 
   const isGroup = !!activeGroup;
-  const isBlocked = !isGroup && activeContact && blockedUsers.some(u => u.id === activeContact.id);
+  const isBlocked = !isGroup && !!activeContact && Array.isArray(blockedUsers) && blockedUsers.some(u => (u?.id || u) === activeContact.id);
   const isMultiSelectMode = selectedMessageIds.length > 0;
   const targetId = activeContact?.id || activeGroup?.id || '';
   const targetName = isGroup ? activeGroup?.name : activeContact?.username || '';
@@ -141,16 +141,20 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         axios.get(`/api/messages/${activeContact.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
-          setMessages(res.data);
+          setMessages(Array.isArray(res.data) ? res.data : []);
           if (socket) {
             socket.emit('mark_seen', { senderId: activeContact.id, receiverId: user.id });
           }
+        }).catch(() => {
+          setMessages([]);
         });
       } else if (activeGroup) {
         axios.get(`/api/messages/group/${activeGroup.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
-          setMessages(res.data);
+          setMessages(Array.isArray(res.data) ? res.data : []);
+        }).catch(() => {
+          setMessages([]);
         });
       }
     }
@@ -566,7 +570,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             <div 
               className="flex items-center gap-3 cursor-pointer overflow-hidden" 
-              onClick={() => isGroup ? setIsGroupDrawerOpen(true) : onOpenProfile()}
+              onClick={() => isGroup ? setIsGroupDrawerOpen(true) : setIsContactInfoOpen(true)}
             >
               <div className="relative shrink-0">
                 <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden p-[2px] bg-gradient-to-tr from-liquid-accent to-liquid-secondary">
@@ -690,8 +694,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
             <button 
               onClick={() => {
-                if (confirm('Clear chat history for both sides?')) {
-                  socket?.emit('clear_chat', { targetId: activeContact.id });
+                const target = activeContact?.id || activeGroup?.id;
+                if (target && confirm('Clear chat history for both sides?')) {
+                  socket?.emit('clear_chat', { targetId: target });
                 }
               }}
               className="hidden sm:block p-2 sm:p-2.5 rounded-full hover:bg-red-500/20 text-foreground/60 hover:text-red-500 transition-all"

@@ -67,8 +67,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const res = await axios.get('/api/users/blocked', {
         headers: { Authorization: `Bearer ${token}` }
       });
-      set({ blockedUsers: res.data });
-    } catch (e) {}
+      set({ blockedUsers: Array.isArray(res.data) ? res.data : [] });
+    } catch (e) {
+      set({ blockedUsers: [] });
+    }
   },
 
   toggleBlockUser: async (token, blockedId) => {
