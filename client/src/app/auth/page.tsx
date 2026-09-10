@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
+import { useAuthStore } from '@/store/authStore';
 
 const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
@@ -99,6 +100,7 @@ function AuthForm() {
       } else {
         localStorage.setItem('liquid_token', data.token);
         localStorage.setItem('liquid_user', JSON.stringify(data.user));
+        useAuthStore.getState().setAuth(data.user, data.token);
         router.push('/');
       }
     } catch (err: any) {

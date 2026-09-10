@@ -46,6 +46,14 @@ export const downloadFile = async (url: string, filename: string) => {
       return;
     }
 
+    // 2. Android WebView without bridge: direct navigation opens system browser to download without intent loop
+    const isAndroid = typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent);
+    const isWebView = typeof window !== 'undefined' && (/(wv|WebView)/i.test(navigator.userAgent) || !(window as any).chrome?.runtime);
+    if (isAndroid && isWebView && !(window as any).Android) {
+      window.location.href = absUrl;
+      return;
+    }
+
     // 2. Direct Blob Download (Standard for Chrome, Edge, Safari, Mobile Chrome)
     try {
       const response = await fetch(absUrl, { mode: 'cors' });

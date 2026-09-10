@@ -60,6 +60,10 @@ if (!fs.existsSync(UPLOAD_DIR)) {
 app.use('/uploads', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   res.setHeader('Access-Control-Allow-Origin', '*');
+  if (req.query.download === '1' || req.query.download === 'true') {
+    const filename = path.basename(req.path);
+    res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+  }
   next();
 }, express.static(UPLOAD_DIR));
 

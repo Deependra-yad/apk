@@ -102,9 +102,12 @@ router.get('/:id', async (req, res) => {
     }
 
     // Set aggressive caching headers so the browser doesn't re-download it
-    res.setHeader('Content-Type', media.mimeType);
+    res.setHeader('Content-Type', media.mimeType || 'application/octet-stream');
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    if (media.fileName) {
+    if (req.query.download === '1' || req.query.download === 'true') {
+      const downloadName = media.fileName || `file_${media.id}`;
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(downloadName)}"; filename*=UTF-8''${encodeURIComponent(downloadName)}`);
+    } else if (media.fileName) {
       res.setHeader('Content-Disposition', `inline; filename="${media.fileName}"`);
     }
 

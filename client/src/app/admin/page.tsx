@@ -8,6 +8,7 @@ import {
   Ban, CheckCircle, Search, LogOut, Clock, Smartphone, Download
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { downloadFile } from '@/utils/apiUrl';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -356,9 +357,13 @@ export default function AdminDashboard() {
                         <ImageIcon className="text-gray-600" size={32} />
                       )}
                       <div className="absolute top-2 right-2 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                        <a href={`/api/upload/${m.id}`} download={m.fileName} target="_blank" rel="noreferrer" className="w-8 h-8 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-blue-500 transition-all">
+                        <button 
+                          onClick={() => downloadFile(`/api/upload/${m.id}`, m.fileName || `media_${m.id}`)} 
+                          className="w-8 h-8 bg-black/60 rounded-full text-white flex items-center justify-center hover:bg-blue-500 transition-all cursor-pointer"
+                          title="Download File"
+                        >
                           <Download size={16} />
-                        </a>
+                        </button>
                         <button onClick={() => handleDeleteMedia(m.id)} className="w-8 h-8 bg-black/60 rounded-full text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
                           <Trash2 size={16} />
                         </button>

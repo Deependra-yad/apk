@@ -498,7 +498,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           className="w-28 h-28 mb-8 rounded-full bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary shadow-[0_0_50px_rgba(0,210,255,0.4)] flex items-center justify-center p-1"
         >
           <div className="w-full h-full bg-liquid-base rounded-full flex items-center justify-center">
-            <span className="text-4xl">Ã°Å¸Å’Å </span>
+            <span className="text-4xl">🌊</span>
           </div>
         </motion.div>
         <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Liquid Chat</h2>
@@ -519,7 +519,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     : messages;
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-liquid-dark relative overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col h-full bg-liquid-dark relative overflow-hidden">
       {/* Ambient Lighting */}
       <div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-liquid-accent/10 rounded-full blur-[140px] pointer-events-none -z-10" />
 
@@ -738,7 +738,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-4">
         {/* E2EE Disclaimer */}
         <div className="w-full flex justify-center mb-2 mt-2">
           <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center">
@@ -1040,7 +1040,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   Replying to message
                 </span>
                 <p className="text-xs text-foreground/80 whitespace-pre-wrap break-words line-clamp-3">
-                  {replyingTo.text || (replyingTo.type === 'image' ? 'Ã°Å¸â€œÂ· Image' : replyingTo.type === 'video' ? 'Ã°Å¸Å½Â¥ Video' : replyingTo.type === 'audio' ? 'Ã°Å¸Å½Âµ Voice Note' : replyingTo.fileName)}
+                  {replyingTo.text || (replyingTo.type === 'image' ? '📷 Image' : replyingTo.type === 'video' ? '🎥 Video' : replyingTo.type === 'audio' ? '🎵 Voice Note' : replyingTo.fileName)}
                 </p>
               </div>
             </div>
@@ -1079,7 +1079,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <div className="overflow-hidden min-w-0 flex-1">
                 <span className="text-xs font-bold text-foreground block truncate max-w-sm">{file.name}</span>
                 <span className="text-[11px] text-liquid-accent font-mono">
-                  {(file.size / (1024 * 1024)).toFixed(1)} MB Ã¢â‚¬Â¢ {file.type || 'Document'}
+                  {(file.size / (1024 * 1024)).toFixed(1)} MB • {file.type || 'Document'}
                 </span>
               </div>
             </div>
@@ -1248,7 +1248,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 whileHover={{ scale: 1.08 }}
                 whileTap={{ scale: 0.95 }}
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={handleSend}
                 className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer shrink-0"
                 title={editingMessage ? "Save Edit" : "Send Message"}
@@ -1258,7 +1257,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             ) : (
               <button 
                 onMouseDown={(e) => e.preventDefault()}
-                onTouchStart={(e) => e.preventDefault()}
                 onClick={() => setIsRecordingVoice(true)}
                 className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer shrink-0"
                 title="Record Voice Note"
@@ -1540,23 +1538,60 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <p className="text-sm text-foreground/60">{activeContact.email}</p>
             </div>
 
-            <div className="p-4 space-y-2 flex-1 overflow-y-auto">
+            <div className="p-4 space-y-3 flex-1 overflow-y-auto">
+              {activeContact.liquidNumber && (
+                <div className="bg-foreground/5 rounded-xl p-4">
+                  <h4 className="text-xs font-semibold text-foreground/50 mb-1 uppercase tracking-wider">Liquid ID</h4>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-mono font-bold text-liquid-accent">{activeContact.liquidNumber}</p>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(activeContact.liquidNumber);
+                        alert(`Copied ${activeContact.username}'s Liquid ID: ${activeContact.liquidNumber}`);
+                      }}
+                      className="text-xs text-foreground/60 hover:text-liquid-accent underline"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div className="bg-foreground/5 rounded-xl p-4">
-                <h4 className="text-xs font-semibold text-foreground/50 mb-2 uppercase">About</h4>
-                <p className="text-sm">{activeContact.status || "Hey there! I am using Liquid Chat."}</p>
+                <h4 className="text-xs font-semibold text-foreground/50 mb-2 uppercase tracking-wider">About</h4>
+                <p className="text-sm text-foreground/90">{activeContact.about || activeContact.status || "Hey there! I am using Liquid Chat."}</p>
               </div>
               
-              <div className="bg-foreground/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-foreground/10 transition-colors" onClick={() => {}}>
+              <div 
+                className="bg-foreground/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-foreground/10 transition-colors"
+                onClick={() => {
+                  setIsContactInfoOpen(false);
+                  setIsGalleryOpen(true);
+                }}
+              >
                 <div className="flex flex-col">
-                  <h4 className="text-sm font-semibold">Media, Links, and Docs</h4>
-                  <p className="text-xs text-foreground/60">0 shared</p>
+                  <h4 className="text-sm font-semibold text-foreground">Media, Links, and Docs</h4>
+                  <p className="text-xs text-liquid-accent">View all shared files</p>
                 </div>
-                <MoreVertical size={16} className="text-foreground/50" />
+                <FolderKanban size={18} className="text-liquid-accent" />
               </div>
 
-              <div className="bg-foreground/5 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-foreground/10 transition-colors mt-2" onClick={() => {}}>
+              <div 
+                className="bg-rose-500/10 border border-rose-500/20 rounded-xl p-4 flex justify-between items-center cursor-pointer hover:bg-rose-500/20 transition-colors mt-2" 
+                onClick={() => {
+                  if (token) {
+                    toggleBlockUser(token, activeContact.id);
+                    setIsContactInfoOpen(false);
+                  }
+                }}
+              >
                 <div className="flex flex-col">
-                  <h4 className="text-sm text-rose-400 font-semibold">Block {activeContact.username}</h4>
+                  <h4 className="text-sm text-rose-400 font-semibold">
+                    {isBlocked ? `Unblock ${activeContact.username}` : `Block ${activeContact.username}`}
+                  </h4>
+                  <p className="text-[11px] text-foreground/50">
+                    {isBlocked ? 'Allow incoming calls and messages' : 'Block calls and messages from this contact'}
+                  </p>
                 </div>
               </div>
             </div>

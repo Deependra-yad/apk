@@ -43,8 +43,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data?.user) {
-        localStorage.setItem('liquid_user', JSON.stringify(res.data.user));
-        set({ user: res.data.user, token });
+        const currentUser = get().user;
+        const newUser = res.data.user;
+        localStorage.setItem('liquid_user', JSON.stringify(newUser));
+        if (!currentUser || 
+            currentUser.id !== newUser.id || 
+            currentUser.username !== newUser.username || 
+            currentUser.liquidNumber !== newUser.liquidNumber || 
+            currentUser.avatar !== newUser.avatar ||
+            currentUser.about !== newUser.about) {
+          set({ user: newUser, token });
+        }
       }
     } catch (e) {
       console.warn("Failed to refresh user profile from /api/auth/me", e);

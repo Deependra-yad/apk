@@ -2,6 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Download, FileText, ExternalLink } from 'lucide-react';
+import { downloadFile } from '@/utils/apiUrl';
 
 interface DocumentViewerModalProps {
   isOpen: boolean;
@@ -54,16 +55,13 @@ export default function DocumentViewerModal({
             </div>
 
             <div className="flex items-center gap-3">
-              <a
-                href={fileUrl}
-                download={fileName}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all"
+              <button
+                onClick={() => downloadFile(fileUrl, fileName)}
+                className="p-2.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground text-xs font-semibold flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all cursor-pointer"
               >
                 <Download size={15} />
                 <span>Download</span>
-              </a>
+              </button>
 
               <button
                 onClick={onClose}
@@ -97,14 +95,13 @@ export default function DocumentViewerModal({
                 <p className="text-xs text-foreground/60 mb-6 max-w-sm">
                   This file format can be downloaded and opened directly in your native application.
                 </p>
-                <a
-                  href={fileUrl}
-                  download={fileName}
-                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground font-bold text-sm shadow-[0_0_20px_rgba(0,210,255,0.4)] flex items-center gap-2"
+                <button
+                  onClick={() => downloadFile(fileUrl, fileName)}
+                  className="px-6 py-3 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground font-bold text-sm shadow-[0_0_20px_rgba(0,210,255,0.4)] flex items-center gap-2 cursor-pointer hover:brightness-110"
                 >
                   <Download size={18} />
                   <span>Download File ({fileSize})</span>
-                </a>
+                </button>
               </div>
             )}
           </div>

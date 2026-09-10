@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Users, Pin, BellOff, Archive, 
-  MoreVertical, Plus, Check, Trash2, UserX, X
+  MoreVertical, Plus, Check, Trash2, UserX, X,
+  Loader2, MessageSquare, AlertCircle
 } from 'lucide-react';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
@@ -64,11 +65,33 @@ export default function Home() {
   const [isVideoCall, setIsVideoCall] = useState(true);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
 
+  const [searchedContact, setSearchedContact] = useState<any | null>(null);
+  const [isSearchingNumber, setIsSearchingNumber] = useState(false);
+  const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
+  const initialFetchDone = useRef(false);
+
   useEffect(() => {
     initAuth();
     setIsClient(true);
     setAuthChecked(true);
     
+    // Restore locally saved contacts from storage
+    try {
+      const saved = localStorage.getItem('liquid_saved_contacts');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setUsers(prev => {
+            const map = new Map();
+            prev.forEach(u => map.set(u.id, u));
+            parsed.forEach((u: any) => map.set(u.id, u));
+            return Array.from(map.values());
+          });
+          parsed.forEach((u: any) => useChatStore.getState().addActiveConversation(u.id));
+        }
+      }
+    } catch (e) {}
+
     // Check for Android App update
     const isAndroid = /Android/i.test(navigator.userAgent);
     const dismissed = localStorage.getItem('liquid_update_v2');
@@ -95,11 +118,15 @@ export default function Home() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, [activeContact, activeGroup, setActiveContact, setActiveGroup]);
 
-  // Auth Guard & Initial Data Fetch
+  // Auth Guard & Initial Data Fetch (Runs ONCE per session to preserve contacts)
   useEffect(() => {
-    if (isClient && !user) {
+    if (!isClient) return;
+    if (!token && !user) {
       router.push('/auth');
-    } else if (user && token) {
+      return;
+    }
+    if (user && token && !initialFetchDone.current) {
+      initialFetchDone.current = true;
       useAuthStore.getState().fetchMe(token);
       connectSocket(user.id);
       fetchSettings(token);
@@ -110,8 +137,15 @@ export default function Home() {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         const others = res.data.filter((u: any) => u.id !== user.id);
-        setUsers(others);
-        useChatStore.getState().setActiveConversations(others.map((u: any) => u.id));
+        setUsers(prev => {
+          const map = new Map();
+          prev.forEach(u => map.set(u.id, u));
+          others.forEach((u: any) => map.set(u.id, u));
+          return Array.from(map.values());
+        });
+        const currentActive = useChatStore.getState().activeConversations;
+        const mergedIds = Array.from(new Set([...currentActive, ...others.map((u: any) => u.id)]));
+        useChatStore.getState().setActiveConversations(mergedIds);
       }).catch(console.error);
 
       // Fetch groups
@@ -214,18 +248,37 @@ export default function Home() {
 
   // Search user by 10-digit Liquid Number
   useEffect(() => {
-    if (token && contactSearch.trim().length === 10 && /^\d+$/.test(contactSearch.trim())) {
-      axios.get(`/api/users/search?liquidNumber=${contactSearch.trim()}`, {
+    const rawNumber = contactSearch.replace(/\D/g, '');
+    if (token && rawNumber.length === 10) {
+      setIsSearchingNumber(true);
+      setSearchFeedback(null);
+      axios.get(`/api/users/search?liquidNumber=${rawNumber}`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         if (res.data && res.data.length > 0) {
-          const fetchedUser = res.data[0];
+          const found = res.data[0];
+          setSearchedContact(found);
           setUsers(prev => {
-            if (prev.some(u => u.id === fetchedUser.id)) return prev;
-            return [...prev, fetchedUser];
+            const map = new Map();
+            prev.forEach(u => map.set(u.id, u));
+            map.set(found.id, found);
+            return Array.from(map.values());
           });
+          setSearchFeedback(null);
+        } else {
+          setSearchedContact(null);
+          setSearchFeedback('No user found with this 10-digit ID');
         }
-      }).catch(console.error);
+      }).catch(() => {
+        setSearchedContact(null);
+        setSearchFeedback('Search error');
+      }).finally(() => {
+        setIsSearchingNumber(false);
+      });
+    } else {
+      setSearchedContact(null);
+      setSearchFeedback(null);
+      setIsSearchingNumber(false);
     }
   }, [contactSearch, token]);
 
@@ -247,6 +300,33 @@ export default function Home() {
     router.push('/login');
   };
 
+  const handleSelectContact = (contact: any) => {
+    markAsRead(contact.id);
+    setActiveContact(contact);
+    setActiveGroup(null);
+    useChatStore.getState().addActiveConversation(contact.id);
+
+    // Persist to local storage so the contact is retained permanently
+    try {
+      const saved = localStorage.getItem('liquid_saved_contacts');
+      const list = saved ? JSON.parse(saved) : [];
+      const updated = [contact, ...list.filter((c: any) => c.id !== contact.id)];
+      localStorage.setItem('liquid_saved_contacts', JSON.stringify(updated));
+    } catch (e) {}
+
+    // Ensure they are in users list
+    setUsers(prev => {
+      const map = new Map();
+      prev.forEach(u => map.set(u.id, u));
+      map.set(contact.id, contact);
+      return Array.from(map.values());
+    });
+
+    setContactSearch('');
+    setSearchedContact(null);
+    setSearchFeedback(null);
+  };
+
   const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
   const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;
   const isTargetMuted = (targetId: string) => chatMetaMap[targetId]?.isMuted || false;
@@ -254,19 +334,29 @@ export default function Home() {
   // Filter Contacts
   const filteredUsers = users.filter(u => {
     const searchLow = contactSearch.toLowerCase().trim();
+    const cleanSearchNum = contactSearch.replace(/\D/g, '');
     const matchesSearch = !searchLow || 
       u.username.toLowerCase().includes(searchLow) || 
-      u.liquidNumber === searchLow;
+      (u.liquidNumber && (u.liquidNumber === searchLow || u.liquidNumber === cleanSearchNum));
     
     const archived = isTargetArchived(u.id);
-    const hasHistory = activeConversations.includes(u.id) || u.liquidNumber === searchLow;
+    const hasHistory = activeConversations.includes(u.id) || 
+      (u.liquidNumber && u.liquidNumber === cleanSearchNum) || 
+      (searchedContact?.id === u.id) ||
+      (activeContact?.id === u.id);
+
+    // If currently active chat, always keep in list
+    if (activeContact?.id === u.id) return true;
+
+    // If searching, show any matched users
+    if (contactSearch.trim()) return matchesSearch;
 
     // If no search query, ONLY show users with chat history
-    if (!contactSearch.trim() && !hasHistory) return false;
+    if (!hasHistory) return false;
 
-    if (chatFilter === 'archived') return archived && matchesSearch;
+    if (chatFilter === 'archived') return archived;
     if (chatFilter === 'groups') return false;
-    return !archived && matchesSearch;
+    return !archived;
   });
 
   // Filter Groups
@@ -394,18 +484,74 @@ export default function Home() {
             <StatusStoriesBar />
 
             {/* Search Bar */}
-            <div className="px-4 pt-3 pb-2">
+            <div className="px-4 pt-3 pb-1">
               <div className="h-10 bg-background/30 rounded-xl px-3 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
-                <Search size={16} className="text-foreground/60" />
+                <Search size={16} className="text-foreground/60 shrink-0" />
                 <input
                   type="text"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
                   placeholder="Search by name or 10-digit Liquid Number..."
-                  className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500"
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500 min-w-0"
                 />
+                {contactSearch && (
+                  <button 
+                    onClick={() => {
+                      setContactSearch('');
+                      setSearchedContact(null);
+                      setSearchFeedback(null);
+                    }}
+                    className="p-1 text-foreground/50 hover:text-foreground rounded-full hover:bg-foreground/10 transition-colors"
+                    title="Clear search"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
               </div>
             </div>
+
+            {/* Search Status Indicator */}
+            {isSearchingNumber && (
+              <div className="px-5 py-1.5 flex items-center gap-2 text-xs text-liquid-accent animate-pulse">
+                <Loader2 size={13} className="animate-spin" />
+                <span>Searching user by Liquid ID...</span>
+              </div>
+            )}
+
+            {/* Search Error / Not Found Feedback */}
+            {searchFeedback && (
+              <div className="mx-4 my-1.5 p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle size={14} className="shrink-0 text-rose-400" />
+                <span>{searchFeedback}</span>
+              </div>
+            )}
+
+            {/* Found Contact Card */}
+            {searchedContact && (
+              <div className="mx-4 my-2 p-3 rounded-2xl bg-gradient-to-r from-liquid-accent/20 to-blue-500/15 border border-liquid-accent/40 flex items-center justify-between gap-3 shadow-[0_0_20px_rgba(0,210,255,0.15)]">
+                <div className="flex items-center gap-3 overflow-hidden min-w-0">
+                  <div className="relative shrink-0">
+                    <img 
+                      src={searchedContact.avatar} 
+                      alt={searchedContact.username} 
+                      className="w-10 h-10 rounded-full object-cover bg-liquid-base border border-liquid-accent/50" 
+                    />
+                    <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-liquid-base" />
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-foreground truncate">{searchedContact.username}</h4>
+                    <span className="text-[11px] font-mono text-liquid-accent block">ID: {searchedContact.liquidNumber}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleSelectContact(searchedContact)}
+                  className="px-3.5 py-1.5 rounded-xl bg-liquid-accent text-liquid-dark font-bold text-xs flex items-center gap-1.5 shadow-md hover:brightness-110 active:scale-95 transition-all shrink-0"
+                >
+                  <MessageSquare size={13} />
+                  <span>Chat</span>
+                </button>
+              </div>
+            )}
 
             {/* Chat Category Filter Tabs (All, Unread, Groups, Archived) */}
             <div className="px-4 py-2 flex items-center gap-1.5 border-b border-foreground/5 overflow-x-auto no-scrollbar">
@@ -425,7 +571,7 @@ export default function Home() {
             </div>
 
             {/* Unified Chats & Groups List */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
               {unifiedChatList.length === 0 ? (
                 <div className="p-8 text-center text-foreground/50 text-xs">
                   No conversations found in this filter
@@ -448,7 +594,7 @@ export default function Home() {
                         if (isGroupItem) {
                           setActiveGroup(item as any);
                         } else {
-                          setActiveContact(item);
+                          handleSelectContact(item);
                         }
                       }}
                       onContextMenu={(e) => {
@@ -544,7 +690,7 @@ export default function Home() {
       </div>
 
       {/* Main Chat Area */}
-      <div className={`flex-1 h-full flex flex-col ${isChatOpen ? 'flex' : 'hidden sm:flex'}`}>
+      <div className={`flex-1 min-h-0 h-full flex flex-col ${isChatOpen ? 'flex' : 'hidden sm:flex'}`}>
         <ChatArea 
           onStartCall={handleStartCall}
           onOpenProfile={() => setIsProfileOpen(true)}

@@ -28,6 +28,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.LiquidChat"
         android:usesCleartextTraffic="false"
+        android:requestLegacyExternalStorage="true"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="34">
 
@@ -46,7 +47,8 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="https" android:host="apk-flame.vercel.app" />
+                <data android:scheme="https" android:host="liquidchat.online" android:pathPrefix="/auth" />
+                <data android:scheme="https" android:host="apk-flame.vercel.app" android:pathPrefix="/auth" />
             </intent-filter>
             
             <intent-filter>

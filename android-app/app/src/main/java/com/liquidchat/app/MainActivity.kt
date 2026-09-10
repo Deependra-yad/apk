@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var customView: View? = null
 
-    private val WEB_URL = "https://apk-flame.vercel.app"
+    private val WEB_URL = "https://liquidchat.online"
  
     // Permission request launcher
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
@@ -246,6 +246,13 @@ class MainActivity : AppCompatActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
+
+                // Intercept any file downloads natively
+                if (url.endsWith(".apk") || url.contains("/uploads/") || url.contains("/api/media/export/") || url.contains("download=1") || (url.contains("/api/upload/") && !url.contains("/api/upload/avatar"))) {
+                    val guessName = URLUtil.guessFileName(url, null, null)
+                    downloadUrlDirectly(url, guessName)
+                    return true
+                }
 
                 // Keep navigation within the app for our domains
                 if (url.contains("apk-flame.vercel.app") ||
@@ -501,19 +508,48 @@ class MainActivity : AppCompatActivity() {
 
     private fun downloadUrlDirectly(url: String, filename: String) {
         try {
+            if (!url.startsWith("http://") && !url.startsWith("https://")) {
+                Toast.makeText(this, "Invalid download link", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val safeFilename = if (filename.isNotBlank()) filename else "download_${System.currentTimeMillis()}"
             val request = DownloadManager.Request(Uri.parse(url)).apply {
-                setTitle(filename)
-                setDescription("Downloading $filename")
+                setTitle(safeFilename)
+                setDescription("Downloading $safeFilename")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, filename)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, safeFilename)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
+                
+                // Add Cookies and User-Agent headers
+                val cookies = CookieManager.getInstance().getCookie(url)
+                if (!cookies.isNullOrEmpty()) {
+                    addRequestHeader("Cookie", cookies)
+                }
+                addRequestHeader("User-Agent", webView.settings.userAgentString)
+                
+                val extension = MimeTypeMap.getFileExtensionFromUrl(url)
+                if (!extension.isNullOrEmpty()) {
+                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(extension)
+                    if (!mime.isNullOrEmpty()) {
+                        setMimeType(mime)
+                    }
+                }
             }
             val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
-            Toast.makeText(this, "Downloading $filename...", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Downloading $safeFilename to Downloads folder...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+            // Fallback: Open in system browser so user can download directly
+            try {
+                val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                startActivity(browserIntent)
+                Toast.makeText(this, "Opening in browser to download...", Toast.LENGTH_SHORT).show()
+            } catch (ex: Exception) {
+                Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
