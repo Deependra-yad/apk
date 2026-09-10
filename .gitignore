@@ -43,7 +43,8 @@ Thumbs.db
 .vscode/
 .idea/
 
-LiquidChat.apk
+/LiquidChat.apk
+!client/public/LiquidChat.apk
 android-app/jdk17.zip
 
 server/firebase-adminsdk.json
