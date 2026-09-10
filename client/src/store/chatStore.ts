@@ -249,6 +249,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
       });
     });
 
+    socket.on('message_error', ({ error, tempId }: { error: string, tempId?: string }) => {
+      alert(error);
+      if (tempId) {
+        set(state => ({
+          messages: state.messages.filter(m => m.id !== tempId)
+        }));
+      }
+    });
+
     socket.on('message_edited', (updatedMessage: Message) => {
       set((state) => ({
         messages: state.messages.map(m => m.id === updatedMessage.id ? { ...m, text: updatedMessage.text, isEdited: true } : m)

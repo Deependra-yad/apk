@@ -187,15 +187,16 @@ export default function MediaGalleryDrawer({ isOpen, onClose, targetId, targetNa
                           </div>
                         </div>
 
-                        <a
-                          href={resolveMediaUrl(doc.fileUrl)}
-                          download={doc.fileName}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          onClick={() => {
+                            import('@/utils/apiUrl').then(({ downloadFile }) => {
+                              downloadFile(resolveMediaUrl(doc.fileUrl), doc.fileName || 'document');
+                            });
+                          }}
                           className="p-2 rounded-lg bg-foreground/10 hover:bg-liquid-accent/20 text-foreground/80 hover:text-liquid-accent"
                         >
                           <Download size={14} />
-                        </a>
+                        </button>
                       </div>
                     ))}
                   </div>

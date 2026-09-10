@@ -8,6 +8,20 @@ import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { resolveMediaUrl } from '@/utils/apiUrl';
+import { parseTextWithLinks } from '@/utils/textParser';
+
+interface Story {
+  id: string;
+  userId?: string;
+  mediaUrl?: string;
+  caption?: string;
+  type?: string;
+  user?: {
+    id: string;
+    name?: string;
+    avatar?: string;
+  };
+}
 
 export default function StatusStoriesBar() {
   const [mounted, setMounted] = useState(false);
@@ -373,8 +387,10 @@ export default function StatusStoriesBar() {
                     <img src={resolveMediaUrl(currentStory.mediaUrl)} alt="Story" className="max-w-full max-h-full object-contain rounded-xl" />
                   )
                 ) : (
-                  <div className="text-center p-8">
-                    <p className="text-2xl font-semibold text-foreground leading-relaxed">{currentStory.caption}</p>
+                  <div className="text-center p-8 w-full">
+                    <p className="text-2xl font-semibold text-foreground leading-relaxed w-full">
+                      {parseTextWithLinks(currentStory.caption || '')}
+                    </p>
                   </div>
                 )}
 
@@ -396,7 +412,7 @@ export default function StatusStoriesBar() {
               {/* Story Caption (if media) */}
               {currentStory.mediaUrl && currentStory.caption && (
                 <div className="p-4 bg-background/50 rounded-xl backdrop-blur-md text-center text-sm text-foreground z-30">
-                  {currentStory.caption}
+                  {parseTextWithLinks(currentStory.caption)}
                 </div>
               )}
 

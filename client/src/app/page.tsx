@@ -104,13 +104,14 @@ export default function Home() {
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
 
-      // Fetch users
-      axios.get('/api/auth/users', {
+      // Fetch active conversations list (full user objects)
+      axios.get('/api/users/conversations', {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         const others = res.data.filter((u: any) => u.id !== user.id);
         setUsers(others);
-      });
+        useChatStore.getState().setActiveConversations(others.map((u: any) => u.id));
+      }).catch(console.error);
 
       // Fetch groups
       axios.get('/api/groups', {
@@ -129,13 +130,6 @@ export default function Home() {
       }).then(res => {
         setChatMetaMap(res.data);
       });
-
-      // Fetch active conversations list
-      axios.get('/api/users/conversations', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        useChatStore.getState().setActiveConversations(res.data);
-      }).catch(console.error);
     }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
 
@@ -235,6 +229,22 @@ export default function Home() {
     router.push('/login');
   };
 
+  useEffect(() => {
+    if (contactSearch.trim().length === 10 && /^\d+$/.test(contactSearch.trim())) {
+      axios.get(`/api/users/search?liquidNumber=${contactSearch.trim()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        if (res.data && res.data.length > 0) {
+          const fetchedUser = res.data[0];
+          setUsers(prev => {
+            if (prev.some(u => u.id === fetchedUser.id)) return prev;
+            return [...prev, fetchedUser];
+          });
+        }
+      }).catch(console.error);
+    }
+  }, [contactSearch, token]);
+
   const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
   const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;
   const isTargetMuted = (targetId: string) => chatMetaMap[targetId]?.isMuted || false;
@@ -242,9 +252,12 @@ export default function Home() {
   // Filter Contacts
   const filteredUsers = users.filter(u => {
     const searchLow = contactSearch.toLowerCase().trim();
-    const matchesSearch = !searchLow || u.username.toLowerCase().startsWith(searchLow) || u.email?.toLowerCase().startsWith(searchLow);
+    const matchesSearch = !searchLow || 
+      u.username.toLowerCase().includes(searchLow) || 
+      u.liquidNumber === searchLow;
+    
     const archived = isTargetArchived(u.id);
-    const hasHistory = activeConversations.includes(u.id);
+    const hasHistory = activeConversations.includes(u.id) || u.liquidNumber === searchLow;
 
     // If no search query, ONLY show users with chat history
     if (!contactSearch.trim() && !hasHistory) return false;
@@ -287,13 +300,16 @@ export default function Home() {
               Fixes native file downloading & scrolling. Install now!
             </div>
             <div className="flex flex-col gap-2 shrink-0">
-              <a 
-                href="/LiquidChat.apk" 
-                download="LiquidChat.apk"
+              <button 
+                onClick={() => {
+                  import('@/utils/apiUrl').then(({ downloadFile }) => {
+                    downloadFile(window.location.origin + '/LiquidChat.apk', 'LiquidChat.apk');
+                  });
+                }}
                 className="bg-white text-blue-600 font-bold px-4 py-1.5 rounded-xl text-xs text-center shadow-lg hover:bg-gray-100 transition-all active:scale-95"
               >
                 Install
-              </a>
+              </button>
               <button 
                 onClick={() => {
                   localStorage.setItem('liquid_update_v2', 'true');
@@ -365,7 +381,7 @@ export default function Home() {
                   type="text"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
-                  placeholder="Search chats, groups..."
+                  placeholder="Search by name or 10-digit Liquid Number..."
                   className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500"
                 />
               </div>

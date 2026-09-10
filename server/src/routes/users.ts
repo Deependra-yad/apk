@@ -177,7 +177,36 @@ router.get('/conversations', authenticate, async (req: any, res) => {
       if (m.receiverId !== userId && m.receiverId) userIds.add(m.receiverId);
     });
 
-    res.json(Array.from(userIds));
+    const users = await prisma.user.findMany({
+      where: { id: { in: Array.from(userIds) } },
+      select: {
+        id: true,
+        username: true,
+        liquidNumber: true,
+        avatar: true,
+        about: true,
+        lastSeen: true,
+        settings: { select: { lastSeenPrivacy: true } },
+        blocksInitiated: { select: { blockedId: true } },
+        blocksReceived: { select: { blockerId: true } }
+      }
+    });
+
+    const sanitizedUsers = users.map((u: any) => {
+      const isBlockedByMe = u.blocksReceived.some((b: any) => b.blockerId === userId);
+      const hasBlockedMe = u.blocksInitiated.some((b: any) => b.blockedId === userId);
+      const privacy = u.settings?.lastSeenPrivacy || 'everyone';
+      let hideLastSeen = false;
+
+      if (privacy === 'nobody') hideLastSeen = true;
+      else if (isBlockedByMe || hasBlockedMe) hideLastSeen = true;
+
+      const { settings, blocksInitiated, blocksReceived, ...safeUser } = u;
+      if (hideLastSeen) safeUser.lastSeen = null;
+      return safeUser;
+    });
+
+    res.json(sanitizedUsers);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch conversations' });
   }
@@ -211,6 +240,50 @@ router.delete('/me/storage', authenticate, async (req: any, res) => {
   } catch (error) {
     console.error('Failed to clear storage:', error);
     res.status(500).json({ error: 'Failed to clear storage' });
+  }
+});
+
+router.get('/search', authenticate, async (req: any, res) => {
+  try {
+    const liquidNumber = req.query.liquidNumber as string;
+    if (!liquidNumber || liquidNumber.length !== 10) return res.json([]);
+    
+    const user = await prisma.user.findUnique({
+      where: { liquidNumber },
+      select: { 
+        id: true, 
+        username: true, 
+        liquidNumber: true,
+        avatar: true, 
+        about: true, 
+        lastSeen: true,
+        settings: { select: { lastSeenPrivacy: true } },
+        blocksInitiated: { select: { blockedId: true } },
+        blocksReceived: { select: { blockerId: true } }
+      }
+    });
+
+    if (!user) return res.json([]);
+
+    const currentUserId = req.userId;
+    if (user.id === currentUserId) return res.json([]);
+
+    const isBlockedByMe = currentUserId ? user.blocksReceived.some((b: any) => b.blockerId === currentUserId) : false;
+    const hasBlockedMe = currentUserId ? user.blocksInitiated.some((b: any) => b.blockedId === currentUserId) : false;
+
+    const privacy = user.settings?.lastSeenPrivacy || 'everyone';
+    let hideLastSeen = false;
+
+    if (privacy === 'nobody') hideLastSeen = true;
+    else if (privacy === 'contacts' && !currentUserId) hideLastSeen = true;
+    else if (isBlockedByMe || hasBlockedMe) hideLastSeen = true;
+
+    const { settings, blocksInitiated, blocksReceived, ...safeUser } = user as any;
+    if (hideLastSeen) safeUser.lastSeen = null;
+
+    res.json([safeUser]);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to search user' });
   }
 });
 

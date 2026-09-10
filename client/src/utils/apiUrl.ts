@@ -60,19 +60,9 @@ export const downloadFile = async (url: string, filename: string) => {
     // We MUST bypass the Android native WebView host restriction by shortening the URL to an external domain (is.gd).
     // This forces Android to open the device's native Chrome browser which can download the file!
     if (isMobile) {
-      try {
-        const absUrl = url.startsWith('/') ? `${getApiUrl()}${url}` : url;
-        const res = await fetch(`/api/shorten?url=${encodeURIComponent(absUrl)}`);
-        const data = await res.json();
-        if (data.shorturl) {
-          window.open(data.shorturl, '_system'); // Bypass webview
-          return;
-        }
-      } catch (e) {
-        console.warn("URL shortening failed:", e);
-      }
-      // Ultimate Fallback: Google Redirect
-      window.open('https://www.google.com/url?q=' + encodeURIComponent(url), '_system');
+      // Ultimate Fallback: Open via an external proxy so Android Intent Filter doesn't trap the domain
+      const absUrl = url.startsWith('/') ? `${getApiUrl()}${url}` : url;
+      window.open('https://corsproxy.io/?' + encodeURIComponent(absUrl), '_system');
       return;
     }
 

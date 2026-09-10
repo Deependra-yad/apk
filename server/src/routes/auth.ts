@@ -44,11 +44,15 @@ router.post('/google', async (req, res) => {
         counter++;
       }
 
+      const { generateLiquidNumber } = await import('../utils/numberGen');
+      const liquidNumber = await generateLiquidNumber();
+
       user = await prisma.user.create({
         data: {
           username: uniqueUsername,
           email: email || null,
           googleId: sub,
+          liquidNumber,
           avatar: picture || null
         }
       });
@@ -132,11 +136,15 @@ router.post('/google-redirect', async (req, res) => {
         counter++;
       }
 
+      const { generateLiquidNumber } = await import('../utils/numberGen');
+      const liquidNumber = await generateLiquidNumber();
+
       user = await prisma.user.create({
         data: {
           username: uniqueUsername,
           email: email || null,
           googleId: sub,
+          liquidNumber,
           avatar: picture || null,
           isAdmin: uniqueUsername.toLowerCase().includes('deependra')
         }
@@ -214,11 +222,15 @@ router.post('/google-redirect', async (req, res) => {
           counter++;
         }
   
+        const { generateLiquidNumber } = await import('../utils/numberGen');
+        const liquidNumber = await generateLiquidNumber();
+
         user = await prisma.user.create({
           data: {
             username: uniqueUsername,
             email: email || null,
             googleId: sub,
+            liquidNumber,
             avatar: picture || null,
             isAdmin: uniqueUsername.toLowerCase().includes('deependra')
           }
@@ -285,12 +297,16 @@ router.post('/google-redirect', async (req, res) => {
     const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
+    const { generateLiquidNumber } = await import('../utils/numberGen');
+    const liquidNumber = await generateLiquidNumber();
+
     const user = await prisma.user.create({
       data: { 
         username, 
         passwordHash, 
+        liquidNumber,
         avatar,
-        about: "Hey there! I am using Liquid Chat 🌊",
+        about: "Hey there! I am using Liquid Chat dYOS",
         lastIpAddress: ip
       }
     });
@@ -300,7 +316,7 @@ router.post('/google-redirect', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({ token, user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during registration' });
@@ -335,7 +351,7 @@ router.post('/login', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({ token, user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during login' });
@@ -353,7 +369,7 @@ router.get('/me', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
     
-    res.json({ user: { id: user.id, username: user.username, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({ user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
@@ -449,6 +465,7 @@ router.get('/users', async (req, res) => {
       select: { 
         id: true, 
         username: true, 
+        liquidNumber: true,
         avatar: true, 
         about: true, 
         lastSeen: true,

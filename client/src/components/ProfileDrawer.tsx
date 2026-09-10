@@ -344,6 +344,27 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                 )}
               </div>
 
+              {/* Liquid Number Section */}
+              <div className="bg-foreground/5 p-4 rounded-2xl border border-foreground/5 space-y-2">
+                <div className="flex justify-between items-center text-xs text-foreground/60">
+                  <span className="flex items-center gap-1.5">
+                    <ShieldCheck size={14} className="text-liquid-accent" />
+                    <span>Your Liquid Number</span>
+                  </span>
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(user?.liquidNumber || '');
+                      showSuccess('Liquid Number copied!');
+                    }}
+                    className="text-liquid-accent hover:underline flex items-center gap-1 font-semibold"
+                  >
+                    Copy
+                  </button>
+                </div>
+                <p className="text-xl font-bold tracking-widest text-foreground text-center py-2">{user?.liquidNumber}</p>
+                <p className="text-[10px] text-foreground/50 leading-tight">This is your permanent unique number. Share this with friends so they can add you to their contacts.</p>
+              </div>
+
               {/* Bio / About Status Section */}
               <div className="bg-foreground/5 p-4 rounded-2xl border border-foreground/5 space-y-3">
                 <div className="flex justify-between items-center text-xs text-foreground/60">

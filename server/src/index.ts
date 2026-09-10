@@ -254,15 +254,15 @@ io.on('connection', (socket) => {
       const isGroup = !!data.groupId;
 
       // If direct chat, verify sender isn't blocked by receiver
-      if (!isGroup && data.receiverId) {
-        const isBlocked = await prisma.blockList.findUnique({
-          where: { blockerId_blockedId: { blockerId: data.receiverId, blockedId: data.senderId } }
-        });
-        if (isBlocked) {
-          socket.emit('message_error', { error: 'You cannot message this contact' });
-          return;
+        if (!isGroup && data.receiverId) {
+          const isBlocked = await prisma.blockList.findUnique({
+            where: { blockerId_blockedId: { blockerId: data.receiverId, blockedId: data.senderId } }
+          });
+          if (isBlocked) {
+            socket.emit('message_error', { error: 'You cannot message this contact', tempId: data.tempId });
+            return;
+          }
         }
-      }
 
       const msg = await prisma.message.create({
         data: {

@@ -34,6 +34,8 @@ interface ChatAreaProps {
   users: any[];
 }
 
+import { parseTextWithLinks } from '@/utils/textParser';
+
 // Markdown & Code block renderer
 function renderFormattedMessage(text: string) {
   if (text.includes('```')) {
@@ -64,11 +66,11 @@ function renderFormattedMessage(text: string) {
           </div>
         );
       }
-      return <span key={index} className="whitespace-pre-wrap break-words">{part}</span>;
+      return <span key={index}>{parseTextWithLinks(part)}</span>;
     });
   }
 
-  return <span className="whitespace-pre-wrap break-words">{text}</span>;
+  return <span>{parseTextWithLinks(text)}</span>;
 }
 
 export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: ChatAreaProps) {

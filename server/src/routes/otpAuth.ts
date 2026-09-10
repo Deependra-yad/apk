@@ -78,8 +78,11 @@ router.post('/verify-otp', async (req, res) => {
       const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
       const userAgent = req.headers['user-agent'] || 'Unknown';
       
+      const { generateLiquidNumber } = await import('../utils/numberGen');
+      const liquidNumber = await generateLiquidNumber();
+
       const user = await prisma.user.create({
-        data: { username, email, passwordHash, avatar, lastIpAddress: ip }
+        data: { username, email, liquidNumber, passwordHash, avatar, lastIpAddress: ip }
       });
       
       await prisma.loginLog.create({
