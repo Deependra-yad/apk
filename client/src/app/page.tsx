@@ -211,6 +211,23 @@ export default function Home() {
     return () => window.removeEventListener('contextmenu', lockContextMenu);
   }, []);
 
+  // Search user by 10-digit Liquid Number
+  useEffect(() => {
+    if (token && contactSearch.trim().length === 10 && /^\d+$/.test(contactSearch.trim())) {
+      axios.get(`/api/users/search?liquidNumber=${contactSearch.trim()}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        if (res.data && res.data.length > 0) {
+          const fetchedUser = res.data[0];
+          setUsers(prev => {
+            if (prev.some(u => u.id === fetchedUser.id)) return prev;
+            return [...prev, fetchedUser];
+          });
+        }
+      }).catch(console.error);
+    }
+  }, [contactSearch, token]);
+
   if (!isClient || !authChecked || !user) {
     return (
       <div className="min-h-screen bg-liquid-dark flex flex-col items-center justify-center">
@@ -228,22 +245,6 @@ export default function Home() {
     logout();
     router.push('/login');
   };
-
-  useEffect(() => {
-    if (contactSearch.trim().length === 10 && /^\d+$/.test(contactSearch.trim())) {
-      axios.get(`/api/users/search?liquidNumber=${contactSearch.trim()}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        if (res.data && res.data.length > 0) {
-          const fetchedUser = res.data[0];
-          setUsers(prev => {
-            if (prev.some(u => u.id === fetchedUser.id)) return prev;
-            return [...prev, fetchedUser];
-          });
-        }
-      }).catch(console.error);
-    }
-  }, [contactSearch, token]);
 
   const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
   const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;

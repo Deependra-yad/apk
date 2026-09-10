@@ -30,3 +30,4 @@ export function parseTextWithLinks(text: string) {
     return <span key={i} className="whitespace-pre-wrap break-words">{part}</span>;
   });
 }
+

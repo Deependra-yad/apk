@@ -8,3 +8,4 @@ export async function generateLiquidNumber() {
     if (!exists) return num;
   }
 }
+
