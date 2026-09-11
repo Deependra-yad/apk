@@ -4,11 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Camera, Edit2, Check, Sparkles, LogOut, 
-  Upload, User, Smile, ShieldCheck, AlertCircle 
+  Upload, User, Smile, ShieldCheck, AlertCircle, QrCode 
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
+import UserQrModal from '@/components/UserQrModal';
 
 interface ProfileDrawerProps {
   isOpen: boolean;
@@ -49,6 +50,7 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
 
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -180,8 +182,9 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
+    <>
+      <AnimatePresence>
+        {isOpen && (
         <>
           {/* Backdrop */}
           <motion.div
@@ -357,17 +360,27 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
                     <ShieldCheck size={16} />
                     <span>Your Unique Liquid ID</span>
                   </span>
-                  {user?.liquidNumber && (
+                  <div className="flex items-center gap-2">
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(user.liquidNumber!);
-                        showSuccess('Liquid ID copied to clipboard!');
-                      }}
-                      className="text-xs text-liquid-dark bg-liquid-accent px-2.5 py-0.5 rounded-lg font-bold hover:brightness-110 active:scale-95 transition-all"
+                      onClick={() => setIsQrModalOpen(true)}
+                      className="text-xs text-liquid-dark bg-pink-400 hover:bg-pink-300 px-2.5 py-0.5 rounded-lg font-bold flex items-center gap-1 transition-all active:scale-95 shadow-sm"
+                      title="Show Liquid ID QR Card"
                     >
-                      Copy
+                      <QrCode size={12} />
+                      <span>QR</span>
                     </button>
-                  )}
+                    {user?.liquidNumber && (
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(user.liquidNumber!);
+                          showSuccess('Liquid ID copied to clipboard!');
+                        }}
+                        className="text-xs text-liquid-dark bg-liquid-accent px-2.5 py-0.5 rounded-lg font-bold hover:brightness-110 active:scale-95 transition-all"
+                      >
+                        Copy
+                      </button>
+                    )}
+                  </div>
                 </div>
                 {user?.liquidNumber ? (
                   <p className="text-2xl font-bold tracking-widest text-foreground text-center py-2 font-mono select-all">
@@ -464,5 +477,17 @@ export default function ProfileDrawer({ isOpen, onClose }: ProfileDrawerProps) {
         </>
       )}
     </AnimatePresence>
+
+    <UserQrModal
+      isOpen={isQrModalOpen}
+      onClose={() => setIsQrModalOpen(false)}
+      onStartChatWithUser={(targetUser) => {
+        useChatStore.getState().setActiveContact(targetUser);
+        useChatStore.getState().setActiveGroup(null);
+        setIsQrModalOpen(false);
+        onClose();
+      }}
+    />
+    </>
   );
 }

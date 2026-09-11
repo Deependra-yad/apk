@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Users, Pin, BellOff, Archive, 
   MoreVertical, Plus, Check, Trash2, UserX, X,
-  Loader2, MessageSquare, AlertCircle
+  Loader2, MessageSquare, AlertCircle, QrCode
 } from 'lucide-react';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
@@ -20,12 +20,14 @@ import ProfileDrawer from '@/components/ProfileDrawer';
 import NewGroupModal from '@/components/NewGroupModal';
 import StarredVaultPanel from '@/components/StarredVaultPanel';
 import NotificationToast from '@/components/NotificationToast';
+import LandingPage from '@/components/LandingPage';
+import UserQrModal from '@/components/UserQrModal';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, GroupItem } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import { soundEffects } from '@/utils/audioSynth';
 
-export default function Home() {
+export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const { user, token, initAuth, logout } = useAuthStore();
   const {
     connectSocket, 
@@ -58,6 +60,8 @@ export default function Home() {
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [contextMenuTarget, setContextMenuTarget] = useState<{ id: string; type: 'contact' | 'group'; name: string } | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
+  const [showLanding, setShowLanding] = useState<boolean | null>(forceChat ? false : null);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // WebRTC Calling State
   const [callState, setCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
@@ -69,6 +73,28 @@ export default function Home() {
   const [isSearchingNumber, setIsSearchingNumber] = useState(false);
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
   const initialFetchDone = useRef(false);
+
+  // Determine if Landing page or Chat App should be shown
+  useEffect(() => {
+    if (forceChat) {
+      setShowLanding(false);
+      return;
+    }
+    const isAndroid = typeof window !== 'undefined' && Boolean((window as any).Android || /Android/i.test(navigator.userAgent));
+    const isWeb = typeof window !== 'undefined' && (
+      window.location.hostname.startsWith('web.') || 
+      window.location.pathname.startsWith('/web')
+    );
+    const hasLocalToken = typeof window !== 'undefined' && Boolean(
+      localStorage.getItem('token') || localStorage.getItem('liquid_token')
+    );
+
+    if (isAndroid || isWeb || hasLocalToken) {
+      setShowLanding(false);
+    } else {
+      setShowLanding(true);
+    }
+  }, [forceChat]);
 
   useEffect(() => {
     initAuth();
@@ -111,7 +137,8 @@ export default function Home() {
   // Auth Guard & Initial Data Fetch (Runs ONCE per session to preserve contacts)
   useEffect(() => {
     if (!isClient) return;
-    if (!token && !user) {
+    if (showLanding === true) return;
+    if (!token && !user && showLanding === false) {
       router.push('/auth');
       return;
     }
@@ -370,6 +397,18 @@ export default function Home() {
 
   const isChatOpen = !!(activeContact || activeGroup);
 
+  if (showLanding === true) {
+    return <LandingPage />;
+  }
+
+  if (showLanding === null) {
+    return (
+      <div className="w-screen h-screen bg-[#0a0a0f] flex items-center justify-center">
+        <div className="w-10 h-10 rounded-full border-2 border-liquid-accent/20 border-t-liquid-accent animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <main className="w-full h-full max-h-screen flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
       <AnimatePresence>
@@ -477,14 +516,14 @@ export default function Home() {
             <StatusStoriesBar />
 
             {/* Search Bar */}
-            <div className="px-4 pt-3 pb-1">
-              <div className="h-10 bg-background/30 rounded-xl px-3 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
+            <div className="px-4 pt-3 pb-1 flex items-center gap-2">
+              <div className="h-10 bg-background/30 rounded-xl px-3 flex-1 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
                 <Search size={16} className="text-foreground/60 shrink-0" />
                 <input
                   type="text"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
-                  placeholder="Search by name or 10-digit Liquid Number..."
+                  placeholder="Search name or 10-digit Liquid ID..."
                   className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500 min-w-0"
                 />
                 {contactSearch && (
@@ -501,6 +540,13 @@ export default function Home() {
                   </button>
                 )}
               </div>
+              <button
+                onClick={() => setIsQrModalOpen(true)}
+                className="w-10 h-10 rounded-xl bg-foreground/5 hover:bg-pink-500/20 border border-foreground/10 hover:border-pink-500/40 text-foreground/70 hover:text-pink-400 flex items-center justify-center shrink-0 transition-all active:scale-95 shadow-sm"
+                title="Scan or Show Liquid ID QR Code"
+              >
+                <QrCode size={18} />
+              </button>
             </div>
 
             {/* Search Status Indicator */}
@@ -822,6 +868,16 @@ export default function Home() {
 
       {/* Floating In-App Real-Time Notification Toast */}
       <NotificationToast />
+
+      {/* Liquid ID QR Modal */}
+      <UserQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onStartChatWithUser={(targetUser) => {
+          handleSelectContact(targetUser);
+          setIsQrModalOpen(false);
+        }}
+      />
     </main>
   );
 }

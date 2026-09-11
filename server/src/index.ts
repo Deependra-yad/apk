@@ -40,6 +40,7 @@ import aiRoutes from './routes/ai';
 import mediaRoutes from './routes/media';
 import stickerRoutes from './routes/stickers';
 import pushRoutes from './routes/push';
+import qrAuthRoutes, { setQrSocketIo } from './routes/qrAuth';
 import prisma from './prisma';
 import path from 'path';
 import fs from 'fs';
@@ -105,6 +106,7 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/stickers', stickerRoutes);
 app.use('/api/push', pushRoutes);
+app.use('/api/auth/qr', qrAuthRoutes);
 
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
@@ -127,6 +129,7 @@ const io = new Server(server, {
   allowUpgrades: true
 });
 app.set('io', io);
+setQrSocketIo(io);
 
 interface PushOptions {
   url?: string;
@@ -237,6 +240,13 @@ import jwt from 'jsonwebtoken';
 
 io.use(async (socket, next) => {
   try {
+    const qrSessionId = socket.handshake.query.qrSessionId as string;
+    if (qrSessionId) {
+      (socket as any).isQrClient = true;
+      (socket as any).qrSessionId = qrSessionId;
+      return next();
+    }
+
     const token = socket.handshake.query.token as string;
     if (!token) return next(new Error('Authentication required'));
 
@@ -254,6 +264,17 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
+  const qrSessionId = (socket as any).qrSessionId || (socket.handshake.query.qrSessionId as string);
+  if (qrSessionId) {
+    socket.join(`qr_${qrSessionId}`);
+  }
+
+  socket.on('join_qr_session', (sessionId: string) => {
+    if (sessionId) {
+      socket.join(`qr_${sessionId}`);
+    }
+  });
+
   const registerUser = async (uid: string) => {
     if (!uid) return;
     connectedUsers.set(uid, socket.id);

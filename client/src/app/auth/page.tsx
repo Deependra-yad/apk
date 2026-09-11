@@ -2,9 +2,10 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, CheckCircle2, Eye, EyeOff, QrCode } from 'lucide-react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/authStore';
+import QrLoginPanel from '@/components/QrLoginPanel';
 
 const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
@@ -13,7 +14,7 @@ function AuthForm() {
   const searchParams = useSearchParams();
   
   const [view, setView] = useState<'login' | 'signup' | 'forgot_password' | 'verify_otp' | 'reset_password'>('login');
-  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp' | 'qr'>('password');
   const [pendingAction, setPendingAction] = useState<'login' | 'signup' | 'reset_password'>('login');
   
   const [identifier, setIdentifier] = useState('');
@@ -33,6 +34,11 @@ function AuthForm() {
     if (token) router.push('/');
     const urlError = searchParams.get('error');
     if (urlError) setError(urlError);
+
+    const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768 && !/Android|iPhone|iPad/i.test(navigator.userAgent);
+    if (isDesktop || searchParams.get('qr') === '1') {
+      setLoginMethod('qr');
+    }
   }, [router, searchParams]);
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -235,7 +241,7 @@ function AuthForm() {
           {view === 'login' && (
             <div className="space-y-4">
               {/* Method Switcher Tabs */}
-              <div className="flex bg-background/50 p-1 rounded-xl border border-foreground/10 text-xs font-semibold">
+              <div className="flex bg-background/50 p-1 rounded-xl border border-foreground/10 text-xs font-semibold gap-1">
                 <button
                   type="button"
                   onClick={() => { setLoginMethod('password'); setError(''); setMessage(''); }}
@@ -245,7 +251,7 @@ function AuthForm() {
                       : 'text-foreground/60 hover:text-foreground'
                   }`}
                 >
-                  Password Login
+                  Password
                 </button>
                 <button
                   type="button"
@@ -258,9 +264,23 @@ function AuthForm() {
                 >
                   Email OTP
                 </button>
+                <button
+                  type="button"
+                  onClick={() => { setLoginMethod('qr'); setError(''); setMessage(''); }}
+                  className={`flex-1 py-2 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                    loginMethod === 'qr'
+                      ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md'
+                      : 'text-foreground/60 hover:text-foreground'
+                  }`}
+                >
+                  <QrCode size={13} />
+                  <span>QR Login</span>
+                </button>
               </div>
 
-              {loginMethod === 'password' ? (
+              {loginMethod === 'qr' ? (
+                <QrLoginPanel />
+              ) : loginMethod === 'password' ? (
                 <form onSubmit={handlePasswordLogin} className="space-y-4">
                   <div>
                     <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">

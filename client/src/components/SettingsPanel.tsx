@@ -6,11 +6,13 @@ import {
   User, Bell, Shield, Palette, Volume2, 
   HelpCircle, LogOut, Moon, Sparkles, Check, Edit2, 
   Trash2, AlertTriangle, UserX, Database, HardDrive, 
-  ChevronRight, Lock, Eye, MessageSquare, Sun, Smartphone
+  ChevronRight, Lock, Eye, MessageSquare, Sun, Smartphone, QrCode
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
+import UserQrModal from '@/components/UserQrModal';
+import LinkedDevicesModal from '@/components/LinkedDevicesModal';
 import axios from 'axios';
 
 export default function SettingsPanel() {
@@ -28,6 +30,8 @@ export default function SettingsPanel() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [cacheClearedToast, setCacheClearedToast] = useState(false);
+  const [isLinkedDevicesOpen, setIsLinkedDevicesOpen] = useState(false);
+  const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   useEffect(() => {
     if (token) {
@@ -126,6 +130,7 @@ export default function SettingsPanel() {
       {activeSection === 'main' && (
         <div className="space-y-4">
           {/* Profile Summary Card */}
+          {/* Profile Summary Card */}
           <div 
             onClick={() => setActiveSection('account')}
             className="bg-foreground/5 hover:bg-foreground/10 rounded-2xl p-4 border border-foreground/5 flex items-center justify-between cursor-pointer transition-all"
@@ -136,14 +141,60 @@ export default function SettingsPanel() {
               </div>
               <div>
                 <h3 className="text-sm font-bold text-foreground">{user?.username}</h3>
-                <p className="text-xs text-foreground/60 truncate max-w-[170px]">{user?.about || 'Available'}</p>
+                <p className="text-xs text-foreground/60 truncate max-w-[150px]">{user?.about || 'Available'}</p>
               </div>
             </div>
-            <ChevronRight size={18} className="text-foreground/50" />
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsQrModalOpen(true);
+                }}
+                className="p-2 rounded-xl bg-pink-500/15 hover:bg-pink-500/25 text-pink-400 border border-pink-500/25 transition-all active:scale-95"
+                title="My QR Code"
+              >
+                <QrCode size={18} />
+              </button>
+              <ChevronRight size={18} className="text-foreground/50" />
+            </div>
           </div>
 
           {/* Menu Sections List */}
           <div className="space-y-1.5">
+            {/* Linked Devices (WhatsApp Web style) */}
+            <button
+              onClick={() => setIsLinkedDevicesOpen(true)}
+              className="w-full flex items-center justify-between p-3 rounded-2xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/5 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-violet-500/20 text-violet-400">
+                  <Smartphone size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">Linked Devices</h4>
+                  <p className="text-[10px] text-foreground/60">Scan QR code to log into Liquid Web</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-foreground/50" />
+            </button>
+
+            {/* My QR Code */}
+            <button
+              onClick={() => setIsQrModalOpen(true)}
+              className="w-full flex items-center justify-between p-3 rounded-2xl bg-foreground/5 hover:bg-foreground/10 border border-foreground/5 transition-all text-left"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-pink-500/20 text-pink-400">
+                  <QrCode size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">My QR Code</h4>
+                  <p className="text-[10px] text-foreground/60">Share your Liquid ID & scan contacts</p>
+                </div>
+              </div>
+              <ChevronRight size={16} className="text-foreground/50" />
+            </button>
+
             {user?.isAdmin && (
               <a
                 href="/admin"
@@ -553,6 +604,21 @@ export default function SettingsPanel() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <LinkedDevicesModal
+        isOpen={isLinkedDevicesOpen}
+        onClose={() => setIsLinkedDevicesOpen(false)}
+      />
+
+      <UserQrModal
+        isOpen={isQrModalOpen}
+        onClose={() => setIsQrModalOpen(false)}
+        onStartChatWithUser={(targetUser) => {
+          useChatStore.getState().setActiveContact(targetUser);
+          useChatStore.getState().setActiveGroup(null);
+          setIsQrModalOpen(false);
+        }}
+      />
     </div>
   );
 }

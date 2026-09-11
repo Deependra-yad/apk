@@ -27,7 +27,9 @@ import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
 import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext } from '@/utils/crypto';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Camera, CheckCircle2 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import CameraQrScannerModal from './CameraQrScannerModal';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -101,6 +103,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
   const [safetyNumber, setSafetyNumber] = useState<string>('');
+  const [isScanningSafetyCode, setIsScanningSafetyCode] = useState(false);
+  const [isSafetyVerified, setIsSafetyVerified] = useState(false);
+  const [safetyNotice, setSafetyNotice] = useState<string | null>(null);
   const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const touchTimerRef = useRef<any>(null);
@@ -370,6 +375,38 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       console.error("Safety number generation error:", e);
       setSafetyNumber("28491 04829 19482 94819 40284 91823 84920 18492 48192 04829 19482 39481");
       setIsSafetyModalOpen(true);
+    }
+  };
+
+  useEffect(() => {
+    if (activeContact) {
+      const isVer = typeof window !== 'undefined' && localStorage.getItem(`liquid_e2ee_verified_${activeContact.id}`) === 'true';
+      setIsSafetyVerified(isVer);
+    }
+  }, [activeContact]);
+
+  const handleScanSafetyCode = (scannedText: string) => {
+    setIsScanningSafetyCode(false);
+    let scannedNum = '';
+    if (scannedText.startsWith('liquidchat-e2ee:')) {
+      const parts = scannedText.split(':');
+      scannedNum = parts[2] || '';
+    } else {
+      scannedNum = scannedText;
+    }
+
+    const cleanScanned = scannedNum.replace(/\D/g, '');
+    const cleanLocal = safetyNumber.replace(/\D/g, '');
+
+    if (cleanScanned && cleanLocal && cleanScanned === cleanLocal) {
+      setIsSafetyVerified(true);
+      if (activeContact) {
+        localStorage.setItem(`liquid_e2ee_verified_${activeContact.id}`, 'true');
+      }
+      setSafetyNotice(`🌸 Security Code Verified! 100% End-to-End Encryption confirmed with ${activeContact?.username}.`);
+      setTimeout(() => setSafetyNotice(null), 5000);
+    } else {
+      alert(`❌ Security code mismatch! Please verify you are scanning ${activeContact?.username}'s QR code.`);
     }
   };
 
@@ -813,8 +850,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
               <div className="overflow-hidden min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-foreground font-semibold text-sm sm:text-base truncate leading-tight">
-                    {isGroup ? activeGroup?.name : activeContact?.username}
+                  <h2 className="text-foreground font-semibold text-sm sm:text-base truncate leading-tight flex items-center gap-1.5">
+                    <span>{isGroup ? activeGroup?.name : activeContact?.username}</span>
+                    {!isGroup && isSafetyVerified && (
+                      <span title="🌸 100% Cryptographically Verified End-to-End Encryption">
+                        <ShieldCheck size={15} className="text-emerald-400 shrink-0 inline drop-shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
+                      </span>
+                    )}
                   </h2>
                   {isGroup && (
                     <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-bold bg-liquid-accent/20 text-liquid-accent shrink-0">Group</span>
@@ -2180,23 +2222,50 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               </button>
 
               {/* Verified Shield Badge */}
-              <div className="w-16 h-16 rounded-full bg-emerald-500/10 border-2 border-emerald-500/30 flex items-center justify-center mb-4 text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)]">
+              <div className={`w-16 h-16 rounded-full border-2 flex items-center justify-center mb-3 transition-all ${
+                isSafetyVerified 
+                  ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-400 shadow-[0_0_35px_rgba(16,185,129,0.4)]' 
+                  : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 shadow-[0_0_20px_rgba(16,185,129,0.2)]'
+              }`}>
                 <ShieldCheck size={36} />
               </div>
 
               <h2 className="text-xl font-bold text-foreground mb-1">Verify Security Code</h2>
-              <p className="text-xs text-foreground/60 mb-5 max-w-xs">
+              <p className="text-xs text-foreground/60 mb-3 max-w-xs">
                 End-to-End Encryption with <span className="text-foreground font-semibold">{activeContact.username}</span>
               </p>
 
+              {/* Verified Status Pill */}
+              {isSafetyVerified ? (
+                <div className="mb-3 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                  <CheckCircle2 size={14} className="text-emerald-400" />
+                  <span>Verified Cryptographic Fingerprint 🌸</span>
+                </div>
+              ) : (
+                <div className="mb-3 px-3 py-1 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30 text-[#ff8da1] text-xs font-medium flex items-center gap-1.5">
+                  <Lock size={12} />
+                  <span>Scan to verify no man-in-the-middle</span>
+                </div>
+              )}
+
               {/* QR Code Container */}
-              <div className="bg-white p-3.5 rounded-2xl shadow-xl mb-5 flex items-center justify-center border border-foreground/10">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(`liquidchat-e2ee:${activeContact.id}:${safetyNumber}`)}`}
-                  alt="Security QR Code"
-                  className="w-40 h-40 object-contain rounded-lg"
+              <div className="bg-white p-3.5 rounded-2xl shadow-xl mb-4 flex items-center justify-center border border-foreground/10">
+                <QRCodeSVG
+                  value={`liquidchat-e2ee:${activeContact.id}:${safetyNumber.replace(/\s+/g, '')}`}
+                  size={160}
+                  level="H"
+                  includeMargin={false}
                 />
               </div>
+
+              {/* Scan Peer QR Code Button */}
+              <button
+                onClick={() => setIsScanningSafetyCode(true)}
+                className="w-full mb-4 py-3 px-4 rounded-xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(255,75,130,0.4)] hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+              >
+                <Camera size={16} />
+                <span>Scan {activeContact.username}'s QR Code</span>
+              </button>
 
               {/* 60-Digit Code Display */}
               <div className="w-full bg-background/50 rounded-2xl p-4 border border-foreground/10 mb-4">
@@ -2216,7 +2285,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
               {/* Description */}
               <p className="text-[11px] text-foreground/50 leading-relaxed mb-5">
-                To verify that messages and calls with {activeContact.username} are end-to-end encrypted, compare these 60 numbers with their device or scan this QR code.
+                To verify that messages and calls with {activeContact.username} are end-to-end encrypted, compare these 60 numbers with their device or scan their QR code.
               </p>
 
               {/* Actions */}
@@ -2238,9 +2307,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   onClick={() => setIsSafetyModalOpen(false)}
                   className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold text-xs flex items-center justify-center transition-opacity hover:opacity-90 cursor-pointer shadow-md"
                 >
-                  Verified & OK
+                  {isSafetyVerified ? "Verified & Close" : "Close"}
                 </button>
               </div>
+
+              {/* Camera Scanner Viewfinder for Safety Code */}
+              <CameraQrScannerModal
+                isOpen={isScanningSafetyCode}
+                onClose={() => setIsScanningSafetyCode(false)}
+                onScanSuccess={handleScanSafetyCode}
+                title="Verify E2EE Code"
+                description={`Scan the QR code displayed on ${activeContact.username}'s screen`}
+              />
             </motion.div>
           </motion.div>
         )}
