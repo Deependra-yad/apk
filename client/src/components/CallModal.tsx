@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Phone, Video, PhoneOff, Mic, MicOff, VideoOff, 
-  Monitor, Minimize2, Maximize2, Volume2, AlertCircle 
+  Monitor, Minimize2, Maximize2, Volume2, AlertCircle, SwitchCamera 
 } from 'lucide-react';
 import { WebRTCManager } from '@/utils/webrtc';
 import { soundEffects } from '@/utils/audioSynth';
@@ -35,6 +35,7 @@ export default function CallModal({
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [isMirrored, setIsMirrored] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [hasPermissionWarning, setHasPermissionWarning] = useState(false);
@@ -493,15 +494,17 @@ export default function CallModal({
                         autoPlay
                         playsInline
                         muted
-                        className="w-full h-full object-cover -scale-x-100"
+                        style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                        className="w-full h-full object-cover transition-transform duration-300"
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-xs text-foreground/50 bg-liquid-base">
                         Camera Off
                       </div>
                     )}
-                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-background/60 text-[10px] text-foreground font-medium">
-                      You
+                    <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-background/60 text-[10px] text-foreground font-medium flex items-center gap-1">
+                      <span>You</span>
+                      {isMirrored && <span className="text-[9px] text-liquid-accent font-mono">• Mirrored</span>}
                     </div>
                   </motion.div>
                 )}
@@ -511,10 +514,10 @@ export default function CallModal({
 
           {/* Control Bar */}
           {callState === 'connected' && (
-            <div className="h-24 bg-liquid-dark/80 backdrop-blur-2xl border-t border-foreground/5 flex items-center justify-center gap-4 sm:gap-6 px-6 z-20">
+            <div className="h-24 bg-liquid-dark/80 backdrop-blur-2xl border-t border-foreground/5 flex items-center justify-center gap-3 sm:gap-6 px-4 sm:px-6 z-20 overflow-x-auto no-scrollbar">
               <button
                 onClick={toggleMute}
-                className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all shrink-0 ${
                   isMuted ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                 }`}
                 title={isMuted ? 'Unmute' : 'Mute'}
@@ -526,7 +529,7 @@ export default function CallModal({
                 <>
                   <button
                     onClick={toggleCamera}
-                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all shrink-0 ${
                       isCameraOff ? 'bg-red-500/20 text-red-400 border border-red-500/50' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                     }`}
                     title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
@@ -535,8 +538,18 @@ export default function CallModal({
                   </button>
 
                   <button
+                    onClick={() => setIsMirrored(!isMirrored)}
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all shrink-0 ${
+                      isMirrored ? 'bg-liquid-accent/20 text-liquid-accent border border-liquid-accent/40 shadow-[0_0_15px_rgba(0,210,255,0.3)]' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
+                    }`}
+                    title={isMirrored ? "Mirror Video: ON (Click to un-mirror)" : "Mirror Video: OFF (Click to mirror)"}
+                  >
+                    <SwitchCamera size={20} />
+                  </button>
+
+                  <button
                     onClick={toggleScreenShare}
-                    className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all shrink-0 ${
                       isScreenSharing ? 'bg-liquid-accent text-liquid-dark font-bold' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
                     }`}
                     title={isScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
