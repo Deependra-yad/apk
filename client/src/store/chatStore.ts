@@ -177,13 +177,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 1-on-1 incoming message
     socket.on('receive_message', async (message: Message) => {
       let finalMessage = { ...message };
+      const senderPubKeyStr = (finalMessage.sender?.publicKey || get().activeContact?.publicKey) as string | undefined;
       
-      if (finalMessage.isEncrypted && finalMessage.iv && finalMessage.sender?.publicKey) {
+      if (finalMessage.isEncrypted && finalMessage.iv && senderPubKeyStr) {
         try {
           const { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
           const myKey = await getKeyFromIDB(userId);
           if (myKey) {
-            const senderPubKey = await importPublicKey(finalMessage.sender.publicKey as string);
+            const senderPubKey = await importPublicKey(senderPubKeyStr);
             const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
             
             if (finalMessage.text) {
@@ -247,8 +248,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       if (activeGroup && message.groupId === activeGroup.id) {
         set((state) => {
-          if (state.messages.some(m => m.id === message.id)) return state;
-          return { messages: [...state.messages, message] };
+          let updatedList = state.messages;
+          if (message.tempId) {
+            updatedList = updatedList.filter(m => m.id !== message.tempId && m.tempId !== message.tempId);
+          }
+          if (updatedList.some(m => m.id === message.id)) return state;
+          return { messages: [...updatedList, message] };
         });
       } else {
         const grp = groups.find(g => g.id === message.groupId);
@@ -267,15 +272,56 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
     });
 
-    socket.on('message_sent', (message: Message) => {
+    socket.on('message_sent', async (message: Message) => {
       soundEffects.playMessageSent();
-      set((state) => {
-        let newMessages = state.messages;
-        if (message.tempId) {
-          newMessages = newMessages.filter(m => m.id !== message.tempId);
+      let confirmedMessage = { ...message };
+      const currentMessages = get().messages;
+      const optimisticIndex = currentMessages.findIndex(
+        (m) => (message.tempId && (m.id === message.tempId || m.tempId === message.tempId)) || m.id === message.id
+      );
+
+      if (optimisticIndex !== -1) {
+        // PRESERVE sender's clean plaintext and fileUrl from optimistic state!
+        const optimistic = currentMessages[optimisticIndex];
+        confirmedMessage.text = optimistic.text || confirmedMessage.text;
+        confirmedMessage.fileUrl = optimistic.fileUrl || confirmedMessage.fileUrl;
+        confirmedMessage.isPending = false;
+      } else if (confirmedMessage.isEncrypted && confirmedMessage.iv) {
+        // Fallback: If sent from another window/device, decrypt using contact public key
+        try {
+          const contact = get().activeContact;
+          if (contact?.publicKey) {
+            const { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
+            const myKey = await getKeyFromIDB(userId);
+            if (myKey) {
+              const otherPubKey = await importPublicKey(contact.publicKey);
+              const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+              if (confirmedMessage.text) {
+                confirmedMessage.text = await decryptMessage(sharedKey, confirmedMessage.text, confirmedMessage.iv);
+              }
+              if (confirmedMessage.fileUrl && confirmedMessage.fileUrl.startsWith('ENC:')) {
+                const parts = confirmedMessage.fileUrl.substring(4).split(':');
+                if (parts.length === 2) {
+                  confirmedMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to decrypt message_sent fallback:', err);
         }
-        if (newMessages.some(m => m.id === message.id)) return state;
-        return { messages: [...newMessages, message] };
+      }
+
+      set((state) => {
+        const idx = state.messages.findIndex(
+          (m) => (message.tempId && (m.id === message.tempId || m.tempId === message.tempId)) || m.id === message.id
+        );
+        if (idx !== -1) {
+          const updated = [...state.messages];
+          updated[idx] = confirmedMessage;
+          return { messages: updated };
+        }
+        return { messages: [...state.messages, confirmedMessage] };
       });
     });
 

@@ -260,6 +260,18 @@ router.put('/public-key', authenticate, async (req: any, res) => {
   }
 });
 
+router.get('/:userId/public-key', authenticate, async (req: any, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.params.userId },
+      select: { publicKey: true }
+    });
+    res.json({ publicKey: user?.publicKey || null });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch public key' });
+  }
+});
+
 router.get('/search', authenticate, async (req: any, res) => {
   try {
     const liquidNumber = req.query.liquidNumber as string;

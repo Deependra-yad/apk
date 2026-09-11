@@ -102,6 +102,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
   const [safetyNumber, setSafetyNumber] = useState<string>('');
   const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
+  const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const touchTimerRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -151,20 +152,48 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         }).then(async res => {
           let loadedMessages = Array.isArray(res.data) ? res.data : [];
           
-          if (activeContact.publicKey) {
+          let contactPubKey = activeContact.publicKey;
+          if (!contactPubKey) {
+            const foundKeyMsg = loadedMessages.find((m: any) => m.senderId === activeContact.id && m.sender?.publicKey);
+            if (foundKeyMsg) {
+              contactPubKey = foundKeyMsg.sender.publicKey;
+            } else {
+              try {
+                const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
+                  headers: { Authorization: `Bearer ${token}` }
+                });
+                if (pkRes.data?.publicKey) {
+                  contactPubKey = pkRes.data.publicKey;
+                }
+              } catch (e) {}
+            }
+          }
+
+          if (contactPubKey) {
             try {
               const myKey = await getKeyFromIDB(user.id);
               if (myKey) {
-                const otherPubKey = await importPublicKey(activeContact.publicKey);
+                const otherPubKey = await importPublicKey(contactPubKey);
                 const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
                 loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
-                  if (m.isEncrypted && m.iv && m.text) {
-                    const text = await decryptMessage(sharedKey, m.text, m.iv);
+                  if (m.isEncrypted) {
+                    let text = m.text;
+                    if (text && m.iv) {
+                      try {
+                        text = await decryptMessage(sharedKey, text, m.iv);
+                      } catch (e) {
+                        console.error("Text decryption error for message", m.id, e);
+                      }
+                    }
                     let fileUrl = m.fileUrl;
                     if (fileUrl && fileUrl.startsWith('ENC:')) {
                       const parts = fileUrl.substring(4).split(':');
                       if (parts.length === 2) {
-                        fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                        try {
+                          fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                        } catch (e) {
+                          console.error("File decryption error for message", m.id, e);
+                        }
                       }
                     }
                     return { ...m, text, fileUrl };
@@ -673,12 +702,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         </div>
       ) : (
         /* Standard Chat Header */
-        <div className="h-16 sm:h-20 border-b border-foreground/5 flex items-center justify-between px-3 sm:px-6 bg-liquid-base/60 backdrop-blur-2xl z-20 shrink-0">
-          <div className="flex items-center gap-2 sm:gap-4 overflow-hidden">
+        <div className="h-14 sm:h-16 border-b border-foreground/5 flex items-center justify-between px-2 sm:px-6 bg-liquid-base/70 backdrop-blur-2xl z-20 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-3 overflow-hidden min-w-0 flex-1">
             {onBack && (
               <button 
                 onClick={onBack}
-                className="sm:hidden p-2 -ml-1 text-foreground/80 hover:text-foreground rounded-xl hover:bg-foreground/10 transition-colors shrink-0"
+                className="sm:hidden p-1.5 -ml-0.5 text-foreground/80 hover:text-foreground rounded-full hover:bg-foreground/10 transition-colors shrink-0"
                 title="Back to chats"
               >
                 <ArrowLeft size={22} />
@@ -686,11 +715,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             )}
 
             <div 
-              className="flex items-center gap-3 cursor-pointer overflow-hidden" 
+              className="flex items-center gap-2.5 cursor-pointer overflow-hidden min-w-0 flex-1" 
               onClick={() => isGroup ? setIsGroupDrawerOpen(true) : setIsContactInfoOpen(true)}
             >
               <div className="relative shrink-0">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full overflow-hidden p-[2px] bg-gradient-to-tr from-liquid-accent to-liquid-secondary">
+                <div className="w-10 h-10 rounded-full overflow-hidden p-[2px] bg-gradient-to-tr from-liquid-accent to-liquid-secondary">
                   <img 
                     src={isGroup ? (activeGroup?.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(activeGroup?.name || 'G')}`) : activeContact?.avatar} 
                     alt={isGroup ? activeGroup?.name : activeContact?.username} 
@@ -702,132 +731,188 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   />
                 </div>
                 {!isGroup && isOnline && (
-                  <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-liquid-base shadow-sm" />
+                  <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-liquid-base shadow-sm" />
                 )}
               </div>
 
               <div className="overflow-hidden min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h2 className="text-foreground font-semibold text-sm sm:text-base truncate">
+                  <h2 className="text-foreground font-semibold text-sm sm:text-base truncate leading-tight">
                     {isGroup ? activeGroup?.name : activeContact?.username}
                   </h2>
                   {isGroup && (
                     <span className="px-1.5 py-0.2 rounded text-[8px] sm:text-[9px] font-bold bg-liquid-accent/20 text-liquid-accent shrink-0">Group</span>
                   )}
                   {!isGroup && activeContact?.liquidNumber && (
-                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-liquid-accent/15 text-liquid-accent font-semibold shrink-0">
+                    <span className="hidden md:inline-block px-1.5 py-0.5 rounded-full text-[9px] font-mono bg-liquid-accent/15 text-liquid-accent font-semibold shrink-0">
                       ID: {activeContact.liquidNumber}
                     </span>
                   )}
                 </div>
 
-              {/* Typing / Online / Member status */}
-              {isGroup ? (
-                groupTypers.length > 0 ? (
-                  <span className="text-xs text-liquid-accent font-medium animate-pulse">
-                    {groupTypers.join(', ')} typing...
-                  </span>
-                ) : (
-                  <p className="text-xs text-foreground/60 font-medium">
-                    {activeGroup?.members.length} participants
-                  </p>
-                )
-              ) : isDirectTyping ? (
-                <div className="flex items-center gap-1 text-xs text-liquid-accent font-medium">
-                  <span>typing</span>
-                  <span className="flex gap-0.5">
-                    <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                  </span>
-                </div>
-              ) : (
-                <p className="text-xs text-foreground/60 font-medium">
-                  {isOnline ? (
-                    <span className="text-green-400">Online</span>
-                  ) : activeContact?.lastSeen ? (
-                    (() => {
-                      const d = new Date(activeContact.lastSeen);
-                      if (isToday(d)) return `Last seen today at ${format(d, 'h:mm a')}`;
-                      if (isYesterday(d)) return `Last seen yesterday at ${format(d, 'h:mm a')}`;
-                      return `Last seen on ${format(d, 'MMM d, yyyy')}`;
-                    })()
+                {/* Typing / Online / Member status */}
+                {isGroup ? (
+                  groupTypers.length > 0 ? (
+                    <span className="text-[11px] sm:text-xs text-liquid-accent font-medium animate-pulse truncate block">
+                      {groupTypers.join(', ')} typing...
+                    </span>
                   ) : (
-                    'Offline'
-                  )}
-                </p>
-              )}
+                    <p className="text-[11px] sm:text-xs text-foreground/60 font-medium truncate">
+                      {activeGroup?.members.length} participants
+                    </p>
+                  )
+                ) : isDirectTyping ? (
+                  <div className="flex items-center gap-1 text-[11px] sm:text-xs text-liquid-accent font-medium">
+                    <span>typing</span>
+                    <span className="flex gap-0.5">
+                      <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <span className="w-1 h-1 bg-liquid-accent rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-[11px] sm:text-xs text-foreground/60 font-medium truncate">
+                    {isOnline ? (
+                      <span className="text-green-400 font-medium">Online</span>
+                    ) : activeContact?.lastSeen ? (
+                      (() => {
+                        const d = new Date(activeContact.lastSeen);
+                        if (isToday(d)) return `Last seen today at ${format(d, 'h:mm a')}`;
+                        if (isYesterday(d)) return `Last seen yesterday at ${format(d, 'h:mm a')}`;
+                        return `Last seen ${format(d, 'MMM d, yyyy')}`;
+                      })()
+                    ) : (
+                      'Offline'
+                    )}
+                  </p>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-1 sm:gap-2 text-foreground/80 shrink-0">
-            {/* AI Assistant Button */}
-            <button
-              onClick={() => setIsAiModalOpen(true)}
-              className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-liquid-accent transition-all"
-              title="Liquid AI Assistant"
-            >
-              <Bot size={20} />
-            </button>
-
-            {/* Media Gallery / Starred Vault Drawer Button */}
-            <button
-              onClick={() => setIsGalleryOpen(true)}
-              className="hidden sm:block p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-all"
-              title="Shared Media & Files"
-            >
-              <FolderKanban size={20} />
-            </button>
-
+          {/* Action Buttons */}
+          <div className="flex items-center gap-0.5 sm:gap-1 text-foreground/80 shrink-0 relative">
             {!isGroup && (
               <>
                 <button 
-                  onClick={() => onStartCall(false)}
-                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
-                  title="Voice Call"
+                  onClick={() => onStartCall(true)}
+                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-colors"
+                  title="Video Call"
                 >
-                  <Phone size={20} />
+                  <Video size={19} />
                 </button>
 
                 <button 
-                  onClick={() => onStartCall(true)}
-                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-all"
-                  title="Video Call"
+                  onClick={() => onStartCall(false)}
+                  className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 text-foreground/80 hover:text-liquid-accent transition-colors"
+                  title="Voice Call"
                 >
-                  <Video size={20} />
+                  <Phone size={19} />
                 </button>
               </>
             )}
 
             <button 
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className={`hidden sm:block p-2.5 rounded-full transition-all ${isSearchOpen ? 'bg-liquid-accent text-liquid-dark' : 'hover:bg-foreground/10 hover:text-foreground'}`}
-              title="Search Messages"
+              onClick={() => setIsHeaderMenuOpen(!isHeaderMenuOpen)}
+              className={`p-2 sm:p-2.5 rounded-full transition-colors ${
+                isHeaderMenuOpen ? 'bg-foreground/15 text-foreground' : 'hover:bg-foreground/10 text-foreground/80 hover:text-foreground'
+              }`}
+              title="More options"
             >
-              <Search size={20} />
+              <MoreVertical size={19} />
             </button>
 
-            <button 
-              onClick={() => {
-                const target = activeContact?.id || activeGroup?.id;
-                if (target && confirm('Clear chat history for both sides?')) {
-                  socket?.emit('clear_chat', { targetId: target });
-                }
-              }}
-              className="hidden sm:block p-2 sm:p-2.5 rounded-full hover:bg-red-500/20 text-foreground/60 hover:text-red-500 transition-all"
-              title="Clear Chat"
-            >
-              <Trash2 size={18} className="sm:w-5 sm:h-5" />
-            </button>
-            <button 
-              onClick={() => isGroup ? setIsGroupDrawerOpen(true) : setIsContactInfoOpen(true)}
-              className="p-2 sm:p-2.5 rounded-full hover:bg-foreground/10 hover:text-foreground transition-all"
-              title={isGroup ? "Group Info" : "Contact Info"}
-            >
-              {isGroup ? <Info size={20} /> : <MoreVertical size={20} />}
-            </button>
+            {/* WhatsApp 3-Dots Dropdown Menu */}
+            <AnimatePresence>
+              {isHeaderMenuOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40" 
+                    onClick={() => setIsHeaderMenuOpen(false)} 
+                  />
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: -10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-12 z-50 min-w-[200px] bg-liquid-base/95 backdrop-blur-2xl border border-foreground/10 shadow-2xl rounded-2xl py-1.5 overflow-hidden flex flex-col text-sm"
+                  >
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        isGroup ? setIsGroupDrawerOpen(true) : setIsContactInfoOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <Info size={16} className="text-liquid-accent" />
+                      <span>{isGroup ? 'Group info' : 'Contact info'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        setIsSearchOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <Search size={16} />
+                      <span>Search messages</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        setIsAiModalOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <Bot size={16} className="text-cyan-400" />
+                      <span>Liquid AI Copilot</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        setIsGalleryOpen(true);
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <FolderKanban size={16} />
+                      <span>Media, links & docs</span>
+                    </button>
+
+                    {activeContact?.publicKey && (
+                      <button
+                        onClick={() => {
+                          setIsHeaderMenuOpen(false);
+                          handleOpenSafetyModal();
+                        }}
+                        className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                      >
+                        <ShieldCheck size={16} className="text-green-400" />
+                        <span>Verify Security Code</span>
+                      </button>
+                    )}
+
+                    <div className="h-[1px] bg-foreground/10 my-1" />
+
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        const target = activeContact?.id || activeGroup?.id;
+                        if (target && confirm('Clear chat history for both sides?')) {
+                          socket?.emit('clear_chat', { targetId: target });
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-red-400 hover:bg-red-500/15 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <Trash2 size={16} />
+                      <span>Clear chat</span>
+                    </button>
+                  </motion.div>
+                </>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       )}
@@ -860,16 +945,16 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       </AnimatePresence>
 
       {/* Messages Scroll Area */}
-      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-4">
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2.5 py-3 sm:px-6 sm:py-4 flex flex-col gap-1.5 sm:gap-2">
         {/* E2EE Disclaimer */}
-        <div className="w-full flex justify-center mb-2 mt-2">
+        <div className="w-full flex justify-center mb-1.5 mt-1">
           <div 
             onClick={activeContact?.publicKey ? handleOpenSafetyModal : undefined}
-            className={`bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-1.5 flex items-center gap-2 max-w-sm text-center transition-colors ${activeContact?.publicKey ? 'cursor-pointer hover:bg-yellow-500/15' : ''}`}
+            className={`bg-[#182229] border border-[#222e35] text-[#ffd279] rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center shadow-sm transition-colors ${activeContact?.publicKey ? 'cursor-pointer hover:bg-[#1f2c34]' : ''}`}
             title={activeContact?.publicKey ? "Tap to verify Security Code" : undefined}
           >
-            <Lock size={12} className="text-yellow-500/80 shrink-0" />
-            <p className="text-[10px] sm:text-xs text-yellow-500/80 font-medium">
+            <Lock size={12} className="text-[#ffd279] shrink-0" />
+            <p className="text-[11px] leading-tight font-normal">
               Messages and calls are end-to-end encrypted. No one outside this chat can read or listen to them. {activeContact?.publicKey && <span className="underline ml-1 font-semibold">Tap to verify.</span>}
             </p>
           </div>
@@ -904,8 +989,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           return (
             <React.Fragment key={msg.id || i}>
               {showDateDivider && (
-                <div className="flex justify-center my-3 w-full">
-                  <div className="bg-foreground/5 backdrop-blur-md px-3 py-1 rounded-lg shadow-sm border border-foreground/10">
+                <div className="flex justify-center my-2 w-full">
+                  <div className="bg-[#182229] px-3 py-1 rounded-lg shadow-sm border border-[#222e35]">
                     <span className="text-[10px] font-bold text-foreground/60 tracking-wider">
                       {dateDividerText}
                     </span>
@@ -950,7 +1035,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   onTouchStart={(e) => {
                     const touch = e.touches[0];
                     touchTimerRef.current = setTimeout(() => {
-                      if (typeof navigator !== 'undefined') navigator.vibrate?.(40);
+                      if (typeof navigator !== 'undefined') navigator.vibrate?.(35);
                       setMessageContextMenu({ msg, x: touch.clientX, y: touch.clientY });
                     }, 450);
                   }}
@@ -962,20 +1047,20 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }}
                   onMouseEnter={() => setHoveredMessageId(msg.id)}
                   onMouseLeave={() => setHoveredMessageId(null)}
-                  className={`p-3.5 rounded-2xl relative transition-all select-text cursor-text [-webkit-touch-callout:default] min-w-0 break-words ${
-                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
-                  } ${
+                  className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl relative transition-all min-w-0 break-words shadow-sm text-sm sm:text-[15px] ${
                     isMe
-                      ? 'bg-gradient-to-br from-liquid-accent to-liquid-secondary text-foreground rounded-br-sm shadow-[0_0_20px_rgba(0,210,255,0.25)]'
-                      : 'bg-foreground/10 text-foreground rounded-bl-sm border border-foreground/5 backdrop-blur-md'
+                      ? 'rounded-tr-xs bg-[#005c4b] text-[#e9edef]'
+                      : 'rounded-tl-xs bg-[#202c33] text-[#e9edef] border border-white/5'
+                  } ${
+                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
                   }`}
                 >
-                  {/* WhatsApp Floating Action Bar on Hover */}
+                  {/* WhatsApp Floating Action Bar on Hover (Desktop ONLY) */}
                   {hoveredMessageId === msg.id && !isMultiSelectMode && !msg.isDeleted && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
-                      className={`absolute -top-7 ${isMe ? 'right-2' : 'left-2'} z-20 bg-liquid-base/95 backdrop-blur-md border border-foreground/10 rounded-full px-2 py-0.5 shadow-lg flex items-center gap-1.5`}
+                      className={`hidden sm:flex absolute -top-7 ${isMe ? 'right-2' : 'left-2'} z-20 bg-liquid-base/95 backdrop-blur-md border border-foreground/10 rounded-full px-2 py-0.5 shadow-lg items-center gap-1.5`}
                     >
                       <button
                         onClick={(e) => { e.stopPropagation(); handleReact(msg.id, '❤️'); }}
@@ -1156,18 +1241,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   )}
 
                   {/* Footer: Edited, Star, Time & Read Receipts */}
-                  <div className="flex items-center justify-end gap-1.5 mt-1.5 text-[10px] opacity-75">
-                    {msg.isEdited && <span className="italic font-medium text-[9px] text-foreground/80">(edited)</span>}
-                    {msg.isStarred && <Star size={11} className="text-yellow-400 fill-yellow-400" />}
-                    <span>{msg.createdAt ? format(new Date(msg.createdAt), 'hh:mm a') : 'Now'}</span>
+                  <div className="float-right ml-3 mt-1 inline-flex items-center gap-1 select-none pointer-events-none text-[10px] text-foreground/60 leading-none">
+                    {msg.isEdited && <span className="italic font-medium text-[9px] text-foreground/50 mr-0.5">(edited)</span>}
+                    {msg.isStarred && <Star size={10} className="text-yellow-400 fill-yellow-400 mr-0.5" />}
+                    <span>{msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : 'Now'}</span>
                     {isMe && !msg.isDeleted && !isGroup && (
-                      <span title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
+                      <span className="leading-none ml-0.5" title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
                         {msg.isPending ? (
-                          <Clock size={12} className="text-foreground/50 animate-pulse" />
+                          <Clock size={11} className="text-foreground/50 animate-pulse" />
                         ) : msg.isSeen ? (
-                          <CheckCheck size={14} className="text-cyan-300 drop-shadow-[0_0_6px_rgba(0,210,255,0.8)]" />
+                          <CheckCheck size={14} className="text-[#53bdeb]" />
                         ) : (
-                          <CheckCheck size={14} className="text-foreground/60" />
+                          <CheckCheck size={14} className="text-foreground/50" />
                         )}
                       </span>
                     )}
@@ -1299,174 +1384,174 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
       {/* Input Bar Area */}
       {isBlocked ? (
-        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-foreground/5 px-2 sm:px-6 py-2 sm:py-4 flex flex-col items-center justify-center z-20 relative shrink-0 pb-safe">
-          <p className="text-sm text-foreground/60 mb-2">You have blocked this contact.</p>
+        <div className="h-14 bg-liquid-base/90 backdrop-blur-2xl border-t border-foreground/5 px-4 flex flex-col items-center justify-center z-20 relative shrink-0 pb-safe">
+          <p className="text-xs text-foreground/60 mb-1">You have blocked this contact.</p>
           <button 
             onClick={() => token && toggleBlockUser(token, activeContact.id)}
-            className="px-4 py-1.5 bg-liquid-accent text-liquid-dark font-bold text-xs rounded-full hover:brightness-110 transition-all cursor-pointer"
+            className="px-3.5 py-1 bg-liquid-accent text-liquid-dark font-bold text-xs rounded-full hover:brightness-110 transition-all cursor-pointer"
           >
             Unblock User
           </button>
         </div>
       ) : (
-        <div className="min-h-16 sm:min-h-24 bg-liquid-base/90 backdrop-blur-2xl border-t border-foreground/5 px-2 sm:px-6 py-2 sm:py-4 flex items-center gap-1.5 sm:gap-3 z-20 relative shrink-0 pb-safe">
-        {/* Sticker & GIF Picker Modal */}
-        <StickerGifPicker
-          isOpen={isStickerPickerOpen}
-          onClose={() => setIsStickerPickerOpen(false)}
-          onSelectSticker={(url) => handleSendStickerOrGif(url, 'sticker')}
-          onSelectGif={(url) => handleSendStickerOrGif(url, 'image')}
-          onSelectEmoji={(emoji) => setText(prev => prev + emoji)}
-        />
-
-        {isRecordingVoice ? (
-          <VoiceRecorder 
-            onSendVoiceNote={handleSendVoiceNote} 
-            onCancel={() => setIsRecordingVoice(false)} 
+        <div className="bg-liquid-base/95 backdrop-blur-2xl border-t border-foreground/5 px-2 py-2 sm:px-4 sm:py-2.5 flex items-end gap-1.5 sm:gap-2 z-20 relative shrink-0 pb-safe">
+          {/* Sticker & GIF Picker Modal */}
+          <StickerGifPicker
+            isOpen={isStickerPickerOpen}
+            onClose={() => setIsStickerPickerOpen(false)}
+            onSelectSticker={(url) => handleSendStickerOrGif(url, 'sticker')}
+            onSelectGif={(url) => handleSendStickerOrGif(url, 'image')}
+            onSelectEmoji={(emoji) => setText(prev => prev + emoji)}
           />
-        ) : (
-          <>
-            <input 
-              type="file" 
-              ref={fileInputRef}
-              className="hidden" 
-              onChange={(e) => setFile(e.target.files?.[0] || null)} 
+
+          {isRecordingVoice ? (
+            <VoiceRecorder 
+              onSendVoiceNote={handleSendVoiceNote} 
+              onCancel={() => setIsRecordingVoice(false)} 
             />
+          ) : (
+            <>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                onChange={(e) => setFile(e.target.files?.[0] || null)} 
+              />
 
-            {/* Sticker / GIF Picker Toggle */}
-            <button
-              onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
-              className={`p-2 sm:p-2.5 rounded-full transition-colors shrink-0 ${
-                isStickerPickerOpen ? 'bg-liquid-accent text-liquid-dark' : 'text-foreground/60 hover:text-liquid-accent hover:bg-foreground/5'
-              }`}
-              title="Stickers, GIFs & Emojis"
-            >
-              <Smile size={20} className="sm:w-5 sm:h-5" />
-            </button>
-
-            {/* Attachment Menu */}
-            <div className="relative shrink-0">
-                <button 
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
-                  }}
-                  className={`p-2 sm:p-3 rounded-full transition-all ${
-                    isAttachmentMenuOpen 
-                      ? 'bg-liquid-accent text-liquid-dark rotate-45' 
-                      : 'text-foreground/60 hover:text-liquid-accent hover:bg-foreground/5'
+              {/* WhatsApp Input Capsule (Emoji + Textarea + Attachment) */}
+              <div className="flex-1 bg-[#202c33]/90 rounded-3xl min-h-[44px] flex items-end px-2 sm:px-3 border border-foreground/10 focus-within:border-liquid-accent/40 transition-colors shadow-inner">
+                {/* Emoji / Sticker Toggle */}
+                <button
+                  onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
+                  className={`p-2 sm:p-2.5 rounded-full transition-colors shrink-0 ${
+                    isStickerPickerOpen ? 'text-liquid-accent' : 'text-foreground/50 hover:text-liquid-accent'
                   }`}
-                  title="Attach Media"
+                  title="Emojis & Stickers"
                 >
-                  <Plus size={22} />
+                  <Smile size={20} />
                 </button>
 
-                {/* Attachment Dropdown Menu */}
-                <AnimatePresence>
-                  {isAttachmentMenuOpen && (
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.8, y: 20 }}
-                      className="absolute bottom-16 left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-3 rounded-2xl border border-foreground/10 shadow-[0_0_40px_rgba(0,0,0,0.6)] flex flex-col gap-2 min-w-[200px]"
-                    >
-                      <button
-                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('image/*'); }}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
-                      >
-                        <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
-                          <ImageIcon size={18} />
-                        </div>
-                        <span>Photos & Images</span>
-                      </button>
+                {/* Textarea */}
+                <textarea 
+                  ref={textareaRef}
+                  value={text}
+                  onChange={handleInputChange}
+                  onPaste={handlePaste}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey && (enterToSend ?? true)) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                  rows={1}
+                  placeholder="Message or /ai..."
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-[14px] sm:text-[15px] resize-none px-1 py-2.5 max-h-28 overflow-y-auto leading-relaxed placeholder:text-foreground/40"
+                  style={{ height: '22px', minHeight: '22px', maxHeight: '110px' }}
+                />
 
-                      <button
-                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('video/*'); }}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
-                      >
-                        <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
-                          <Film size={18} />
-                        </div>
-                        <span>Videos</span>
-                      </button>
+                {/* Attachment Clip Button */}
+                <div className="relative shrink-0 flex items-center mb-0.5">
+                  <button 
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+                    }}
+                    className={`p-2 sm:p-2.5 rounded-full transition-all ${
+                      isAttachmentMenuOpen 
+                        ? 'text-liquid-accent rotate-45' 
+                        : 'text-foreground/50 hover:text-liquid-accent'
+                    }`}
+                    title="Attach Media"
+                  >
+                    <Plus size={22} />
+                  </button>
 
-                      <button
-                        onPointerDown={(e) => { e.preventDefault(); triggerFileInput('*/*'); }}
-                        className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                  {/* Attachment Dropdown Menu */}
+                  <AnimatePresence>
+                    {isAttachmentMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.8, y: 15 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.8, y: 15 }}
+                        className="absolute bottom-12 right-0 sm:left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-2.5 rounded-2xl border border-foreground/10 shadow-[0_0_30px_rgba(0,0,0,0.6)] flex flex-col gap-1.5 min-w-[190px]"
                       >
-                        <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
-                          <FileText size={18} />
-                        </div>
-                        <span>Documents & Files</span>
-                      </button>
-
-                      {isGroup && (
                         <button
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setIsAttachmentMenuOpen(false);
-                            setIsPollModalOpen(true);
-                          }}
-                          className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('image/*'); }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
                         >
-                          <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
-                            <BarChart2 size={18} />
+                          <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
+                            <ImageIcon size={18} />
                           </div>
-                          <span>Create Poll</span>
+                          <span>Photos & Images</span>
                         </button>
-                      )}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+
+                        <button
+                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('video/*'); }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                        >
+                          <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
+                            <Film size={18} />
+                          </div>
+                          <span>Videos</span>
+                        </button>
+
+                        <button
+                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('*/*'); }}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                        >
+                          <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
+                            <FileText size={18} />
+                          </div>
+                          <span>Documents & Files</span>
+                        </button>
+
+                        {isGroup && (
+                          <button
+                            onPointerDown={(e) => {
+                              e.preventDefault();
+                              setIsAttachmentMenuOpen(false);
+                              setIsPollModalOpen(true);
+                            }}
+                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                          >
+                            <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
+                              <BarChart2 size={18} />
+                            </div>
+                            <span>Create Poll</span>
+                          </button>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               </div>
 
-            {/* Text Input */}
-            <div className="flex-1 bg-background/40 rounded-3xl min-h-[40px] sm:min-h-[48px] py-2 flex items-center px-3 sm:px-5 border border-foreground/10 focus-within:border-liquid-accent/50 transition-colors">
-              <textarea 
-                ref={textareaRef}
-                value={text}
-                onChange={handleInputChange}
-                onPaste={handlePaste}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && (enterToSend ?? true)) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-                rows={1}
-                placeholder="Message or /ai..."
-                className="flex-1 bg-transparent border-none outline-none text-foreground text-sm resize-none overflow-y-auto"
-                style={{ height: '20px', minHeight: '20px', maxHeight: '120px' }}
-              />
-            </div>
-
-            {/* Send or Mic Button */}
-            {text.trim() || file ? (
-              <motion.button 
-                initial={{ scale: 0.6, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                whileHover={{ scale: 1.08 }}
-                whileTap={{ scale: 0.95 }}
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={handleSend}
-                className="bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-foreground p-3 rounded-full shadow-[0_0_20px_rgba(0,210,255,0.5)] transition-all cursor-pointer shrink-0"
-                title={editingMessage ? "Save Edit" : "Send Message"}
-              >
-                {editingMessage ? <Check size={18} /> : <Send size={18} className="ml-0.5" />}
-              </motion.button>
-            ) : (
-              <button 
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => setIsRecordingVoice(true)}
-                className="text-foreground/60 hover:text-liquid-accent p-3 rounded-full hover:bg-foreground/5 transition-colors cursor-pointer shrink-0"
-                title="Record Voice Note"
-              >
-                <Mic size={20} />
-              </button>
-            )}
-          </>
-        )}
-      </div>
+              {/* Floating Action Button (Send or Mic) */}
+              {text.trim() || file ? (
+                <motion.button 
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  whileTap={{ scale: 0.9 }}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={handleSend}
+                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-liquid-dark flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer shrink-0"
+                  title={editingMessage ? "Save Edit" : "Send Message"}
+                >
+                  {editingMessage ? <Check size={20} className="text-liquid-dark stroke-[2.5]" /> : <Send size={18} className="ml-0.5 text-liquid-dark stroke-[2.5]" />}
+                </motion.button>
+              ) : (
+                <button 
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setIsRecordingVoice(true)}
+                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-liquid-dark flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer shrink-0"
+                  title="Record Voice Note"
+                >
+                  <Mic size={20} className="text-liquid-dark stroke-[2.5]" />
+                </button>
+              )}
+            </>
+          )}
+        </div>
       )}
 
       {/* Context Menu (Right Click / Long Press) */}
@@ -1487,11 +1572,121 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 setMessageContextMenu(null);
               }}
             />
+            {/* Mobile Action Bottom Sheet (sm:hidden) */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 28, stiffness: 320 }}
+              className="sm:hidden fixed inset-x-0 bottom-0 z-[70] bg-[#1e2428] border-t border-foreground/15 rounded-t-3xl p-4 shadow-2xl flex flex-col gap-2 pb-safe max-w-lg mx-auto"
+            >
+              {/* Drag Pill */}
+              <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-2" />
+
+              {/* Quick Reactions Bar */}
+              <div className="flex items-center justify-around py-2 px-1 bg-background/30 rounded-2xl border border-foreground/5 mb-1">
+                {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      handleReact(messageContextMenu.msg.id, emoji);
+                      setMessageContextMenu(null);
+                    }}
+                    className="hover:scale-125 active:scale-95 transition-transform text-2xl p-2"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex flex-col gap-0.5">
+                <button 
+                  onClick={() => {
+                    handleCopyMessage(messageContextMenu.msg);
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                >
+                  <Copy size={18} className="text-liquid-accent" /> Copy Text
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setReplyingTo(messageContextMenu.msg);
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                >
+                  <Reply size={18} /> Reply
+                </button>
+
+                <button 
+                  onClick={() => {
+                    clearSelection();
+                    toggleSelectMessage(messageContextMenu.msg.id);
+                    setIsForwardModalOpen(true);
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                >
+                  <Forward size={18} /> Forward
+                </button>
+
+                <button 
+                  onClick={() => {
+                    toggleStarMessage(messageContextMenu.msg.id);
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                >
+                  <Star size={18} className={messageContextMenu.msg.isStarred ? "text-yellow-400 fill-yellow-400" : ""} /> 
+                  {messageContextMenu.msg.isStarred ? 'Unstar Message' : 'Star Message'}
+                </button>
+
+                {activeContact?.publicKey && (
+                  <button 
+                    onClick={() => {
+                      handleOpenSafetyModal();
+                      setMessageContextMenu(null);
+                    }}
+                    className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                  >
+                    <ShieldCheck size={18} className="text-green-400" /> Verify Security Code
+                  </button>
+                )}
+
+                {messageContextMenu.msg.senderId === user?.id && messageContextMenu.msg.text && !messageContextMenu.msg.isDeleted && (
+                  <button 
+                    onClick={() => {
+                      setEditingMessage(messageContextMenu.msg);
+                      setMessageContextMenu(null);
+                    }}
+                    className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-foreground hover:bg-foreground/10 active:bg-foreground/10 rounded-xl transition-colors text-left font-medium"
+                  >
+                    <Edit2 size={18} className="text-cyan-400" /> Edit Message
+                  </button>
+                )}
+
+                {messageContextMenu.msg.senderId === user?.id && !messageContextMenu.msg.isDeleted && (
+                  <button 
+                    onClick={() => {
+                      handleDeleteMessage(messageContextMenu.msg.id, true);
+                      setMessageContextMenu(null);
+                    }}
+                    className="w-full flex items-center gap-3.5 px-4 py-3 text-sm text-red-400 hover:bg-red-500/10 active:bg-red-500/10 rounded-xl transition-colors text-left font-medium"
+                  >
+                    <Trash2 size={18} /> Delete for Everyone
+                  </button>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Desktop Positioned Context Menu (hidden sm:flex) */}
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[70] min-w-[220px] bg-liquid-base/95 backdrop-blur-3xl border border-foreground/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
+              className="hidden sm:flex fixed z-[70] min-w-[220px] bg-liquid-base/95 backdrop-blur-3xl border border-foreground/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex-col overflow-hidden"
               style={{
                 left: Math.min(messageContextMenu.x, window.innerWidth - 240),
                 top: Math.min(messageContextMenu.y, window.innerHeight - 340)
