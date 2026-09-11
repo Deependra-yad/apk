@@ -61,8 +61,8 @@ export default function QrLoginPanel({ onSuccess }: QrLoginPanelProps) {
         setStatus('scanned');
       });
 
-      socket.on('qr_login_success', (data: { token: string; user: any }) => {
-        handleSuccessfulLogin(data.token, data.user);
+      socket.on('qr_login_success', (data: { token: string; user: any; sessionId?: string }) => {
+        handleSuccessfulLogin(data.token, data.user, data.sessionId || newSessionId);
       });
 
       // 2. HTTP Polling fallback every 2 seconds
@@ -72,7 +72,7 @@ export default function QrLoginPanel({ onSuccess }: QrLoginPanelProps) {
           if (pollRes.data.status === 'scanned') {
             setStatus('scanned');
           } else if (pollRes.data.status === 'approved' && pollRes.data.token) {
-            handleSuccessfulLogin(pollRes.data.token, pollRes.data.user);
+            handleSuccessfulLogin(pollRes.data.token, pollRes.data.user, pollRes.data.sessionId || newSessionId);
           } else if (pollRes.data.status === 'expired') {
             setStatus('expired');
           }
@@ -85,13 +85,16 @@ export default function QrLoginPanel({ onSuccess }: QrLoginPanelProps) {
     }
   };
 
-  const handleSuccessfulLogin = (token: string, user: any) => {
+  const handleSuccessfulLogin = (token: string, user: any, sessionId?: string) => {
     setStatus('approved');
     if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
     if (socketRef.current) socketRef.current.disconnect();
 
     localStorage.setItem('liquid_token', token);
     localStorage.setItem('liquid_user', JSON.stringify(user));
+    if (sessionId) {
+      localStorage.setItem('liquid_session_id', sessionId);
+    }
     useAuthStore.getState().setAuth(user, token);
 
     if (onSuccess) {

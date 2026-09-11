@@ -275,11 +275,14 @@ io.on('connection', (socket) => {
     }
   });
 
-  const registerUser = async (uid: string) => {
+  const registerUser = async (uid: string, sid?: string) => {
     if (!uid) return;
     connectedUsers.set(uid, socket.id);
     socketToUser.set(socket.id, uid);
     socket.join(`user_${uid}`);
+    if (sid) {
+      socket.join(`session_${sid}`);
+    }
     io.emit('online_users', Array.from(connectedUsers.keys()));
     io.emit('user_status_changed', { userId: uid, isOnline: true });
 
@@ -311,12 +314,20 @@ io.on('connection', (socket) => {
   };
 
   const initialUserId = socket.handshake.query.userId as string;
+  const initialSessionId = socket.handshake.query.sessionId as string;
+  if (initialSessionId) {
+    socket.join(`session_${initialSessionId}`);
+  }
   if (initialUserId) {
-    registerUser(initialUserId);
+    registerUser(initialUserId, initialSessionId);
   }
 
-  socket.on('user_connected', (uid: string) => {
-    registerUser(uid);
+  socket.on('user_connected', (data: any) => {
+    if (typeof data === 'string') {
+      registerUser(data);
+    } else if (data && typeof data === 'object') {
+      registerUser(data.userId, data.sessionId);
+    }
   });
 
   // --- Join Group Socket Rooms ---

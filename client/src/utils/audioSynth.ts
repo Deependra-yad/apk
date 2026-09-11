@@ -137,6 +137,94 @@ class SoundEffects {
       osc.stop(now + 0.15);
     } catch (e) {}
   }
+
+  // Kawaii Synth 1: Sakura Bell (Japanese Pentatonic Blossom)
+  playSakuraBell() {
+    try {
+      const ctx = this.getContext();
+      const notes = [587.33, 659.25, 783.99, 880.00, 1046.50]; // D5, E5, G5, A5, C6
+      notes.forEach((freq, idx) => {
+        const now = ctx.currentTime + idx * 0.12;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.03);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      });
+    } catch (e) {}
+  }
+
+  // Kawaii Synth 2: Cyber Pulse (Tokyo Neon Wave)
+  playCyberPulse() {
+    try {
+      const ctx = this.getContext();
+      const freqs = [329.63, 440.00, 554.37, 659.25]; // E4, A4, C#5, E5
+      freqs.forEach((freq, idx) => {
+        const now = ctx.currentTime + idx * 0.1;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.2, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.35);
+      });
+    } catch (e) {}
+  }
+
+  // Kawaii Synth 3: Kawaii Chime (Cute Anime Sparkle)
+  playKawaiiChime() {
+    try {
+      const ctx = this.getContext();
+      const notes = [698.46, 880.00, 1046.50, 1396.91]; // F5, A5, C6, F6
+      notes.forEach((freq, idx) => {
+        const now = ctx.currentTime + idx * 0.08;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.15, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // Kawaii Synth 4: Tokyo Neon (Future Cyber Arpeggio)
+  playTokyoNeon() {
+    try {
+      const ctx = this.getContext();
+      const notes = [440, 523.25, 659.25, 880, 1046.50];
+      notes.forEach((freq, idx) => {
+        const now = ctx.currentTime + idx * 0.09;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
+      });
+    } catch (e) {}
+  }
 }
 
 export const soundEffects = new SoundEffects();

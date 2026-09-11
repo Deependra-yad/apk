@@ -11,13 +11,10 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import LiquidLogo from '@/components/LiquidLogo';
+import { downloadFile } from '@/utils/apiUrl';
 
 export default function LandingPage() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end end"]
-  });
+  const { scrollYProgress } = useScroll();
 
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 100, damping: 30, restDelta: 0.001 });
 
@@ -79,7 +76,7 @@ export default function LandingPage() {
     : '/web';
 
   return (
-    <div ref={containerRef} className="min-h-screen bg-[#07050e] text-[#fbfaff] relative overflow-x-hidden font-sans selection:bg-[#ff7597] selection:text-black">
+    <div className="min-h-screen w-full bg-[#07050e] text-[#fbfaff] relative overflow-x-hidden font-sans selection:bg-[#ff7597] selection:text-black">
       
       {/* Top Scroll Reading Progress Bar */}
       <motion.div 
@@ -87,15 +84,15 @@ export default function LandingPage() {
         className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_15px_rgba(255,75,130,0.8)]"
       />
 
-      {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) */}
-      <motion.div style={{ y: yKanji1 }} className="absolute top-40 -left-12 text-8xl font-black text-white/[0.02] select-none pointer-events-none rotate-90 z-0">
+      {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) - Hidden on mobile to prevent scroll lag */}
+      <motion.div style={{ y: yKanji1 }} className="hidden md:block absolute top-40 -left-12 text-8xl font-black text-white/[0.02] select-none pointer-events-none rotate-90 z-0">
         完全秘密暗号化
       </motion.div>
-      <motion.div style={{ y: yKanji2 }} className="absolute top-[1200px] -right-12 text-9xl font-black text-white/[0.02] select-none pointer-events-none -rotate-90 z-0">
+      <motion.div style={{ y: yKanji2 }} className="hidden md:block absolute top-[1200px] -right-12 text-9xl font-black text-white/[0.02] select-none pointer-events-none -rotate-90 z-0">
         液体通信装置
       </motion.div>
-      <motion.div style={{ y: yFloatingOrb1 }} className="absolute top-[200px] left-[15%] w-[650px] h-[650px] bg-gradient-to-tr from-[#ff4b82]/15 to-[#a855f7]/15 rounded-full blur-[170px] pointer-events-none -z-10" />
-      <motion.div style={{ y: yFloatingOrb2 }} className="absolute top-[1100px] right-[5%] w-[600px] h-[600px] bg-gradient-to-br from-[#00f2fe]/12 to-[#a855f7]/12 rounded-full blur-[180px] pointer-events-none -z-10" />
+      <motion.div style={{ y: yFloatingOrb1 }} className="absolute top-[200px] left-[15%] w-[350px] sm:w-[650px] h-[350px] sm:h-[650px] bg-gradient-to-tr from-[#ff4b82]/15 to-[#a855f7]/15 rounded-full blur-[120px] sm:blur-[170px] pointer-events-none -z-10" />
+      <motion.div style={{ y: yFloatingOrb2 }} className="absolute top-[1100px] right-[5%] w-[300px] sm:w-[600px] h-[300px] sm:h-[600px] bg-gradient-to-br from-[#00f2fe]/12 to-[#a855f7]/12 rounded-full blur-[120px] sm:blur-[180px] pointer-events-none -z-10" />
 
       {/* Navigation Header */}
       <header className="sticky top-0 w-full z-40 backdrop-blur-2xl bg-[#07050e]/75 border-b border-white/5 transition-all">
@@ -197,14 +194,13 @@ export default function LandingPage() {
             <ArrowRight size={16} />
           </a>
 
-          <a
-            href="/LiquidChat.apk"
-            download
+          <button
+            onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
             className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#17122b]/90 hover:bg-[#231a44] text-foreground font-bold text-sm border border-[#a855f7]/30 shadow-lg hover:border-[#ff7597]/50 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
           >
             <Download size={20} className="text-[#00f2fe]" />
-            <span>Download Android APK (v2.4)</span>
-          </a>
+            <span>Download Android APK (v3.0 PRO)</span>
+          </button>
         </motion.div>
 
         {/* Stats Row */}
@@ -772,14 +768,13 @@ export default function LandingPage() {
               <ArrowRight size={16} />
             </a>
 
-            <a
-              href="/LiquidChat.apk"
-              download
+            <button
+              onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
               className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition-all flex items-center justify-center gap-3 cursor-pointer"
             >
               <Download size={18} className="text-[#00f2fe]" />
-              <span>Download Android APK</span>
-            </a>
+              <span>Download Android APK (v3.0 PRO)</span>
+            </button>
           </div>
         </div>
       </section>

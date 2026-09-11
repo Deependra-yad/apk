@@ -13,6 +13,13 @@ interface SettingsState {
   readReceipts: boolean;
   enterToSend: boolean;
   notificationSound: boolean;
+  ringtone: 'sakura' | 'cyber' | 'kawaii' | 'tokyo';
+  mirroredCamera: boolean;
+  appLockPin: string | null;
+  incognitoShield: boolean;
+  dataSaver: boolean;
+  noiseSuppression: boolean;
+  chatFontSize: 'small' | 'medium' | 'large';
   wallpaper: string | null;
   blockedUsers: any[];
 
@@ -33,6 +40,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   readReceipts: true,
   enterToSend: true,
   notificationSound: true,
+  ringtone: 'sakura',
+  mirroredCamera: true,
+  appLockPin: null,
+  incognitoShield: false,
+  dataSaver: false,
+  noiseSuppression: true,
+  chatFontSize: 'medium',
   wallpaper: null,
   blockedUsers: [],
 
@@ -52,8 +66,11 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       const res = await axios.get('/api/users/settings', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const theme = res.data.theme || 'dark';
+      get().setTheme(theme);
+
       set({
-        theme: res.data.theme || 'dark',
+        theme,
         lastSeenPrivacy: res.data.lastSeenPrivacy || 'everyone',
         profilePhotoPrivacy: res.data.profilePhotoPrivacy || 'everyone',
         aboutPrivacy: res.data.aboutPrivacy || 'everyone',

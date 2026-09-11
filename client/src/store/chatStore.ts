@@ -144,10 +144,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
     requestNotificationPermission();
 
     const token = typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null;
+    const sessionId = typeof window !== 'undefined' ? localStorage.getItem('liquid_session_id') : null;
 
     const socketUrl = getApiUrl();
     const socket = io(socketUrl, {
-      query: { userId, token },
+      query: { userId, token, sessionId },
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
@@ -158,21 +159,47 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
 
     socket.on('connect', () => {
-      socket.emit('user_connected', userId);
+      socket.emit('user_connected', { userId, sessionId });
     });
 
     socket.on('online_users', (users: string[]) => {
       set({ onlineUsers: users });
     });
 
-    socket.on('force_logout', () => {
+    socket.on('force_logout', (data?: any) => {
       try {
-        localStorage.removeItem('liquid_token');
-        localStorage.removeItem('liquid_user');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-      } catch (e) {}
-      window.location.href = '/auth';
+        import('./authStore').then(({ useAuthStore }) => {
+          useAuthStore.getState().logout();
+          if (data?.reason) {
+            alert(data.reason);
+          }
+          window.location.href = '/auth';
+        });
+      } catch (e) {
+        window.location.href = '/auth';
+      }
+    });
+
+    socket.on('force_logout_session', (data: { sessionId: string }) => {
+      const mySessionId = typeof window !== 'undefined' ? localStorage.getItem('liquid_session_id') : null;
+      if (mySessionId && data?.sessionId && mySessionId === data.sessionId) {
+        import('./authStore').then(({ useAuthStore }) => {
+          useAuthStore.getState().logout();
+          alert('This linked desktop session has been disconnected from your mobile device.');
+          window.location.href = '/auth';
+        });
+      }
+    });
+
+    socket.on('force_logout_all_sessions', () => {
+      const mySessionId = typeof window !== 'undefined' ? localStorage.getItem('liquid_session_id') : null;
+      if (mySessionId) {
+        import('./authStore').then(({ useAuthStore }) => {
+          useAuthStore.getState().logout();
+          alert('All linked desktop sessions have been logged out.');
+          window.location.href = '/auth';
+        });
+      }
     });
 
     socket.on('user_joined', (newUser: any) => {

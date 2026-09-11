@@ -113,6 +113,7 @@ router.get('/status/:sessionId', (req, res) => {
     status: session.status,
     token: session.token,
     user: session.user,
+    sessionId: session.sessionId,
     expiresAt: session.expiresAt
   });
 });
@@ -182,7 +183,7 @@ router.post('/approve', async (req, res) => {
     if (user.isBanned) return res.status(403).json({ error: 'Account is banned' });
 
     // Generate dedicated 7-day token for the desktop session
-    const desktopToken = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+    const desktopToken = jwt.sign({ userId: user.id, sessionId }, JWT_SECRET, { expiresIn: '7d' });
 
     // Log desktop login
     await prisma.loginLog.create({
@@ -303,6 +304,7 @@ router.delete('/sessions/:sessionId', async (req, res) => {
 
     if (ioInstance) {
       ioInstance.to(`qr_${sessionId}`).emit('force_logout', { reason: 'Logged out from mobile device' });
+      ioInstance.to(`session_${sessionId}`).emit('force_logout', { sessionId, reason: 'Logged out from mobile device' });
       ioInstance.to(`user_${userId}`).emit('force_logout_session', { sessionId });
     }
 
@@ -328,6 +330,7 @@ router.delete('/sessions', async (req, res) => {
         linkedSessions.delete(id);
         if (ioInstance) {
           ioInstance.to(`qr_${id}`).emit('force_logout', { reason: 'All devices logged out' });
+          ioInstance.to(`session_${id}`).emit('force_logout', { sessionId: id, reason: 'All devices logged out' });
         }
       }
     }

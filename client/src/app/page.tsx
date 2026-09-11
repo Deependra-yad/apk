@@ -333,7 +333,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
   const handleLogout = () => {
     logout();
-    router.push('/login');
+    router.push('/auth');
   };
 
   const handleSelectContact = (contact: any) => {
@@ -434,7 +434,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
               <button 
                 onClick={() => {
                   import('@/utils/apiUrl').then(({ downloadFile }) => {
-                    downloadFile('https://apk-production-740c.up.railway.app/LiquidChat.apk', 'LiquidChat.apk');
+                    downloadFile('/LiquidChat.apk', 'LiquidChat.apk');
                   });
                 }}
                 className="bg-white text-blue-600 font-bold px-4 py-1.5 rounded-xl text-xs text-center shadow-lg hover:bg-gray-100 transition-all active:scale-95"
