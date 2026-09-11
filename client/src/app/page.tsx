@@ -334,7 +334,7 @@ export default function Home() {
     
     const archived = isTargetArchived(u.id);
     const hasHistory = activeConversations.includes(u.id) || 
-      (u.liquidNumber && u.liquidNumber === cleanSearchNum) || 
+      (cleanSearchNum.length > 0 && u.liquidNumber && u.liquidNumber === cleanSearchNum) || 
       (searchedContact?.id === u.id) ||
       (activeContact?.id === u.id);
 

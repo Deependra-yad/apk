@@ -501,10 +501,10 @@ export default function SettingsPanel() {
       {activeSection === 'help' && (
         <div className="space-y-4 text-xs text-foreground/80">
           <div className="bg-foreground/5 rounded-2xl p-4 border border-foreground/5 space-y-2">
-            <h4 className="font-bold text-foreground">Liquid WhatsApp Suite</h4>
-            <p className="text-[11px] text-foreground/60">Version 2.4.0 PRO (Next.js 16 + WebSockets + WebRTC)</p>
+            <h4 className="font-bold text-foreground">🌸 Liquid Cyber-Glass Messenger</h4>
+            <p className="text-[11px] text-[#ff7597] font-semibold">Version 3.0.0 Kawaii Edition • 暗号化 E2EE</p>
             <p className="text-[11px] leading-relaxed">
-              Equipped with end-to-end WebRTC calling, WhatsApp polls, status stories, inline media streaming, group management, and liquid reactive animations.
+              Equipped with 100% End-to-End Encryption, Liquid AI Copilot, HD Mirrored WebRTC calling, interactive polls, dynamic status stories, inline media streaming, and Japanese Kawaii liquid glass design.
             </p>
           </div>
         </div>

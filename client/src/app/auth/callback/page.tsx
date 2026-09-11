@@ -105,14 +105,21 @@ function CallbackLogic() {
 
       if (token && userStr) {
         try {
-          const user = JSON.parse(decodeURIComponent(userStr));
+          let user: any;
+          try {
+            user = JSON.parse(decodeURIComponent(userStr));
+          } catch {
+            user = JSON.parse(userStr);
+          }
           localStorage.setItem("liquid_token", token);
           localStorage.setItem("liquid_user", JSON.stringify(user));
           setAuth(user, token);
 
+          const safeUserJson = encodeURIComponent(JSON.stringify(user));
+
           if (isApp) {
             setIsFromApp(true);
-            const appUrl = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
+            const appUrl = `liquidchat://auth?token=${token}&user=${safeUserJson}`;
             setDeepLinkUrl(appUrl);
             setStatusMessage("Returning to Liquid Chat App...");
             setTimeout(() => {
@@ -123,7 +130,7 @@ function CallbackLogic() {
           } else {
             setStatusMessage("Login successful! Redirecting to chat...");
             if (returnOrigin && returnOrigin !== window.location.origin) {
-              window.location.href = `${returnOrigin}/auth/callback?token=${token}&user=${encodeURIComponent(userStr)}`;
+              window.location.href = `${returnOrigin}/auth/callback?token=${token}&user=${safeUserJson}`;
             } else {
               window.location.href = "/";
             }

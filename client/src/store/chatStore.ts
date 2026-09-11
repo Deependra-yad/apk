@@ -166,8 +166,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
 
     socket.on('force_logout', () => {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      try {
+        localStorage.removeItem('liquid_token');
+        localStorage.removeItem('liquid_user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+      } catch (e) {}
       window.location.href = '/auth';
     });
 

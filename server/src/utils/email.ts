@@ -93,23 +93,23 @@ export const sendActivityNotification = async (email: string, activityType: stri
   }
 
   const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #222e35; border-radius: 16px; background-color: #0b141a; color: #e9edef;">
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 28px; border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 20px; background-color: #0b0914; color: #fbfaff;">
       <div style="text-align: center; margin-bottom: 24px;">
-        <h2 style="color: #00d2ff; margin: 0; font-size: 24px;">LiquidChat</h2>
-        <p style="color: #8696a0; font-size: 13px; margin-top: 4px;">End-to-End Encrypted Communication</p>
+        <h2 style="color: #ff7597; margin: 0; font-size: 26px; font-weight: 800; letter-spacing: -0.5px;">🌸 LiquidChat</h2>
+        <p style="color: #b388ff; font-size: 13px; margin-top: 4px; font-weight: 500;">End-to-End Encrypted • 暗号化 Protected</p>
       </div>
-      <div style="background-color: #111b21; padding: 20px; border-radius: 12px; border: 1px solid #202c33; margin-bottom: 20px;">
-        <h3 style="color: #e9edef; margin-top: 0; font-size: 16px;">${subject}</h3>
-        <p style="color: #d1d7db; font-size: 14px; line-height: 1.5;">${message}</p>
-        <ul style="padding-left: 20px; color: #8696a0; font-size: 13px; line-height: 1.6;">
-          <li><strong>Time:</strong> ${date}</li>
-          <li><strong>Details:</strong> ${deviceOrDetails}</li>
+      <div style="background-color: #181329; padding: 22px; border-radius: 16px; border: 1px solid rgba(255, 117, 151, 0.25); margin-bottom: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+        <h3 style="color: #fbfaff; margin-top: 0; font-size: 17px; font-weight: 700;">${subject}</h3>
+        <p style="color: #e2d9f3; font-size: 14px; line-height: 1.6;">${message}</p>
+        <ul style="padding-left: 20px; color: #b388ff; font-size: 13px; line-height: 1.7;">
+          <li><strong style="color: #fbfaff;">Time:</strong> ${date}</li>
+          <li><strong style="color: #fbfaff;">Details:</strong> ${deviceOrDetails}</li>
         </ul>
       </div>
       <div style="text-align: center;">
-        <a href="https://liquidchat.online" style="display: inline-block; padding: 12px 28px; background: linear-gradient(135deg, #00d2ff, #00f0ff); color: #0a0a0f; text-decoration: none; border-radius: 10px; font-weight: bold; font-size: 14px;">Open LiquidChat</a>
+        <a href="https://liquidchat.online" style="display: inline-block; padding: 13px 32px; background: linear-gradient(135deg, #ff4b82, #a855f7); color: #ffffff; text-decoration: none; border-radius: 12px; font-weight: bold; font-size: 14px; box-shadow: 0 4px 20px rgba(255, 75, 130, 0.4);">Open LiquidChat</a>
       </div>
-      <p style="font-size: 11px; color: #667781; text-align: center; margin-top: 24px;">This is an automated security and activity alert from LiquidChat.online.</p>
+      <p style="font-size: 11px; color: #7e7195; text-align: center; margin-top: 28px;">This is an automated security and activity alert from LiquidChat.online.</p>
     </div>
   `;
 
