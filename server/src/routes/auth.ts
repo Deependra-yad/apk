@@ -88,9 +88,13 @@ router.post('/google', async (req, res) => {
       user: {
         id: user.id,
         username: user.username,
+        email: user.email,
+        liquidNumber: user.liquidNumber,
         avatar: user.avatar,
         about: user.about,
-        isBanned: user.isBanned
+        publicKey: user.publicKey,
+        isBanned: user.isBanned,
+        isAdmin: user.isAdmin
       }
     });
 
@@ -270,8 +274,11 @@ router.post('/google-redirect', async (req, res) => {
         user: {
           id: user.id,
           username: user.username,
+          email: user.email,
+          liquidNumber: user.liquidNumber,
           avatar: user.avatar,
           about: user.about,
+          publicKey: user.publicKey,
           isAdmin: user.isAdmin
         }
       });
@@ -316,7 +323,20 @@ router.post('/google-redirect', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        liquidNumber: user.liquidNumber,
+        avatar: user.avatar,
+        about: user.about,
+        publicKey: user.publicKey,
+        lastSeen: user.lastSeen,
+        isAdmin: user.isAdmin
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during registration' });
@@ -325,16 +345,28 @@ router.post('/google-redirect', async (req, res) => {
 
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
+  const identifier = (username || req.body.email || req.body.identifier || '').trim();
+  if (!identifier || !password) {
+    return res.status(400).json({ error: 'Username/Email and password are required' });
   }
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } });
-    if (!user) return res.status(400).json({ error: 'Invalid credentials' });
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { username: identifier },
+          { email: identifier }
+        ]
+      }
+    });
+    if (!user) return res.status(400).json({ error: 'Invalid username/email or password' });
+
+    if (!user.passwordHash) {
+      return res.status(400).json({ error: 'This account was registered using Google or OTP. Please sign in with that method.' });
+    }
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid credentials' });
+    if (!isMatch) return res.status(400).json({ error: 'Invalid username/email or password' });
 
     if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
 
@@ -351,7 +383,20 @@ router.post('/login', async (req, res) => {
     });
 
     const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({ token, user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        liquidNumber: user.liquidNumber,
+        avatar: user.avatar,
+        about: user.about,
+        publicKey: user.publicKey,
+        lastSeen: user.lastSeen,
+        isAdmin: user.isAdmin
+      }
+    });
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Server error during login' });
@@ -369,7 +414,19 @@ router.get('/me', async (req, res) => {
     if (!user) return res.status(404).json({ error: 'User not found' });
     if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
     
-    res.json({ user: { id: user.id, username: user.username, liquidNumber: user.liquidNumber, avatar: user.avatar, about: user.about, lastSeen: user.lastSeen, isAdmin: user.isAdmin } });
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        liquidNumber: user.liquidNumber,
+        avatar: user.avatar,
+        about: user.about,
+        publicKey: user.publicKey,
+        lastSeen: user.lastSeen,
+        isAdmin: user.isAdmin
+      }
+    });
   } catch (err) {
     res.status(401).json({ error: 'Invalid token' });
   }
@@ -406,9 +463,13 @@ router.put('/profile', async (req, res) => {
       user: { 
         id: updatedUser.id, 
         username: updatedUser.username, 
+        email: updatedUser.email,
+        liquidNumber: updatedUser.liquidNumber,
         avatar: updatedUser.avatar, 
         about: updatedUser.about, 
-        lastSeen: updatedUser.lastSeen 
+        publicKey: updatedUser.publicKey,
+        lastSeen: updatedUser.lastSeen,
+        isAdmin: updatedUser.isAdmin
       } 
     });
   } catch (err) {

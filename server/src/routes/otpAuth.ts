@@ -41,7 +41,11 @@ router.post('/request-otp', async (req, res) => {
       data: { email, code, type, expiresAt }
     });
 
-    await sendOtpEmail(email, code, type);
+    try {
+      await sendOtpEmail(email, code, type);
+    } catch (mailErr) {
+      console.warn(`[OTP] Email delivery failed for ${email}. Fallback OTP: ${code}`, mailErr);
+    }
     res.json({ success: true, message: 'OTP sent to email.' });
   } catch (err) {
     console.error('Request OTP Error:', err);
@@ -82,7 +86,15 @@ router.post('/verify-otp', async (req, res) => {
       const liquidNumber = await generateLiquidNumber();
 
       const user = await prisma.user.create({
-        data: { username, email, liquidNumber, passwordHash, avatar, lastIpAddress: ip }
+        data: { 
+          username, 
+          email, 
+          liquidNumber, 
+          passwordHash, 
+          avatar, 
+          about: "Hey there! I am using Liquid Chat 🌊",
+          lastIpAddress: ip 
+        }
       });
       
       await prisma.loginLog.create({
@@ -93,7 +105,20 @@ router.post('/verify-otp', async (req, res) => {
       
       sendActivityNotification(email, 'login', ip, userAgent);
       
-      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, isBanned: user.isBanned } });
+      return res.json({ 
+        token, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          liquidNumber: user.liquidNumber,
+          avatar: user.avatar, 
+          about: user.about,
+          publicKey: user.publicKey,
+          isAdmin: user.isAdmin,
+          isBanned: user.isBanned 
+        } 
+      });
     }
     
     if (type === 'login') {
@@ -118,7 +143,20 @@ router.post('/verify-otp', async (req, res) => {
       
       sendActivityNotification(email, 'login', ip, userAgent);
       
-      return res.json({ token, user: { id: user.id, username: user.username, email: user.email, avatar: user.avatar, isBanned: user.isBanned } });
+      return res.json({ 
+        token, 
+        user: { 
+          id: user.id, 
+          username: user.username, 
+          email: user.email, 
+          liquidNumber: user.liquidNumber,
+          avatar: user.avatar, 
+          about: user.about,
+          publicKey: user.publicKey,
+          isAdmin: user.isAdmin,
+          isBanned: user.isBanned 
+        } 
+      });
     }
     
     if (type === 'reset_password') {

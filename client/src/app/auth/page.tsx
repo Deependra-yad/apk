@@ -2,7 +2,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/authStore';
 
@@ -13,11 +13,14 @@ function AuthForm() {
   const searchParams = useSearchParams();
   
   const [view, setView] = useState<'login' | 'signup' | 'forgot_password' | 'verify_otp' | 'reset_password'>('login');
+  const [loginMethod, setLoginMethod] = useState<'password' | 'otp'>('password');
   const [pendingAction, setPendingAction] = useState<'login' | 'signup' | 'reset_password'>('login');
   
+  const [identifier, setIdentifier] = useState('');
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   
@@ -31,6 +34,67 @@ function AuthForm() {
     const urlError = searchParams.get('error');
     if (urlError) setError(urlError);
   }, [router, searchParams]);
+
+  const handlePasswordLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const loginId = identifier.trim() || email.trim();
+    if (!loginId || !password) {
+      return setError('Please enter your username/email and password');
+    }
+    setIsLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: loginId, password })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Login failed');
+
+      localStorage.setItem('liquid_token', data.token);
+      localStorage.setItem('liquid_user', JSON.stringify(data.user));
+      useAuthStore.getState().setAuth(data.user, data.token);
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDirectSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!username.trim() || !password) {
+      return setError('Username and password are required');
+    }
+    setIsLoading(true);
+    setError('');
+    setMessage('');
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          username: username.trim(), 
+          email: email.trim() || undefined, 
+          password 
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Registration failed');
+
+      localStorage.setItem('liquid_token', data.token);
+      localStorage.setItem('liquid_user', JSON.stringify(data.user));
+      useAuthStore.getState().setAuth(data.user, data.token);
+      window.location.href = '/';
+    } catch (err: any) {
+      setError(err.message || 'Registration failed');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const requestOtp = async (type: 'login' | 'signup' | 'reset_password') => {
     setIsLoading(true);
@@ -47,7 +111,7 @@ function AuthForm() {
       
       setPendingAction(type);
       setView('verify_otp');
-      setMessage(data.message);
+      setMessage(data.message || 'OTP sent! Please check your email inbox.');
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -57,7 +121,7 @@ function AuthForm() {
 
   const handleSignupRequest = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !username || !password) return setError('All fields required');
+    if (!email || !username || !password) return setError('All fields required for OTP signup');
     requestOtp('signup');
   };
 
@@ -101,7 +165,7 @@ function AuthForm() {
         localStorage.setItem('liquid_token', data.token);
         localStorage.setItem('liquid_user', JSON.stringify(data.user));
         useAuthStore.getState().setAuth(data.user, data.token);
-        router.push('/');
+        window.location.href = '/';
       }
     } catch (err: any) {
       setError(err.message);
@@ -169,49 +233,149 @@ function AuthForm() {
 
           {/* FORM VIEWS */}
           {view === 'login' && (
-            <form onSubmit={handleLoginRequest} className="space-y-4">
-              <div>
-                <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email Address</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="you@liquidchat.online" />
-                </div>
+            <div className="space-y-4">
+              {/* Method Switcher Tabs */}
+              <div className="flex bg-background/50 p-1 rounded-xl border border-foreground/10 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => { setLoginMethod('password'); setError(''); setMessage(''); }}
+                  className={`flex-1 py-2 rounded-lg transition-all ${
+                    loginMethod === 'password'
+                      ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md'
+                      : 'text-foreground/60 hover:text-foreground'
+                  }`}
+                >
+                  Password Login
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLoginMethod('otp'); setError(''); setMessage(''); }}
+                  className={`flex-1 py-2 rounded-lg transition-all ${
+                    loginMethod === 'otp'
+                      ? 'bg-liquid-accent text-liquid-dark font-bold shadow-md'
+                      : 'text-foreground/60 hover:text-foreground'
+                  }`}
+                >
+                  Email OTP
+                </button>
               </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2">
-                {isLoading ? 'Sending OTP...' : 'Login with OTP'} <ArrowRight size={18} />
-              </button>
-              <div className="flex items-center justify-between mt-4 text-sm text-foreground/60">
-                <button type="button" onClick={() => setView('forgot_password')} className="hover:text-liquid-accent transition-colors">Forgot password?</button>
-                <button type="button" onClick={() => setView('signup')} className="hover:text-liquid-accent transition-colors font-semibold">Create account</button>
-              </div>
-            </form>
+
+              {loginMethod === 'password' ? (
+                <form onSubmit={handlePasswordLogin} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">
+                      Username or Email
+                    </label>
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+                      <input 
+                        type="text" 
+                        required 
+                        value={identifier} 
+                        onChange={e => setIdentifier(e.target.value)} 
+                        className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" 
+                        placeholder="Username or you@liquidchat.online" 
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+                      <input 
+                        type={showPassword ? "text" : "password"} 
+                        required 
+                        value={password} 
+                        onChange={e => setPassword(e.target.value)} 
+                        className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-11 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" 
+                        placeholder="••••••••" 
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                      >
+                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={isLoading} 
+                    className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-liquid-accent/20"
+                  >
+                    {isLoading ? 'Signing In...' : 'Sign In'} <ArrowRight size={18} />
+                  </button>
+
+                  <div className="flex items-center justify-between mt-4 text-sm text-foreground/60">
+                    <button type="button" onClick={() => setView('forgot_password')} className="hover:text-liquid-accent transition-colors">Forgot password?</button>
+                    <button type="button" onClick={() => setView('signup')} className="hover:text-liquid-accent transition-colors font-semibold">Create account</button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleLoginRequest} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email Address</label>
+                    <div className="relative">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
+                      <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="you@liquidchat.online" />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-liquid-accent/20">
+                    {isLoading ? 'Sending OTP...' : 'Login with OTP'} <ArrowRight size={18} />
+                  </button>
+                  <div className="flex items-center justify-between mt-4 text-sm text-foreground/60">
+                    <button type="button" onClick={() => setView('forgot_password')} className="hover:text-liquid-accent transition-colors">Forgot password?</button>
+                    <button type="button" onClick={() => setView('signup')} className="hover:text-liquid-accent transition-colors font-semibold">Create account</button>
+                  </div>
+                </form>
+              )}
+            </div>
           )}
 
           {view === 'signup' && (
-            <form onSubmit={handleSignupRequest} className="space-y-4">
+            <form onSubmit={handleDirectSignup} className="space-y-4">
               <div>
                 <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Username</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="johndoe" />
+                  <input type="text" required value={username} onChange={e => setUsername(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="johndoe" />
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email</label>
+                <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email Address (Optional)</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="john@liquidchat.online" />
+                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="john@liquidchat.online" />
                 </div>
               </div>
               <div>
                 <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Password</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="password" required value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground" placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" />
+                  <input 
+                    type={showPassword ? "text" : "password"} 
+                    required 
+                    value={password} 
+                    onChange={e => setPassword(e.target.value)} 
+                    className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-11 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" 
+                    placeholder="••••••••" 
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-foreground/40 hover:text-foreground"
+                  >
+                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
                 </div>
               </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mt-2">
-                {isLoading ? 'Sending...' : 'Create Account'} <ArrowRight size={18} />
+              <button type="submit" disabled={isLoading} className="w-full bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold py-3.5 rounded-xl hover:opacity-90 transition-opacity flex items-center justify-center gap-2 mt-2 cursor-pointer shadow-lg shadow-liquid-accent/20">
+                {isLoading ? 'Creating Account...' : 'Create Account'} <ArrowRight size={18} />
               </button>
               <div className="text-center mt-4">
                 <button type="button" onClick={() => setView('login')} className="text-sm text-foreground/60 hover:text-liquid-accent transition-colors">Already have an account? Sign In</button>

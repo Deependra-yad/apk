@@ -9,11 +9,13 @@ import {
   ChevronRight, Lock, Eye, MessageSquare, Sun, Smartphone
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import { useChatStore } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
 import axios from 'axios';
 
 export default function SettingsPanel() {
   const { user, token, setAuth, logout } = useAuthStore();
+  const { socket } = useChatStore();
   const { 
     theme, setTheme, 
     lastSeenPrivacy, readReceipts, enterToSend, notificationSound, 
@@ -34,6 +36,12 @@ export default function SettingsPanel() {
     }
   }, [token, fetchSettings, fetchBlockedUsers]);
 
+  useEffect(() => {
+    if (user?.about) {
+      setAboutText(user.about);
+    }
+  }, [user?.about]);
+
   const handleSaveAbout = async () => {
     if (!token || !user) return;
     try {
@@ -43,6 +51,7 @@ export default function SettingsPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAuth(res.data.user, token);
+      socket?.emit('profile_updated', res.data.user);
       setIsEditingAbout(false);
     } catch (e) {}
   };
@@ -59,6 +68,7 @@ export default function SettingsPanel() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAuth(res.data.user, token);
+      socket?.emit('profile_updated', res.data.user);
     } catch (e) {}
   };
 

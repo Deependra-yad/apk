@@ -309,7 +309,13 @@ export default function CallModal({
 
           <div className="relative w-full flex-1 rounded-xl overflow-hidden bg-background/70 flex items-center justify-center my-1">
             {isVideoCall && remoteStream ? (
-              <video ref={remoteVideoRef} autoPlay playsInline className="w-full h-full object-cover" />
+              <video 
+                ref={remoteVideoRef} 
+                autoPlay 
+                playsInline 
+                style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                className="w-full h-full object-cover transition-transform duration-300" 
+              />
             ) : (
               <div className="w-12 h-12 rounded-full overflow-hidden border border-liquid-accent">
                 <img src={targetUser?.avatar} alt={targetUser?.username} className="w-full h-full object-cover" />
@@ -459,7 +465,8 @@ export default function CallModal({
                     ref={remoteVideoRef}
                     autoPlay
                     playsInline
-                    className="w-full h-full object-cover bg-background"
+                    style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                    className="w-full h-full object-cover bg-background transition-transform duration-300"
                   />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center">
