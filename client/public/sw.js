@@ -37,7 +37,14 @@ self.addEventListener('push', (event) => {
       };
 
       event.waitUntil(
-        self.registration.showNotification(data.title, options)
+        self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+          const hasFocusedClient = clients.some(client => client.focused);
+          if (hasFocusedClient && !isCall) {
+            // User is actively focused in the app! Suppress desktop notification
+            return;
+          }
+          return self.registration.showNotification(data.title, options);
+        })
       );
     } catch (e) {
       console.error('Push error', e);

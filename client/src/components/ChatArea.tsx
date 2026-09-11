@@ -463,14 +463,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               emitData.isEncrypted = true;
             }
             
-            if (emitData.fileUrl) {
-              const encryptedFile = await encryptMessage(sharedKey, emitData.fileUrl);
-              emitData.fileUrl = `ENC:${encryptedFile.ciphertext}:${encryptedFile.iv}`;
-              if (!emitData.iv) {
-                emitData.iv = encryptedFile.iv;
-                emitData.isEncrypted = true;
-              }
-            }
+
           }
         }
       } catch (err) {
@@ -493,7 +486,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       if (textareaRef.current) textareaRef.current.style.height = '20px';
       // Emit user prompt first
       emitSendMessage({
-        text: `Ã°Å¸Â¤â€“ /ai ${aiPrompt}`,
+        text: `🤖 /ai ${aiPrompt}`,
         senderId: user.id,
         receiverId: isGroup ? null : activeContact?.id,
         groupId: isGroup ? activeGroup?.id : null,
@@ -504,7 +497,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       try {
         const aiRes = await axios.post('/api/ai/chat', { prompt: aiPrompt });
         emitSendMessage({
-          text: `Ã¢Å“Â¨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
+          text: `✨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
           senderId: user.id,
           receiverId: isGroup ? null : activeContact?.id,
           groupId: isGroup ? activeGroup?.id : null,
@@ -573,7 +566,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       fileSize,
       mimeType,
       replyToId: replyingTo?.id || null,
-      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? 'Ã°Å¸â€œÂ· Image' : replyingTo?.type === 'video' ? 'Ã°Å¸Å½Â¥ Video' : replyingTo?.type === 'audio' ? 'Ã°Å¸Å½Âµ Voice Note' : replyingTo?.fileName) || null
+      replyToText: replyingTo?.text || (replyingTo?.type === 'image' ? '📷 Image' : replyingTo?.type === 'video' ? '🎥 Video' : replyingTo?.type === 'audio' ? '🎵 Voice Note' : replyingTo?.fileName) || null
     });
 
     setText('');
@@ -905,7 +898,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               <MoreVertical size={19} />
             </button>
 
-            {/* WhatsApp 3-Dots Dropdown Menu */}
+            {/* Chat Header 3-Dots Dropdown Menu */}
             <AnimatePresence>
               {isHeaderMenuOpen && (
                 <>
@@ -1029,16 +1022,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
       {/* Messages Scroll Area */}
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-2.5 py-3 sm:px-6 sm:py-4 flex flex-col gap-1.5 sm:gap-2">
-        {/* E2EE Disclaimer */}
-        <div className="w-full flex justify-center mb-1.5 mt-1">
+        {/* E2EE Kawaii Cyber-Glass Capsule */}
+        <div className="w-full flex justify-center mb-2.5 mt-1">
           <div 
             onClick={!isGroup ? handleOpenSafetyModal : undefined}
-            className={`bg-[#182229] border border-[#222e35] text-[#ffd279] rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center shadow-sm transition-colors ${!isGroup ? 'cursor-pointer hover:bg-[#1f2c34]' : ''}`}
-            title={!isGroup ? "Tap to verify Security Code" : undefined}
+            className={`bg-gradient-to-r from-[#2c153a]/80 via-[#1a1228]/90 to-[#2c153a]/80 border border-[#ff7597]/30 text-[#f5c2d8] rounded-full px-4 py-1.5 flex items-center gap-2 max-w-sm text-center shadow-[0_4px_25px_rgba(255,117,151,0.15)] backdrop-blur-xl transition-all hover:scale-[1.02] ${!isGroup ? 'cursor-pointer hover:border-[#ff7597]/60' : ''}`}
+            title={!isGroup ? "Tap to view Japanese E2EE Security Code" : undefined}
           >
-            <Lock size={12} className="text-[#ffd279] shrink-0" />
-            <p className="text-[11px] leading-tight font-normal">
-              Messages and calls are end-to-end encrypted. No one outside this chat can read or listen to them. {!isGroup && <span className="underline ml-1 font-semibold">Tap to verify.</span>}
+            <span className="text-xs">🌸</span>
+            <Lock size={11} className="text-[#ff7597] shrink-0" />
+            <p className="text-[11px] leading-tight font-medium">
+              End-to-End Encrypted • 暗号化 {!isGroup && <span className="underline ml-1 font-semibold text-[#ff8da1]">Verify</span>}
             </p>
           </div>
         </div>
@@ -1063,7 +1057,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               }
             }
             if (showDateDivider) {
-              if (isToday(currentDate)) dateDividerText = 'TODAY';
+              if (isToday(currentDate)) dateDividerText = '🌸 TODAY';
               else if (isYesterday(currentDate)) dateDividerText = 'YESTERDAY';
               else dateDividerText = format(currentDate, 'MMMM d, yyyy').toUpperCase();
             }
@@ -1072,9 +1066,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           return (
             <React.Fragment key={msg.id || i}>
               {showDateDivider && (
-                <div className="flex justify-center my-2 w-full">
-                  <div className="bg-[#182229] px-3 py-1 rounded-lg shadow-sm border border-[#222e35]">
-                    <span className="text-[10px] font-bold text-foreground/60 tracking-wider">
+                <div className="flex justify-center my-2.5 w-full">
+                  <div className="bg-[#1b142c]/80 backdrop-blur-md px-4 py-1 rounded-full shadow-[0_2px_15px_rgba(0,0,0,0.3)] border border-[#a855f7]/30">
+                    <span className="text-[10px] font-bold text-[#e9d5ff] tracking-wider font-mono">
                       {dateDividerText}
                     </span>
                   </div>
@@ -1132,13 +1126,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   onMouseLeave={() => setHoveredMessageId(null)}
                   className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl relative transition-all min-w-0 break-words shadow-sm text-sm sm:text-[15px] ${
                     isMe
-                      ? 'rounded-tr-xs bg-[#005c4b] text-[#e9edef]'
-                      : 'rounded-tl-xs bg-[#202c33] text-[#e9edef] border border-white/5'
+                      ? 'rounded-tr-xs bg-gradient-to-r from-[#ff5e97] via-[#f04f85] to-[#9333ea] text-white shadow-[0_4px_22px_rgba(255,94,151,0.32)] border border-white/20'
+                      : 'rounded-tl-xs bg-[#181329]/90 text-[#f6edff] border border-[#a855f7]/30 shadow-[0_4px_20px_rgba(0,0,0,0.45)] backdrop-blur-xl'
                   } ${
-                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
+                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(255,117,151,0.5)]' : ''
                   }`}
                 >
-                  {/* WhatsApp Floating Action Bar on Hover (Desktop ONLY) */}
+                  {/* Floating Action Bar on Hover (Desktop ONLY) */}
                   {hoveredMessageId === msg.id && !isMultiSelectMode && !msg.isDeleted && (
                     <motion.div
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -1219,14 +1213,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   ) : (
                     <>
                       {/* Media: Image with Click-to-Lightbox */}
-                      {msg.type === 'image' && msg.fileUrl && (
+                      {msg.type === 'image' && msg.fileUrl && !!resolveMediaUrl(msg.fileUrl) && (
                         <div 
-                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-background/40 max-w-full" 
+                          className="mb-2 rounded-xl overflow-hidden relative cursor-pointer group/img max-h-80 bg-black/20 max-w-full" 
                           onClick={() => setSelectedLightboxMedia({ url: resolveMediaUrl(msg.fileUrl), type: 'image', name: msg.fileName || 'Image' })}
                         >
                           <img 
                             src={resolveMediaUrl(msg.fileUrl)} 
-                            alt="attachment" 
+                            alt={msg.fileName || "Image"} 
+                            onError={(e) => {
+                              (e.currentTarget.parentElement as HTMLElement)?.style.setProperty('display', 'none');
+                            }}
                             className="rounded-xl max-h-80 w-full max-w-full object-cover hover:scale-105 transition-transform duration-300" 
                           />
                           <div className="absolute inset-0 bg-background/30 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
@@ -1236,15 +1233,15 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       )}
 
                       {/* Media: Sticker */}
-                      {msg.type === 'sticker' && msg.fileUrl && (
+                      {msg.type === 'sticker' && msg.fileUrl && !!resolveMediaUrl(msg.fileUrl) && (
                         <div className="p-1 mb-1">
                           <img src={resolveMediaUrl(msg.fileUrl)} alt="Sticker" className="w-36 h-36 object-contain drop-shadow-lg" />
                         </div>
                       )}
 
                       {/* Media: Video Player with Inline Controls & Fullscreen */}
-                      {msg.type === 'video' && msg.fileUrl && (
-                        <div className="mb-2 rounded-xl overflow-hidden relative bg-background/80 max-h-80 max-w-full">
+                      {msg.type === 'video' && msg.fileUrl && !!resolveMediaUrl(msg.fileUrl) && (
+                        <div className="mb-2 rounded-xl overflow-hidden relative bg-black/40 max-h-80 max-w-full">
                           <video 
                             src={resolveMediaUrl(msg.fileUrl)} 
                             controls 
@@ -1260,7 +1257,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         <AudioBubblePlayer audioUrl={resolveMediaUrl(msg.fileUrl)} duration={msg.duration} />
                       )}
 
-                      {/* Media: WhatsApp Interactive Poll */}
+                      {/* Media: Interactive Poll */}
                       {msg.type === 'poll' && msg.pollData && (
                         <PollBubble 
                           messageId={msg.id} 
@@ -1508,8 +1505,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 onChange={(e) => setFile(e.target.files?.[0] || null)} 
               />
 
-              {/* WhatsApp Input Capsule (Emoji + Textarea + Attachment) */}
-              <div className="flex-1 bg-[#202c33]/90 rounded-3xl min-h-[44px] flex items-center px-2 sm:px-3 border border-foreground/10 focus-within:border-liquid-accent/40 transition-colors shadow-inner">
+              {/* Kawaii Japanese Capsule Input (Emoji + Textarea + Attachment) */}
+              <div className="flex-1 bg-[#17122b]/90 rounded-full min-h-[44px] flex items-center px-2.5 sm:px-3.5 border border-[#ff7597]/30 focus-within:border-[#ff7597] shadow-[0_0_20px_rgba(255,117,151,0.15)] backdrop-blur-xl transition-all">
                 {/* Emoji / Sticker Toggle */}
                 <button
                   onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
@@ -1624,19 +1621,19 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   whileTap={{ scale: 0.9 }}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={handleSend}
-                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-liquid-dark flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer shrink-0"
+                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0"
                   title={editingMessage ? "Save Edit" : "Send Message"}
                 >
-                  {editingMessage ? <Check size={20} className="text-liquid-dark stroke-[2.5]" /> : <Send size={18} className="ml-0.5 text-liquid-dark stroke-[2.5]" />}
+                  {editingMessage ? <Check size={20} className="text-white stroke-[2.5]" /> : <Send size={18} className="ml-0.5 text-white stroke-[2.5]" />}
                 </motion.button>
               ) : (
                 <button 
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setIsRecordingVoice(true)}
-                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-liquid-accent to-liquid-secondary text-liquid-dark flex items-center justify-center shadow-lg active:scale-90 transition-transform cursor-pointer shrink-0"
+                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0"
                   title="Record Voice Note"
                 >
-                  <Mic size={20} className="text-liquid-dark stroke-[2.5]" />
+                  <Mic size={20} className="text-white stroke-[2.5]" />
                 </button>
               )}
             </>
@@ -1668,7 +1665,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 28, stiffness: 320 }}
-              className="sm:hidden fixed inset-x-0 bottom-0 z-[70] bg-[#1e2428] border-t border-foreground/15 rounded-t-3xl p-4 shadow-2xl flex flex-col gap-2 pb-safe max-w-lg mx-auto"
+              className="sm:hidden fixed inset-x-0 bottom-0 z-[70] bg-[#17122b]/95 border-t border-[#a855f7]/30 rounded-t-3xl p-4 shadow-[0_-10px_35px_rgba(0,0,0,0.8)] backdrop-blur-2xl flex flex-col gap-2 pb-safe max-w-lg mx-auto"
             >
               {/* Drag Pill */}
               <div className="w-10 h-1 bg-foreground/20 rounded-full mx-auto mb-2" />
@@ -1936,7 +1933,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         targetName={targetName}
       />
 
-      {/* WhatsApp Poll Creation Modal */}
+      {/* Interactive Poll Creation Modal */}
       <PollModal
         isOpen={isPollModalOpen}
         onClose={() => setIsPollModalOpen(false)}
@@ -2156,7 +2153,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         )}
       </AnimatePresence>
 
-      {/* Verify Security Code Modal (E2EE WhatsApp/Signal Style) */}
+      {/* Japanese Cyber-Glass E2EE Security Code Modal */}
       <AnimatePresence>
         {isSafetyModalOpen && activeContact && (
           <motion.div

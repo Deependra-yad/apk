@@ -15,7 +15,7 @@ export const getApiUrl = (): string => {
 };
 
 export const resolveMediaUrl = (url?: string | null): string => {
-  if (!url) return '';
+  if (!url || url.startsWith('ENC:') || url === '[Decryption Failed]') return '';
   // If localhost:5000 is embedded in legacy database records, rewrite to active backend
   if (url.startsWith('http://localhost:5000/')) {
     const backend = getApiUrl();

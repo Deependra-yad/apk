@@ -30,6 +30,11 @@ class FCMService : FirebaseMessagingService() {
         val callerId = remoteMessage.data["callerId"] ?: ""
         val isVideo = remoteMessage.data["isVideo"] == "true"
 
+        // Suppress message notifications if user is actively in the app
+        if (type != "call" && isAppInForeground()) {
+            return
+        }
+
         val nm = getSystemService(NotificationManager::class.java)
 
         if (type == "call") {
@@ -89,6 +94,16 @@ class FCMService : FirebaseMessagingService() {
                 .setContentIntent(contentPendingIntent)
 
             nm.notify(System.currentTimeMillis().toInt(), builder.build())
+        }
+    }
+
+    private fun isAppInForeground(): Boolean {
+        return try {
+            val appProcessInfo = android.app.ActivityManager.RunningAppProcessInfo()
+            android.app.ActivityManager.getMyMemoryState(appProcessInfo)
+            appProcessInfo.importance == android.app.ActivityManager.RunningAppProcessInfo.IMPORTANCE_FOREGROUND
+        } catch (e: Exception) {
+            false
         }
     }
 }

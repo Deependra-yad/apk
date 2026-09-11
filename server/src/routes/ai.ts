@@ -20,11 +20,28 @@ const LANG_MAP: Record<string, string> = {
 };
 
 async function translateText(text: string, targetLanguage: string): Promise<string | null> {
+  const langKey = targetLanguage.trim().toLowerCase();
+  const targetCode = LANG_MAP[langKey] || targetLanguage.slice(0, 2).toLowerCase();
+
+  // 1. Google Translate GTX Free API (Ultra-reliable, instant, 0 keys)
   try {
-    const langKey = targetLanguage.trim().toLowerCase();
-    const targetCode = LANG_MAP[langKey] || targetLanguage.slice(0, 2).toLowerCase();
+    const gtxUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=${targetCode}&dt=t&q=${encodeURIComponent(text)}`;
+    const res = await fetch(gtxUrl, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) {
+      const data: any = await res.json();
+      if (Array.isArray(data?.[0])) {
+        const translated = data[0].map((item: any) => item[0]).filter(Boolean).join('');
+        if (translated) return translated;
+      }
+    }
+  } catch (e) {
+    console.warn('Google Translate API failed, falling back to MyMemory:', e);
+  }
+
+  // 2. MyMemory Fallback
+  try {
     const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(text)}&langpair=autodetect|${targetCode}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(5000) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data: any = await res.json();
       if (data?.responseData?.translatedText) {

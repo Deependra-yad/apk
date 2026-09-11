@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Phone, Video, PhoneOff, Mic, MicOff, VideoOff, 
-  Monitor, Minimize2, Maximize2, Volume2, AlertCircle, SwitchCamera 
+  Monitor, Minimize2, Maximize2, Volume2, AlertCircle 
 } from 'lucide-react';
 import { WebRTCManager } from '@/utils/webrtc';
 import { soundEffects } from '@/utils/audioSynth';
@@ -35,7 +35,6 @@ export default function CallModal({
   const [isMuted, setIsMuted] = useState(false);
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const [isMirrored, setIsMirrored] = useState(true);
   const [isMinimized, setIsMinimized] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [hasPermissionWarning, setHasPermissionWarning] = useState(false);
@@ -313,7 +312,7 @@ export default function CallModal({
                 ref={remoteVideoRef} 
                 autoPlay 
                 playsInline 
-                style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                style={{ transform: !isScreenSharing ? 'scaleX(-1)' : 'none' }}
                 className="w-full h-full object-cover transition-transform duration-300" 
               />
             ) : (
@@ -465,7 +464,7 @@ export default function CallModal({
                     ref={remoteVideoRef}
                     autoPlay
                     playsInline
-                    style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                    style={{ transform: !isScreenSharing ? 'scaleX(-1)' : 'none' }}
                     className="w-full h-full object-cover bg-background transition-transform duration-300"
                   />
                 ) : (
@@ -501,7 +500,7 @@ export default function CallModal({
                         autoPlay
                         playsInline
                         muted
-                        style={{ transform: !isScreenSharing && isMirrored ? 'scaleX(-1)' : 'none' }}
+                        style={{ transform: !isScreenSharing ? 'scaleX(-1)' : 'none' }}
                         className="w-full h-full object-cover transition-transform duration-300"
                       />
                     ) : (
@@ -511,7 +510,6 @@ export default function CallModal({
                     )}
                     <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-background/60 text-[10px] text-foreground font-medium flex items-center gap-1">
                       <span>You</span>
-                      {isMirrored && <span className="text-[9px] text-liquid-accent font-mono">• Mirrored</span>}
                     </div>
                   </motion.div>
                 )}
@@ -542,16 +540,6 @@ export default function CallModal({
                     title={isCameraOff ? 'Turn Camera On' : 'Turn Camera Off'}
                   >
                     {isCameraOff ? <VideoOff size={20} /> : <Video size={20} />}
-                  </button>
-
-                  <button
-                    onClick={() => setIsMirrored(!isMirrored)}
-                    className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all shrink-0 ${
-                      isMirrored ? 'bg-liquid-accent/20 text-liquid-accent border border-liquid-accent/40 shadow-[0_0_15px_rgba(0,210,255,0.3)]' : 'bg-foreground/10 text-foreground hover:bg-foreground/20 border border-foreground/10'
-                    }`}
-                    title={isMirrored ? "Mirror Video: ON (Click to un-mirror)" : "Mirror Video: OFF (Click to mirror)"}
-                  >
-                    <SwitchCamera size={20} />
                   </button>
 
                   <button

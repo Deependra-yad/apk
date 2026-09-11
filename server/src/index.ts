@@ -172,6 +172,10 @@ const sendPushNotification = async (
     };
     const payload = JSON.stringify(payloadData);
     const isConnected = !!connectedUsers.get(userId);
+    if (isConnected && !force) {
+      // Recipient is connected and active in the app! Do not send intrusive push notifications
+      return;
+    }
     
     for (const sub of subscriptions) {
       if (sub.endpoint.startsWith('fcm://')) {
@@ -373,13 +377,16 @@ io.on('connection', (socket) => {
           
           const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
           members.forEach((member: any) => {
-            if (member.userId !== data.senderId) {
+            if (member.userId !== data.senderId && !connectedUsers.has(member.userId)) {
               sendPushNotification(member.userId, `New message in group`, `${msg.sender?.username}: ${msg.text || msg.type}`);
             }
           });
         } else {
-          // Always try sending push (sendPushNotification handles FCM vs WebPush logic internally)
-          sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
+          // Only trigger push notification if recipient is offline / not currently active in the app
+          const isReceiverConnected = connectedUsers.has(data.receiverId);
+          if (!isReceiverConnected) {
+            sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
+          }
           
           const receiverSocket = connectedUsers.get(data.receiverId);
           if (receiverSocket) {
