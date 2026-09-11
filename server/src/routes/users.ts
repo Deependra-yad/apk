@@ -186,6 +186,7 @@ router.get('/conversations', authenticate, async (req: any, res) => {
         avatar: true,
         about: true,
         lastSeen: true,
+        publicKey: true,
         settings: { select: { lastSeenPrivacy: true } },
         blocksInitiated: { select: { blockedId: true } },
         blocksReceived: { select: { blockerId: true } }
@@ -243,6 +244,22 @@ router.delete('/me/storage', authenticate, async (req: any, res) => {
   }
 });
 
+router.put('/public-key', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  const { publicKey } = req.body;
+  if (!publicKey) return res.status(400).json({ error: 'Public key is required' });
+
+  try {
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { publicKey }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update public key' });
+  }
+});
+
 router.get('/search', authenticate, async (req: any, res) => {
   try {
     const liquidNumber = req.query.liquidNumber as string;
@@ -257,6 +274,7 @@ router.get('/search', authenticate, async (req: any, res) => {
         avatar: true, 
         about: true, 
         lastSeen: true,
+        publicKey: true,
         settings: { select: { lastSeenPrivacy: true } },
         blocksInitiated: { select: { blockedId: true } },
         blocksReceived: { select: { blockerId: true } }

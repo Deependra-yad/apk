@@ -26,6 +26,7 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage } from '@/utils/crypto';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -140,8 +141,36 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       if (activeContact) {
         axios.get(`/api/messages/${activeContact.id}`, {
           headers: { Authorization: `Bearer ${token}` }
-        }).then(res => {
-          setMessages(Array.isArray(res.data) ? res.data : []);
+        }).then(async res => {
+          let loadedMessages = Array.isArray(res.data) ? res.data : [];
+          
+          if (activeContact.publicKey) {
+            try {
+              const myKey = await getKeyFromIDB(user.id);
+              if (myKey) {
+                const otherPubKey = await importPublicKey(activeContact.publicKey);
+                const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+                loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
+                  if (m.isEncrypted && m.iv && m.text) {
+                    const text = await decryptMessage(sharedKey, m.text, m.iv);
+                    let fileUrl = m.fileUrl;
+                    if (fileUrl && fileUrl.startsWith('ENC:')) {
+                      const parts = fileUrl.substring(4).split(':');
+                      if (parts.length === 2) {
+                        fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                      }
+                    }
+                    return { ...m, text, fileUrl };
+                  }
+                  return m;
+                }));
+              }
+            } catch (err) {
+              console.error("Bulk decryption error:", err);
+            }
+          }
+          
+          setMessages(loadedMessages);
           if (socket) {
             socket.emit('mark_seen', { senderId: activeContact.id, receiverId: user.id });
           }
@@ -239,8 +268,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     setIsAttachmentMenuOpen(false);
   };
 
-  const emitSendMessage = (data: any) => {
+  const emitSendMessage = async (data: any) => {
     const tempId = `temp-${Date.now()}`;
+    // Optimistic UI updates with plaintext
     addMessage({
       ...data,
       id: tempId,
@@ -249,7 +279,39 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       createdAt: new Date().toISOString(),
       isSeen: false
     });
-    socket?.emit('send_message', { ...data, tempId });
+    
+    let emitData = { ...data };
+    
+    if (!isGroup && activeContact && activeContact.publicKey) {
+      try {
+        const myKey = await getKeyFromIDB(user!.id);
+        if (myKey) {
+          const otherPubKey = await importPublicKey(activeContact.publicKey);
+          const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+          
+          if (emitData.text) {
+            const encryptedText = await encryptMessage(sharedKey, emitData.text);
+            emitData.text = encryptedText.ciphertext;
+            emitData.iv = encryptedText.iv;
+            emitData.isEncrypted = true;
+          }
+          
+          if (emitData.fileUrl) {
+            const encryptedFile = await encryptMessage(sharedKey, emitData.fileUrl);
+            emitData.fileUrl = `ENC:${encryptedFile.ciphertext}:${encryptedFile.iv}`;
+            // If there's no text but there's a file, we still need to send IV for the file url, but we can reuse it
+            if (!emitData.iv) {
+              emitData.iv = encryptedFile.iv;
+              emitData.isEncrypted = true;
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Encryption failed:", err);
+      }
+    }
+    
+    socket?.emit('send_message', { ...emitData, tempId });
   };
 
   // Send or Edit message

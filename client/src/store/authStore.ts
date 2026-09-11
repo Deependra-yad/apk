@@ -9,6 +9,7 @@ export interface User {
   about?: string;
   lastSeen?: string;
   isAdmin?: boolean;
+  publicKey?: string;
 }
 
 interface AuthState {
@@ -46,12 +47,33 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         const currentUser = get().user;
         const newUser = res.data.user;
         localStorage.setItem('liquid_user', JSON.stringify(newUser));
+        
+        // E2EE Key Management
+        try {
+          const { generateKeyPair, exportPublicKey, getKeyFromIDB, saveKeyToIDB } = await import('../utils/crypto');
+          const existingKey = await getKeyFromIDB(newUser.id);
+          if (!existingKey) {
+            const keyPair = await generateKeyPair();
+            await saveKeyToIDB(newUser.id, keyPair);
+            const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
+            
+            // Send public key to server if it's missing or we just generated a new one
+            await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            newUser.publicKey = pubKeyBase64;
+          }
+        } catch (err) {
+          console.error('Failed to initialize E2EE keys:', err);
+        }
+
         if (!currentUser || 
             currentUser.id !== newUser.id || 
             currentUser.username !== newUser.username || 
             currentUser.liquidNumber !== newUser.liquidNumber || 
             currentUser.avatar !== newUser.avatar ||
-            currentUser.about !== newUser.about) {
+            currentUser.about !== newUser.about ||
+            currentUser.publicKey !== newUser.publicKey) {
           set({ user: newUser, token });
         }
       }

@@ -37,27 +37,76 @@ export default function ForwardModal({ isOpen, onClose, messageIds, users }: For
     if (!token || (selectedContactIds.length === 0 && selectedGroupIds.length === 0)) return;
     setIsSending(true);
 
+    const { messages } = useChatStore.getState();
+    const msgsToForward = messages.filter(m => messageIds.includes(m.id));
+
     try {
-      // Forward to direct contacts
       if (selectedContactIds.length > 0) {
-        await axios.post('/api/messages/forward', {
-          messageIds,
-          targetIds: selectedContactIds,
-          isGroupTarget: false
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const { user } = useAuthStore.getState();
+        const { socket } = useChatStore.getState();
+        
+        try {
+          const { getKeyFromIDB, importPublicKey, deriveSharedKey, encryptMessage } = await import('@/utils/crypto');
+          const myKey = await getKeyFromIDB(user!.id);
+          
+          if (myKey) {
+            for (const targetId of selectedContactIds) {
+              const targetUser = users.find(u => u.id === targetId);
+              if (!targetUser || !targetUser.publicKey) continue;
+
+              const otherPubKey = await importPublicKey(targetUser.publicKey);
+              const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+              
+              for (const originalMsg of msgsToForward) {
+                const tempId = `temp-${Date.now()}-${Math.random()}`;
+                let emitData: any = {
+                  id: tempId,
+                  tempId,
+                  senderId: user?.id,
+                  receiverId: targetId,
+                  text: originalMsg.text || '',
+                  type: originalMsg.type,
+                  forwardedFrom: originalMsg.sender?.username || 'Unknown',
+                  isPending: true,
+                  createdAt: new Date().toISOString(),
+                  isSeen: false
+                };
+
+                // Copy unencrypted fileUrl if it exists (assuming we didn't fully encrypt all past fileUrls, or decrypt it if needed)
+                if (originalMsg.fileUrl) {
+                   emitData.fileUrl = originalMsg.fileUrl; 
+                   // Note: If we fully implemented file E2EE, we would download, decrypt and re-encrypt the file here. 
+                   // But for now, we just encrypt the text and the URL.
+                   const encFile = await encryptMessage(sharedKey, emitData.fileUrl);
+                   emitData.fileUrl = `ENC:${encFile.ciphertext}:${encFile.iv}`;
+                }
+
+                if (emitData.text) {
+                  const encrypted = await encryptMessage(sharedKey, emitData.text);
+                  emitData.text = encrypted.ciphertext;
+                  emitData.iv = encrypted.iv;
+                  emitData.isEncrypted = true;
+                } else if (emitData.fileUrl && emitData.fileUrl.startsWith('ENC:')) {
+                   // Ensure it has IV even if no text
+                   emitData.iv = emitData.fileUrl.split(':')[2];
+                   emitData.isEncrypted = true;
+                }
+                
+                useChatStore.getState().addMessage({ ...emitData, text: originalMsg.text, fileUrl: originalMsg.fileUrl, isEncrypted: false }); // Add plaintext locally
+                socket?.emit('send_message', emitData);
+                // slight delay to avoid socket flood
+                await new Promise(res => setTimeout(res, 50));
+              }
+            }
+          }
+        } catch (e) {
+          console.error("Encryption failed during forwarding", e);
+        }
       }
 
-      // Forward to groups
+      // We skip groups for now since Group E2EE requires a separate key exchange mechanism.
       if (selectedGroupIds.length > 0) {
-        await axios.post('/api/messages/forward', {
-          messageIds,
-          targetIds: selectedGroupIds,
-          isGroupTarget: true
-        }, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        alert("E2E Encrypted Forwarding to groups is currently not supported.");
       }
 
       clearSelection();

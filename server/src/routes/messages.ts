@@ -71,7 +71,7 @@ router.get('/:userId', authenticate, async (req: any, res) => {
         ]
       },
       include: {
-        sender: { select: { id: true, username: true, avatar: true } }
+        sender: { select: { id: true, username: true, avatar: true, publicKey: true } }
       },
       orderBy: { createdAt: 'asc' }
     });
@@ -183,7 +183,9 @@ router.post('/forward', authenticate, async (req: any, res) => {
             forwardedFrom: orig.sender?.username || 'User',
             senderId,
             receiverId: isGroupTarget ? null : targetId,
-            groupId: isGroupTarget ? targetId : null
+            groupId: isGroupTarget ? targetId : null,
+            iv: (orig as any).iv,
+            isEncrypted: (orig as any).isEncrypted
           },
           include: {
             sender: { select: { id: true, username: true, avatar: true } }

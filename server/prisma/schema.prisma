@@ -20,7 +20,8 @@ model User {
   isAdmin      Boolean   @default(false)
   isBanned     Boolean   @default(false)
   lastIpAddress String?
-  lastSeen     DateTime  @default(now())
+  publicKey     String?   @db.Text
+  lastSeen      DateTime  @default(now())
   createdAt    DateTime  @default(now())
 
   messagesSent     Message[]     @relation("MessagesSent")
@@ -144,6 +145,8 @@ model Message {
   replyToText   String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now())
+  iv            String?
+  isEncrypted   Boolean   @default(false)
 
   senderId   String
   receiverId String? // Nullable for group chats

@@ -303,10 +303,12 @@ io.on('connection', (socket) => {
           pollData: data.pollData ? JSON.stringify(data.pollData) : null,
           replyToId: data.replyToId || null,
           replyToText: data.replyToText || null,
-          isSeen: false
+          isSeen: false,
+          iv: data.iv || null,
+          isEncrypted: !!data.isEncrypted
         },
         include: {
-          sender: { select: { id: true, username: true, avatar: true } }
+          sender: { select: { id: true, username: true, avatar: true, publicKey: true } }
         }
       });
 

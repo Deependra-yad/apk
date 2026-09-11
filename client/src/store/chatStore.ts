@@ -21,6 +21,8 @@ export interface Message {
   isEdited?: boolean;
   isStarred?: boolean;
   isPinned?: boolean;
+  iv?: string;
+  isEncrypted?: boolean;
   forwardedFrom?: string;
   reactions?: string;
   pollData?: string;
@@ -33,6 +35,7 @@ export interface Message {
     id: string;
     username: string;
     avatar?: string;
+    publicKey?: string;
   };
   createdAt: string;
   updatedAt?: string;
@@ -172,40 +175,67 @@ export const useChatStore = create<ChatState>((set, get) => ({
     });
 
     // 1-on-1 incoming message
-    socket.on('receive_message', (message: Message) => {
+    socket.on('receive_message', async (message: Message) => {
+      let finalMessage = { ...message };
+      
+      if (finalMessage.isEncrypted && finalMessage.iv && finalMessage.sender?.publicKey) {
+        try {
+          const { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
+          const myKey = await getKeyFromIDB(userId);
+          if (myKey) {
+            const senderPubKey = await importPublicKey(finalMessage.sender.publicKey as string);
+            const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
+            
+            if (finalMessage.text) {
+              finalMessage.text = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
+            }
+            
+            if (finalMessage.fileUrl && finalMessage.fileUrl.startsWith('ENC:')) {
+              const parts = finalMessage.fileUrl.substring(4).split(':');
+              if (parts.length === 2) {
+                finalMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Failed to decrypt incoming message', err);
+          finalMessage.text = '[Decryption Failed]';
+        }
+      }
+
       const { activeContact } = get();
       soundEffects.playMessageReceived();
 
-      if (activeContact && (message.senderId === activeContact.id || message.receiverId === activeContact.id)) {
+      if (activeContact && (finalMessage.senderId === activeContact.id || finalMessage.receiverId === activeContact.id)) {
         set((state) => {
           // Avoid duplicate messages
-          if (state.messages.some(m => m.id === message.id)) return state;
-          const activeConversations = !state.activeConversations.includes(message.senderId) 
-            ? [...state.activeConversations, message.senderId] 
+          if (state.messages.some(m => m.id === finalMessage.id)) return state;
+          const activeConversations = !state.activeConversations.includes(finalMessage.senderId) 
+            ? [...state.activeConversations, finalMessage.senderId] 
             : state.activeConversations;
-          return { messages: [...state.messages, message], activeConversations };
+          return { messages: [...state.messages, finalMessage], activeConversations };
         });
-        if (message.senderId === activeContact.id) {
-          socket.emit('mark_seen', { senderId: message.senderId, receiverId: userId });
+        if (finalMessage.senderId === activeContact.id) {
+          socket.emit('mark_seen', { senderId: finalMessage.senderId, receiverId: userId });
         }
       } else {
         set((state) => {
-          const activeConversations = !state.activeConversations.includes(message.senderId)
-            ? [...state.activeConversations, message.senderId]
+          const activeConversations = !state.activeConversations.includes(finalMessage.senderId)
+            ? [...state.activeConversations, finalMessage.senderId]
             : state.activeConversations;
           
-          const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
-          sendBrowserNotification(message.sender?.username || 'New Message', preview, message.sender?.avatar);
+          const preview = finalMessage.text || (finalMessage.type === 'image' ? '📷 Photo' : finalMessage.type === 'video' ? '🎥 Video' : finalMessage.type === 'audio' ? '🎵 Voice Note' : finalMessage.fileName || 'Attachment');
+          sendBrowserNotification(finalMessage.sender?.username || 'New Message', preview, finalMessage.sender?.avatar);
 
           return {
             activeConversations,
-            incomingToast: { ...message, text: preview },
-            unreadCounts: { ...state.unreadCounts, [message.senderId]: (state.unreadCounts[message.senderId] || 0) + 1 }
+            incomingToast: { ...finalMessage, text: preview },
+            unreadCounts: { ...state.unreadCounts, [finalMessage.senderId]: (state.unreadCounts[finalMessage.senderId] || 0) + 1 }
           };
         });
 
         setTimeout(() => {
-          set((state) => (state.incomingToast?.id === message.id ? { incomingToast: null } : state));
+          set((state) => (state.incomingToast?.id === finalMessage.id ? { incomingToast: null } : state));
         }, 5000);
       }
     });

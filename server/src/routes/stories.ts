@@ -56,7 +56,7 @@ router.get('/', authenticate, async (req: any, res) => {
       },
       include: {
         user: {
-          select: { id: true, username: true, avatar: true }
+          select: { id: true, username: true, avatar: true, publicKey: true }
         }
       },
       orderBy: { createdAt: 'desc' }

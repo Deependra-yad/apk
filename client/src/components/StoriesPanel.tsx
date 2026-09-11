@@ -151,13 +151,42 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     if (!currentStory || !replyText.trim() || !token) return;
     try {
       const targetUserId = currentStory.userId || currentStory.user?.id;
-      const res = await axios.post('/api/messages', {
+      const { user } = useAuthStore.getState();
+      const tempId = `temp-${Date.now()}`;
+      const baseMsg = {
+        id: tempId,
+        tempId,
+        senderId: user?.id,
         receiverId: targetUserId,
-        content: `Reply to status: ${replyText}`,
-        type: 'text'
-      }, { headers: { Authorization: `Bearer ${token}` } });
+        text: `Reply to status: ${replyText}`,
+        type: 'text',
+        isPending: true,
+        createdAt: new Date().toISOString(),
+        isSeen: false
+      };
       
-      socket?.emit('send_message', res.data);
+      let emitData: any = { ...baseMsg };
+      
+      const targetPubKey = currentStory.user?.publicKey;
+      if (targetPubKey) {
+        try {
+          const { getKeyFromIDB, importPublicKey, deriveSharedKey, encryptMessage } = await import('@/utils/crypto');
+          const myKey = await getKeyFromIDB(user!.id);
+          if (myKey) {
+            const otherPubKey = await importPublicKey(targetPubKey);
+            const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+            const encrypted = await encryptMessage(sharedKey, emitData.text);
+            emitData.text = encrypted.ciphertext;
+            emitData.iv = encrypted.iv;
+            emitData.isEncrypted = true;
+          }
+        } catch (e) {
+          console.error("Encryption failed for story reply", e);
+        }
+      }
+
+      useChatStore.getState().addMessage(baseMsg as any);
+      socket?.emit('send_message', emitData);
       setReplyText('');
       setActiveStoryIndex(null); 
     } catch (e) {
