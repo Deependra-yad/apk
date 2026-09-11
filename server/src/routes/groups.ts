@@ -215,9 +215,54 @@ router.delete('/:groupId/members/:targetUserId', authenticate, async (req: any, 
       where: { groupId_userId: { groupId, userId: targetUserId } }
     });
 
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('group_member_removed', { groupId, targetUserId });
+      io.to(`user_${targetUserId}`).emit('removed_from_group', { groupId });
+    }
+
     res.json({ success: true, removedUserId: targetUserId });
   } catch (error) {
     res.status(500).json({ error: 'Failed to remove member' });
+  }
+});
+
+// Delete group permanently (creator or admin only)
+router.delete('/:groupId', authenticate, async (req: any, res) => {
+  const { groupId } = req.params;
+  const currentUserId = req.userId;
+
+  try {
+    const group = await prisma.group.findUnique({
+      where: { id: groupId }
+    });
+
+    if (!group) return res.status(404).json({ error: 'Group not found' });
+
+    if (group.creatorId !== currentUserId) {
+      const member = await prisma.groupMember.findUnique({
+        where: { groupId_userId: { groupId, userId: currentUserId } }
+      });
+      if (!member || member.role !== 'admin') {
+        return res.status(403).json({ error: 'Only the group creator or admin can delete this group' });
+      }
+    }
+
+    // Cascade delete group messages, members, chat meta
+    await prisma.message.deleteMany({ where: { groupId } });
+    await prisma.groupMember.deleteMany({ where: { groupId } });
+    await prisma.chatMeta.deleteMany({ where: { targetId: groupId } });
+    await prisma.group.delete({ where: { id: groupId } });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`group_${groupId}`).emit('group_deleted', { groupId });
+    }
+
+    res.json({ success: true, groupId });
+  } catch (error) {
+    console.error('Failed to delete group:', error);
+    res.status(500).json({ error: 'Failed to delete group' });
   }
 });
 

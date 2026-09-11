@@ -5,8 +5,21 @@ import PWAInstallPrompt from '@/components/PWAInstallPrompt';
 
 export const metadata: Metadata = {
   title: 'Liquid Chat',
-  description: 'A modern, dynamic liquid drop UI chat application',
+  description: 'A modern, dynamic Japanese Cyber-Glass E2EE chat application',
   manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/logo.svg', type: 'image/svg+xml' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',

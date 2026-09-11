@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Users, Check, Sparkles, Image as ImageIcon } from 'lucide-react';
+import { X, Users, Check, Search, ShieldAlert } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
@@ -14,26 +14,58 @@ interface NewGroupModalProps {
 }
 
 export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalProps) {
-  const { token } = useAuthStore();
-  const { groups, setGroups, setActiveGroup } = useChatStore();
+  const { user: currentUser, token } = useAuthStore();
+  const { groups, setGroups, setActiveGroup, activeConversations } = useChatStore();
 
   const [step, setStep] = useState<'members' | 'details'>('members');
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // Strictly filter to existing chat contacts (contacts you have conversation history with)
+  const availableChatContacts = useMemo(() => {
+    return users.filter(u => {
+      if (!currentUser || u.id === currentUser.id) return false;
+      // Must be in active conversations or saved contacts
+      return activeConversations.includes(u.id);
+    });
+  }, [users, currentUser, activeConversations]);
+
+  // Filter contacts by search query
+  const filteredContacts = useMemo(() => {
+    const q = searchQuery.toLowerCase().trim();
+    if (!q) return availableChatContacts;
+    return availableChatContacts.filter(u => 
+      u.username.toLowerCase().includes(q) || 
+      (u.liquidNumber && u.liquidNumber.includes(q))
+    );
+  }, [availableChatContacts, searchQuery]);
+
+  const selectedUsersList = useMemo(() => {
+    return availableChatContacts.filter(u => selectedUserIds.includes(u.id));
+  }, [availableChatContacts, selectedUserIds]);
 
   if (!isOpen) return null;
 
-  const toggleUser = (id: string) => {
+  const toggleUser = (targetUser: any) => {
+    if (targetUser.groupsPrivacy === 'nobody') {
+      setErrorMsg(`@${targetUser.username} does not allow being added to groups due to their privacy settings.`);
+      setTimeout(() => setErrorMsg(''), 3500);
+      return;
+    }
+
     setSelectedUserIds(prev => 
-      prev.includes(id) ? prev.filter(uId => uId !== id) : [...prev, id]
+      prev.includes(targetUser.id) ? prev.filter(uId => uId !== targetUser.id) : [...prev, targetUser.id]
     );
   };
 
   const handleCreateGroup = async () => {
     if (!groupName.trim() || !token) return;
     setIsSubmitting(true);
+    setErrorMsg('');
 
     try {
       const res = await axios.post('/api/groups', {
@@ -47,13 +79,16 @@ export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalP
       setGroups([res.data, ...groups]);
       setActiveGroup(res.data);
       onClose();
-      // Reset state
+
+      // Reset form state
       setStep('members');
       setSelectedUserIds([]);
       setGroupName('');
       setGroupDescription('');
-    } catch (e) {
+      setSearchQuery('');
+    } catch (e: any) {
       console.error('Error creating group:', e);
+      setErrorMsg(e.response?.data?.error || 'Failed to create group');
     } finally {
       setIsSubmitting(false);
     }
@@ -75,14 +110,16 @@ export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalP
         >
           {/* Header */}
           <div className="flex justify-between items-center pb-2 border-b border-foreground/10">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <div className="p-2 rounded-xl bg-liquid-accent/20 text-liquid-accent">
                 <Users size={20} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-foreground">Create New Group</h3>
+                <h3 className="text-base font-bold text-foreground">New Group</h3>
                 <span className="text-xs text-foreground/60">
-                  {step === 'members' ? `Select participants (${selectedUserIds.length} selected)` : 'Provide group details'}
+                  {step === 'members' 
+                    ? `Add existing chat contacts (${selectedUserIds.length} selected)` 
+                    : 'Group Details'}
                 </span>
               </div>
             </div>
@@ -91,35 +128,102 @@ export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalP
             </button>
           </div>
 
+          {/* Privacy Notice or Error */}
+          {errorMsg && (
+            <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-center gap-2 text-rose-400 text-xs">
+              <ShieldAlert size={16} className="shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
           {/* Step 1: Member Selection */}
           {step === 'members' && (
             <>
-              <div className="max-h-72 overflow-y-auto space-y-1.5 no-scrollbar py-2">
-                {users.length === 0 ? (
-                  <p className="text-xs text-foreground/50 text-center py-6">No contacts available to add</p>
+              {/* Selected Contacts Pill Chips (WhatsApp Style) */}
+              {selectedUsersList.length > 0 && (
+                <div className="flex items-center gap-2 overflow-x-auto py-1 no-scrollbar border-b border-foreground/5">
+                  {selectedUsersList.map(u => (
+                    <div 
+                      key={u.id}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-xs font-semibold text-foreground shrink-0"
+                    >
+                      <img src={u.avatar} alt={u.username} className="w-5 h-5 rounded-full object-cover" />
+                      <span className="max-w-[80px] truncate">{u.username}</span>
+                      <button 
+                        onClick={() => toggleUser(u)}
+                        className="p-0.5 hover:text-rose-400 transition-colors"
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Search Bar */}
+              <div className="h-10 bg-background/30 rounded-xl px-3 flex items-center gap-2 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
+                <Search size={16} className="text-foreground/50 shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search existing chat contacts..."
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="text-foreground/40 hover:text-foreground">
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Contacts List */}
+              <div className="max-h-64 overflow-y-auto space-y-1.5 no-scrollbar py-1">
+                {availableChatContacts.length === 0 ? (
+                  <div className="text-center py-8 px-4 space-y-2">
+                    <p className="text-xs font-medium text-foreground/60">No existing chat contacts found</p>
+                    <p className="text-[11px] text-foreground/40">
+                      Start a chat with a user using their 10-digit Liquid ID before adding them to a group.
+                    </p>
+                  </div>
+                ) : filteredContacts.length === 0 ? (
+                  <p className="text-xs text-foreground/50 text-center py-6">No matching contacts</p>
                 ) : (
-                  users.map((u) => {
+                  filteredContacts.map((u) => {
                     const isSelected = selectedUserIds.includes(u.id);
+                    const isRestricted = u.groupsPrivacy === 'nobody';
+
                     return (
                       <div
                         key={u.id}
-                        onClick={() => toggleUser(u.id)}
+                        onClick={() => toggleUser(u)}
                         className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
-                          isSelected ? 'bg-liquid-accent/15 border border-liquid-accent/30' : 'hover:bg-foreground/5 border border-transparent'
+                          isRestricted 
+                            ? 'opacity-40 hover:bg-transparent cursor-not-allowed'
+                            : isSelected 
+                              ? 'bg-liquid-accent/15 border border-liquid-accent/30' 
+                              : 'hover:bg-foreground/5 border border-transparent'
                         }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden border border-foreground/10">
+                          <div className="w-10 h-10 rounded-full overflow-hidden border border-foreground/10 shrink-0">
                             <img src={u.avatar} alt={u.username} className="w-full h-full object-cover" />
                           </div>
                           <div>
-                            <h4 className="text-sm font-semibold text-foreground">{u.username}</h4>
-                            <p className="text-[11px] text-foreground/60 truncate max-w-[180px]">{u.about || 'Available'}</p>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-foreground">{u.username}</h4>
+                              {u.liquidNumber && (
+                                <span className="text-[10px] font-mono text-liquid-accent/80">{u.liquidNumber}</span>
+                              )}
+                            </div>
+                            <p className="text-[11px] text-foreground/50 truncate max-w-[190px]">
+                              {isRestricted ? '🔒 Restricts group invites' : (u.about || 'Available')}
+                            </p>
                           </div>
                         </div>
 
-                        <div className={`w-5 h-5 rounded-full flex items-center justify-center border ${
-                          isSelected ? 'bg-liquid-accent border-liquid-accent text-liquid-dark' : 'border-gray-500'
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors ${
+                          isSelected ? 'bg-liquid-accent border-liquid-accent text-liquid-dark' : 'border-foreground/30'
                         }`}>
                           {isSelected && <Check size={12} strokeWidth={3} />}
                         </div>
@@ -158,7 +262,7 @@ export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalP
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="e.g. Project Developers 🚀"
+                  placeholder="e.g. Liquid Developers 🌊"
                   className="w-full h-11 bg-background/40 border border-foreground/10 rounded-xl px-3.5 text-foreground text-xs outline-none focus:border-liquid-accent/50"
                   autoFocus
                 />
@@ -197,4 +301,3 @@ export default function NewGroupModal({ isOpen, onClose, users }: NewGroupModalP
     </AnimatePresence>
   );
 }
-

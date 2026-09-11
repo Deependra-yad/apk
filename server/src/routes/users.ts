@@ -38,7 +38,18 @@ router.get('/settings', authenticate, async (req: any, res) => {
 
 router.put('/settings', authenticate, async (req: any, res) => {
   const userId = req.userId;
-  const { lastSeenPrivacy, readReceipts, enterToSend, theme, notificationSound, wallpaper } = req.body;
+  const { 
+    lastSeenPrivacy, 
+    profilePhotoPrivacy, 
+    aboutPrivacy, 
+    statusPrivacy, 
+    groupsPrivacy, 
+    readReceipts, 
+    enterToSend, 
+    theme, 
+    notificationSound, 
+    wallpaper 
+  } = req.body;
 
   try {
     const settings = await prisma.userSettings.upsert({
@@ -46,6 +57,10 @@ router.put('/settings', authenticate, async (req: any, res) => {
       create: {
         userId,
         lastSeenPrivacy: lastSeenPrivacy || 'everyone',
+        profilePhotoPrivacy: profilePhotoPrivacy || 'everyone',
+        aboutPrivacy: aboutPrivacy || 'everyone',
+        statusPrivacy: statusPrivacy || 'contacts',
+        groupsPrivacy: groupsPrivacy || 'everyone',
         readReceipts: readReceipts !== undefined ? readReceipts : true,
         enterToSend: enterToSend !== undefined ? enterToSend : true,
         theme: theme || 'dark',
@@ -54,6 +69,10 @@ router.put('/settings', authenticate, async (req: any, res) => {
       },
       update: {
         ...(lastSeenPrivacy && { lastSeenPrivacy }),
+        ...(profilePhotoPrivacy && { profilePhotoPrivacy }),
+        ...(aboutPrivacy && { aboutPrivacy }),
+        ...(statusPrivacy && { statusPrivacy }),
+        ...(groupsPrivacy && { groupsPrivacy }),
         ...(readReceipts !== undefined && { readReceipts }),
         ...(enterToSend !== undefined && { enterToSend }),
         ...(theme && { theme }),
@@ -188,7 +207,14 @@ router.get('/conversations', authenticate, async (req: any, res) => {
         about: true,
         lastSeen: true,
         publicKey: true,
-        settings: { select: { lastSeenPrivacy: true } },
+        settings: { 
+          select: { 
+            lastSeenPrivacy: true, 
+            profilePhotoPrivacy: true, 
+            aboutPrivacy: true, 
+            groupsPrivacy: true 
+          } 
+        },
         blocksInitiated: { select: { blockedId: true } },
         blocksReceived: { select: { blockerId: true } }
       }
@@ -197,14 +223,23 @@ router.get('/conversations', authenticate, async (req: any, res) => {
     const sanitizedUsers = users.map((u: any) => {
       const isBlockedByMe = u.blocksReceived.some((b: any) => b.blockerId === userId);
       const hasBlockedMe = u.blocksInitiated.some((b: any) => b.blockedId === userId);
-      const privacy = u.settings?.lastSeenPrivacy || 'everyone';
-      let hideLastSeen = false;
+      const lastSeenPriv = u.settings?.lastSeenPrivacy || 'everyone';
+      const photoPriv = u.settings?.profilePhotoPrivacy || 'everyone';
+      const aboutPriv = u.settings?.aboutPrivacy || 'everyone';
 
-      if (privacy === 'nobody') hideLastSeen = true;
-      else if (isBlockedByMe || hasBlockedMe) hideLastSeen = true;
+      let hideLastSeen = false;
+      let hidePhoto = false;
+      let hideAbout = false;
+
+      if (lastSeenPriv === 'nobody' || isBlockedByMe || hasBlockedMe) hideLastSeen = true;
+      if (photoPriv === 'nobody' || isBlockedByMe || hasBlockedMe) hidePhoto = true;
+      if (aboutPriv === 'nobody' || isBlockedByMe || hasBlockedMe) hideAbout = true;
 
       const { settings, blocksInitiated, blocksReceived, ...safeUser } = u;
       if (hideLastSeen) safeUser.lastSeen = null;
+      if (hidePhoto) safeUser.avatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${u.username}`;
+      if (hideAbout) safeUser.about = null;
+      safeUser.groupsPrivacy = u.settings?.groupsPrivacy || 'everyone';
       return safeUser;
     });
 

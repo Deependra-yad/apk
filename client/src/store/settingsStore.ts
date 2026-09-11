@@ -1,9 +1,15 @@
 import { create } from 'zustand';
 import axios from 'axios';
 
+export type PrivacyAudience = 'everyone' | 'contacts' | 'nobody';
+
 interface SettingsState {
   theme: 'dark' | 'light' | 'system';
-  lastSeenPrivacy: 'everyone' | 'contacts' | 'nobody';
+  lastSeenPrivacy: PrivacyAudience;
+  profilePhotoPrivacy: PrivacyAudience;
+  aboutPrivacy: PrivacyAudience;
+  statusPrivacy: PrivacyAudience;
+  groupsPrivacy: PrivacyAudience;
   readReceipts: boolean;
   enterToSend: boolean;
   notificationSound: boolean;
@@ -20,6 +26,10 @@ interface SettingsState {
 export const useSettingsStore = create<SettingsState>((set, get) => ({
   theme: 'dark',
   lastSeenPrivacy: 'everyone',
+  profilePhotoPrivacy: 'everyone',
+  aboutPrivacy: 'everyone',
+  statusPrivacy: 'contacts',
+  groupsPrivacy: 'everyone',
   readReceipts: true,
   enterToSend: true,
   notificationSound: true,
@@ -45,6 +55,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
       set({
         theme: res.data.theme || 'dark',
         lastSeenPrivacy: res.data.lastSeenPrivacy || 'everyone',
+        profilePhotoPrivacy: res.data.profilePhotoPrivacy || 'everyone',
+        aboutPrivacy: res.data.aboutPrivacy || 'everyone',
+        statusPrivacy: res.data.statusPrivacy || 'contacts',
+        groupsPrivacy: res.data.groupsPrivacy || 'everyone',
         readReceipts: res.data.readReceipts !== undefined ? res.data.readReceipts : true,
         enterToSend: res.data.enterToSend !== undefined ? res.data.enterToSend : true,
         notificationSound: res.data.notificationSound !== undefined ? res.data.notificationSound : true,

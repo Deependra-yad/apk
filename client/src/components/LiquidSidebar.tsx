@@ -6,6 +6,7 @@ import {
   Settings, User, Sparkles, Star, Bot, Shield
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
+import LiquidLogo from '@/components/LiquidLogo';
 
 interface LiquidSidebarProps {
   activeTab: string;
@@ -30,13 +31,13 @@ export default function LiquidSidebar({ activeTab, setActiveTab, onOpenProfile, 
       <div className="hidden sm:flex w-20 h-full bg-liquid-base/60 border-r border-foreground/5 flex-col items-center justify-between py-6 backdrop-blur-2xl z-30 shrink-0">
         {/* Brand Liquid Icon */}
         <motion.div 
-          whileHover={{ scale: 1.15, rotate: 10 }}
+          whileHover={{ scale: 1.1, rotate: 6 }}
           whileTap={{ scale: 0.95 }}
           onClick={() => setActiveTab('chat')}
-          className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-liquid-accent to-liquid-secondary flex items-center justify-center shadow-[0_0_25px_rgba(0,210,255,0.5)] cursor-pointer"
+          className="cursor-pointer flex items-center justify-center"
           title="Liquid Chat"
         >
-          <Sparkles className="text-foreground" size={24} />
+          <LiquidLogo size={46} glow={true} />
         </motion.div>
 
         {/* Navigation Tabs */}

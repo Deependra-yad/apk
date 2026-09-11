@@ -1,0 +1,87 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Background / Base Glow Gradients -->
+    <linearGradient id="liquidGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ff4b82" />
+      <stop offset="50%" stop-color="#a855f7" />
+      <stop offset="100%" stop-color="#00f2fe" />
+    </linearGradient>
+
+    <linearGradient id="innerGlow" x1="20%" y1="10%" x2="80%" y2="90%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85" />
+      <stop offset="40%" stop-color="#ffffff" stop-opacity="0.2" />
+      <stop offset="100%" stop-color="#00f2fe" stop-opacity="0.7" />
+    </linearGradient>
+
+    <linearGradient id="dropletCore" x1="30%" y1="0%" x2="70%" y2="100%">
+      <stop offset="0%" stop-color="#ff7597" />
+      <stop offset="60%" stop-color="#9333ea" />
+      <stop offset="100%" stop-color="#06b6d4" />
+    </linearGradient>
+
+    <linearGradient id="glassReflect" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.65" />
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+    </linearGradient>
+
+    <!-- Drop Shadows & Glow Filters -->
+    <filter id="ambientGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="24" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#a855f7" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- Ambient Glow Background -->
+  <circle cx="256" cy="256" r="210" fill="url(#liquidGrad)" opacity="0.25" filter="url(#ambientGlow)" />
+
+  <!-- Outer Cyber-Glass Rounded Hexa-Squircle Container -->
+  <rect x="36" y="36" width="440" height="440" rx="120" fill="#0c0a18" stroke="url(#liquidGrad)" stroke-width="6" filter="url(#softShadow)" />
+  <rect x="42" y="42" width="428" height="428" rx="114" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="2" />
+
+  <!-- Main Organic Liquid Droplet Body -->
+  <g filter="url(#softShadow)">
+    <path 
+      d="M256,92 C320,165 375,230 375,302 C375,372 322,422 256,422 C190,422 137,372 137,302 C137,230 192,165 256,92 Z" 
+      fill="url(#dropletCore)" 
+    />
+  </g>
+
+  <!-- Glass Highlight / Reflection Arc -->
+  <path 
+    d="M256,112 C295,165 348,225 352,290 C332,270 295,258 256,260 C217,258 180,270 160,290 C164,225 217,165 256,112 Z" 
+    fill="url(#glassReflect)" 
+    opacity="0.5" 
+  />
+
+  <!-- Stylized Cyber Chat Node / Core Ripple Wave -->
+  <path 
+    d="M210,285 C230,265 282,265 302,285 C316,299 316,325 302,339 C292,349 270,356 256,370 C242,356 220,349 210,339 C196,325 196,299 210,285 Z" 
+    fill="#ffffff" 
+    opacity="0.95"
+  />
+
+  <!-- Glowing Center Particle Node -->
+  <circle cx="256" cy="312" r="14" fill="#a855f7" />
+  <circle cx="256" cy="312" r="7" fill="#ffffff" />
+
+  <!-- Kawaii Specular Sparkle Accents (Neo-Tokyo Style) -->
+  <path 
+    d="M360,150 Q360,180 375,180 Q360,180 360,210 Q360,180 345,180 Q360,180 360,150 Z" 
+    fill="#ff7597" 
+    opacity="0.9"
+  />
+  <circle cx="360" cy="180" r="3" fill="#ffffff" />
+
+  <path 
+    d="M152,360 Q152,375 160,375 Q152,375 152,390 Q152,375 144,375 Q152,375 152,360 Z" 
+    fill="#00f2fe" 
+    opacity="0.85"
+  />
+
+  <!-- Top Specular Gloss Highlight -->
+  <ellipse cx="236" cy="148" rx="20" ry="40" transform="rotate(-25 236 148)" fill="#ffffff" opacity="0.45" />
+</svg>

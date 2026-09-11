@@ -22,6 +22,7 @@ import StarredVaultPanel from '@/components/StarredVaultPanel';
 import NotificationToast from '@/components/NotificationToast';
 import LandingPage from '@/components/LandingPage';
 import UserQrModal from '@/components/UserQrModal';
+import LiquidLogo from '@/components/LiquidLogo';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, GroupItem } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -177,19 +178,34 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
 
+  // Listen for real-time contact or group deletion events
   useEffect(() => {
-    const handleNewUser = (e: any) => {
-      const newUser = e.detail;
-      if (user && newUser.id !== user.id) {
-        setUsers(prev => {
-          if (prev.some(u => u.id === newUser.id)) return prev;
-          return [...prev, newUser];
-        });
+    if (!socket) return;
+
+    const handleGroupDeleted = ({ groupId }: { groupId: string }) => {
+      const current = useChatStore.getState().groups;
+      setGroups(current.filter((g: any) => g.id !== groupId));
+      if (useChatStore.getState().activeGroup?.id === groupId) {
+        useChatStore.getState().setActiveGroup(null);
       }
     };
-    window.addEventListener('new_user_joined', handleNewUser);
-    return () => window.removeEventListener('new_user_joined', handleNewUser);
-  }, [user]);
+
+    const handleRemovedFromGroup = ({ groupId }: { groupId: string }) => {
+      const current = useChatStore.getState().groups;
+      setGroups(current.filter((g: any) => g.id !== groupId));
+      if (useChatStore.getState().activeGroup?.id === groupId) {
+        useChatStore.getState().setActiveGroup(null);
+      }
+    };
+
+    socket.on('group_deleted', handleGroupDeleted);
+    socket.on('removed_from_group', handleRemovedFromGroup);
+
+    return () => {
+      socket.off('group_deleted', handleGroupDeleted);
+      socket.off('removed_from_group', handleRemovedFromGroup);
+    };
+  }, [socket, setGroups]);
 
   // Global Incoming Call Signaling
   useEffect(() => {
@@ -460,13 +476,15 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
           <>
             {/* Header */}
             <div className="h-20 border-b border-foreground/5 flex items-center justify-between px-6 bg-liquid-base/30">
-              <div className="flex flex-col justify-center">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold text-foreground tracking-wide">Liquid Chat</h1>
-                  <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
-                    PRO
-                  </span>
-                </div>
+              <div className="flex items-center gap-3">
+                <LiquidLogo size={36} glow={false} />
+                <div className="flex flex-col justify-center">
+                  <div className="flex items-center gap-2">
+                    <h1 className="text-lg font-bold text-foreground tracking-wide">Liquid Chat</h1>
+                    <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
+                      PRO
+                    </span>
+                  </div>
                 {user?.liquidNumber ? (
                   <button 
                     onClick={() => {
@@ -482,6 +500,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                 ) : (
                   <p className="text-[10px] text-foreground/40 font-mono">@{user?.username}</p>
                 )}
+                </div>
               </div>
 
               <div className="flex items-center gap-2">

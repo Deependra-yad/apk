@@ -111,14 +111,18 @@ model BlockList {
 }
 
 model UserSettings {
-  id                String  @id @default(uuid())
-  userId            String  @unique
-  lastSeenPrivacy   String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
-  readReceipts      Boolean @default(true)
-  enterToSend       Boolean @default(true)
-  theme             String  @default("dark") // 'dark' | 'light' | 'system'
-  notificationSound Boolean @default(true)
-  wallpaper         String?
+  id                  String  @id @default(uuid())
+  userId              String  @unique
+  lastSeenPrivacy     String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
+  profilePhotoPrivacy String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
+  aboutPrivacy        String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
+  statusPrivacy       String  @default("contacts") // 'everyone' | 'contacts' | 'nobody'
+  groupsPrivacy       String  @default("everyone") // 'everyone' | 'contacts' | 'nobody'
+  readReceipts        Boolean @default(true)
+  enterToSend         Boolean @default(true)
+  theme               String  @default("dark") // 'dark' | 'light' | 'system'
+  notificationSound   Boolean @default(true)
+  wallpaper           String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

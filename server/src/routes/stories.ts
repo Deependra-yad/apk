@@ -47,12 +47,64 @@ router.post('/', authenticate, async (req: any, res) => {
   }
 });
 
-// Get all active stories
+// Get active stories (Strictly scoped to mutual chat contacts, respecting privacy settings)
 router.get('/', authenticate, async (req: any, res) => {
+  const myId = req.userId;
+
   try {
+    // 1. Get mutual chat contacts (users who have sent messages to or received from myId)
+    const messages = await prisma.message.findMany({
+      where: {
+        OR: [
+          { senderId: myId, groupId: null },
+          { receiverId: myId, groupId: null }
+        ]
+      },
+      select: { senderId: true, receiverId: true },
+      take: 2000
+    });
+
+    const contactIds = new Set<string>();
+    messages.forEach((m: any) => {
+      if (m.senderId && m.senderId !== myId) contactIds.add(m.senderId);
+      if (m.receiverId && m.receiverId !== myId) contactIds.add(m.receiverId);
+    });
+
+    // 2. Exclude any blocked users (blocker or blocked)
+    const blocks = await prisma.blockList.findMany({
+      where: {
+        OR: [
+          { blockerId: myId },
+          { blockedId: myId }
+        ]
+      },
+      select: { blockerId: true, blockedId: true }
+    });
+
+    const blockedUserIds = new Set<string>();
+    blocks.forEach((b: any) => {
+      blockedUserIds.add(b.blockerId === myId ? b.blockedId : b.blockerId);
+    });
+
+    const allowedContactIds = Array.from(contactIds).filter(id => !blockedUserIds.has(id));
+
+    // 3. Fetch stories: always include own stories, plus stories from contacts whose statusPrivacy is not 'nobody'
     const activeStories = await prisma.story.findMany({
       where: {
-        expiresAt: { gt: new Date() }
+        expiresAt: { gt: new Date() },
+        OR: [
+          { userId: myId },
+          {
+            userId: { in: allowedContactIds },
+            NOT: {
+              user: {
+                settings: {
+                  statusPrivacy: 'nobody'
+                }
+              }
+            }
+          }
+        ]
       },
       include: {
         user: {
@@ -64,6 +116,7 @@ router.get('/', authenticate, async (req: any, res) => {
 
     res.json(activeStories);
   } catch (error) {
+    console.error('Failed to fetch scoped stories:', error);
     res.status(500).json({ error: 'Failed to fetch stories' });
   }
 });

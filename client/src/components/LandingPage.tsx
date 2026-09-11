@@ -10,6 +10,7 @@ import {
   Flame, Heart, Send, Terminal, Play, Cpu, Layers
 } from 'lucide-react';
 import Link from 'next/link';
+import LiquidLogo from '@/components/LiquidLogo';
 
 export default function LandingPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -100,9 +101,7 @@ export default function LandingPage() {
       <header className="sticky top-0 w-full z-40 backdrop-blur-2xl bg-[#07050e]/75 border-b border-white/5 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] flex items-center justify-center text-white shadow-[0_0_30px_rgba(255,75,130,0.5)]">
-              <Sparkles size={22} />
-            </div>
+            <LiquidLogo size={44} glow={true} />
             <div>
               <span className="text-xl font-black tracking-tight text-white flex items-center gap-2">
                 LiquidChat <span className="text-[#ff7597] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30">🌸 PRO v3.0</span>
@@ -788,9 +787,7 @@ export default function LandingPage() {
       {/* FOOTER */}
       <footer className="w-full max-w-7xl mx-auto px-6 py-12 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-foreground/50 z-20 relative">
         <div className="flex items-center gap-2.5">
-          <div className="w-6 h-6 rounded-lg bg-gradient-to-tr from-[#ff4b82] to-[#a855f7] flex items-center justify-center text-white text-[10px] font-bold">
-            LQ
-          </div>
+          <LiquidLogo size={24} glow={false} />
           <span>🌸 LiquidChat PRO v3.0 • Tokyo Cyber-Glass</span>
           <span>•</span>
           <span>© 2026 LiquidChat.online</span>

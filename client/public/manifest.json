@@ -4,11 +4,17 @@
   "start_url": "/",
   "id": "/",
   "display": "standalone",
-  "background_color": "#121212",
-  "theme_color": "#121212",
-  "description": "A beautiful real-time chat application.",
+  "background_color": "#07050e",
+  "theme_color": "#07050e",
+  "description": "Japanese Cyber-Glass Zero-Knowledge E2EE Messenger",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
     {
       "src": "/icon-192x192.png",
       "sizes": "192x192",

@@ -6,6 +6,7 @@ import { Mail, Lock, User, ArrowRight, ShieldCheck, KeyRound, AlertCircle, Check
 import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/authStore';
 import QrLoginPanel from '@/components/QrLoginPanel';
+import LiquidLogo from '@/components/LiquidLogo';
 
 const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
@@ -211,14 +212,12 @@ function AuthForm() {
           animate={{ opacity: 1, y: 0 }}
           className="bg-liquid-base/80 backdrop-blur-2xl p-8 rounded-[2rem] border border-foreground/10 shadow-[0_0_50px_rgba(0,0,0,0.5)]"
         >
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 mx-auto bg-gradient-to-tr from-liquid-accent to-liquid-secondary rounded-full flex items-center justify-center p-[2px] mb-6 shadow-[0_0_30px_rgba(0,210,255,0.3)]">
-              <div className="w-full h-full bg-liquid-base rounded-full flex items-center justify-center">
-                <ShieldCheck size={36} className="text-liquid-accent" />
-              </div>
+          <div className="text-center mb-8">
+            <div className="flex justify-center mb-5">
+              <LiquidLogo size={68} glow={true} />
             </div>
-            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 mb-2">Liquid Auth</h1>
-            <p className="text-foreground/60 text-sm">Secure Real-time Authentication</p>
+            <h1 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/70 mb-1.5">LiquidChat</h1>
+            <p className="text-foreground/60 text-xs">Japanese Cyber-Glass Zero-Knowledge E2EE</p>
           </div>
 
           <AnimatePresence mode="wait">
