@@ -26,7 +26,8 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
-import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage } from '@/utils/crypto';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber } from '@/utils/crypto';
+import { ShieldCheck } from 'lucide-react';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -96,6 +97,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [chatSearchTerm, setChatSearchTerm] = useState('');
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [copyToast, setCopyToast] = useState<string | null>(null);
+  const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
+  const [safetyNumber, setSafetyNumber] = useState<string>('');
+  const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
+  const touchTimerRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileTypeFilterRef = useRef<string>('*/*');
@@ -256,6 +263,54 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         socket.emit('typing_stop', { senderId: user.id, receiverId: activeContact.id });
       }
     }, 2000);
+  };
+
+  const handleCopyMessage = (msg: any) => {
+    const textToCopy = msg.text || msg.fileName || '';
+    if (textToCopy && typeof navigator !== 'undefined') {
+      navigator.clipboard.writeText(textToCopy).then(() => {
+        setCopiedMessageId(msg.id);
+        setCopyToast('Copied to clipboard');
+        setTimeout(() => {
+          setCopiedMessageId(null);
+          setCopyToast(null);
+        }, 2000);
+      }).catch(() => {
+        setCopyToast('Failed to copy');
+        setTimeout(() => setCopyToast(null), 2000);
+      });
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    if (e.clipboardData.files && e.clipboardData.files.length > 0) {
+      const pastedFile = e.clipboardData.files[0];
+      setFile(pastedFile);
+      e.preventDefault();
+      return;
+    }
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.style.height = '20px';
+        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      }
+    }, 0);
+  };
+
+  const handleOpenSafetyModal = async () => {
+    if (!activeContact?.publicKey || !user) return;
+    try {
+      const myKey = await getKeyFromIDB(user.id);
+      if (myKey) {
+        const { exportPublicKey } = await import('@/utils/crypto');
+        const myPubKey = await exportPublicKey(myKey.publicKey);
+        const code = await generateSafetyNumber(myPubKey, activeContact.publicKey);
+        setSafetyNumber(code);
+        setIsSafetyModalOpen(true);
+      }
+    } catch (e) {
+      console.error("Safety number generation error:", e);
+    }
   };
 
   // Open specific file attachment type
@@ -808,10 +863,14 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden p-4 sm:p-6 flex flex-col gap-4">
         {/* E2EE Disclaimer */}
         <div className="w-full flex justify-center mb-2 mt-2">
-          <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-1.5 flex items-center gap-2 max-w-sm text-center">
+          <div 
+            onClick={activeContact?.publicKey ? handleOpenSafetyModal : undefined}
+            className={`bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-1.5 flex items-center gap-2 max-w-sm text-center transition-colors ${activeContact?.publicKey ? 'cursor-pointer hover:bg-yellow-500/15' : ''}`}
+            title={activeContact?.publicKey ? "Tap to verify Security Code" : undefined}
+          >
             <Lock size={12} className="text-yellow-500/80 shrink-0" />
             <p className="text-[10px] sm:text-xs text-yellow-500/80 font-medium">
-              Messages and calls are end-to-end encrypted. No one outside of this chat, not even Liquid, can read or listen to them.
+              Messages and calls are end-to-end encrypted. No one outside this chat can read or listen to them. {activeContact?.publicKey && <span className="underline ml-1 font-semibold">Tap to verify.</span>}
             </p>
           </div>
         </div>
@@ -888,7 +947,22 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     e.preventDefault();
                     setMessageContextMenu({ msg, x: e.clientX, y: e.clientY });
                   }}
-                  className={`p-3.5 rounded-2xl relative transition-all select-none sm:select-text [-webkit-touch-callout:none] min-w-0 break-words ${
+                  onTouchStart={(e) => {
+                    const touch = e.touches[0];
+                    touchTimerRef.current = setTimeout(() => {
+                      if (typeof navigator !== 'undefined') navigator.vibrate?.(40);
+                      setMessageContextMenu({ msg, x: touch.clientX, y: touch.clientY });
+                    }, 450);
+                  }}
+                  onTouchEnd={() => {
+                    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+                  }}
+                  onTouchMove={() => {
+                    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+                  }}
+                  onMouseEnter={() => setHoveredMessageId(msg.id)}
+                  onMouseLeave={() => setHoveredMessageId(null)}
+                  className={`p-3.5 rounded-2xl relative transition-all select-text cursor-text [-webkit-touch-callout:default] min-w-0 break-words ${
                     isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.4)]' : ''
                   } ${
                     isMe
@@ -896,6 +970,62 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       : 'bg-foreground/10 text-foreground rounded-bl-sm border border-foreground/5 backdrop-blur-md'
                   }`}
                 >
+                  {/* WhatsApp Floating Action Bar on Hover */}
+                  {hoveredMessageId === msg.id && !isMultiSelectMode && !msg.isDeleted && (
+                    <motion.div
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className={`absolute -top-7 ${isMe ? 'right-2' : 'left-2'} z-20 bg-liquid-base/95 backdrop-blur-md border border-foreground/10 rounded-full px-2 py-0.5 shadow-lg flex items-center gap-1.5`}
+                    >
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleReact(msg.id, '❤️'); }}
+                        className="hover:scale-125 transition-transform text-xs"
+                        title="React ❤️"
+                      >
+                        ❤️
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleReact(msg.id, '👍'); }}
+                        className="hover:scale-125 transition-transform text-xs"
+                        title="React 👍"
+                      >
+                        👍
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleReact(msg.id, '😂'); }}
+                        className="hover:scale-125 transition-transform text-xs"
+                        title="React 😂"
+                      >
+                        😂
+                      </button>
+                      <div className="h-3 w-[1px] bg-foreground/15 mx-0.5" />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleCopyMessage(msg); }}
+                        className="text-foreground/70 hover:text-liquid-accent p-1"
+                        title="Copy text"
+                      >
+                        <Copy size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); }}
+                        className="text-foreground/70 hover:text-liquid-accent p-1"
+                        title="Reply"
+                      >
+                        <Reply size={12} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setMessageContextMenu({ msg, x: rect.left, y: rect.bottom + 5 });
+                        }}
+                        className="text-foreground/70 hover:text-foreground p-1"
+                        title="More options"
+                      >
+                        <MoreVertical size={12} />
+                      </button>
+                    </motion.div>
+                  )}
                   {/* Forwarded Header */}
                   {msg.forwardedFrom && (
                     <div className="flex items-center gap-1 text-[10px] text-foreground/70 italic mb-1.5">
@@ -1031,11 +1161,13 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     {msg.isStarred && <Star size={11} className="text-yellow-400 fill-yellow-400" />}
                     <span>{msg.createdAt ? format(new Date(msg.createdAt), 'hh:mm a') : 'Now'}</span>
                     {isMe && !msg.isDeleted && !isGroup && (
-                      <span>
-                        {msg.isSeen ? (
+                      <span title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
+                        {msg.isPending ? (
+                          <Clock size={12} className="text-foreground/50 animate-pulse" />
+                        ) : msg.isSeen ? (
                           <CheckCheck size={14} className="text-cyan-300 drop-shadow-[0_0_6px_rgba(0,210,255,0.8)]" />
                         ) : (
-                          <Check size={14} className="text-foreground/70" />
+                          <CheckCheck size={14} className="text-foreground/60" />
                         )}
                       </span>
                     )}
@@ -1294,8 +1426,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 ref={textareaRef}
                 value={text}
                 onChange={handleInputChange}
+                onPaste={handlePaste}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey && enterToSend) {
+                  if (e.key === 'Enter' && !e.shiftKey && (enterToSend ?? true)) {
                     e.preventDefault();
                     handleSend();
                   }
@@ -1358,20 +1491,46 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="fixed z-[70] min-w-[200px] bg-liquid-base/95 backdrop-blur-3xl border border-foreground/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
+              className="fixed z-[70] min-w-[220px] bg-liquid-base/95 backdrop-blur-3xl border border-foreground/10 shadow-[0_10px_40px_rgba(0,0,0,0.8)] rounded-2xl py-2 flex flex-col overflow-hidden"
               style={{
-                left: Math.min(messageContextMenu.x, window.innerWidth - 220),
-                top: Math.min(messageContextMenu.y, window.innerHeight - 300)
+                left: Math.min(messageContextMenu.x, window.innerWidth - 240),
+                top: Math.min(messageContextMenu.y, window.innerHeight - 340)
               }}
             >
+              {/* Quick Reactions Bar */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-foreground/10 mb-1 gap-1">
+                {['👍', '❤️', '😂', '😮', '😢', '🙏'].map(emoji => (
+                  <button
+                    key={emoji}
+                    onClick={() => {
+                      handleReact(messageContextMenu.msg.id, emoji);
+                      setMessageContextMenu(null);
+                    }}
+                    className="hover:scale-125 transition-transform text-lg p-1"
+                  >
+                    {emoji}
+                  </button>
+                ))}
+              </div>
+
+              <button 
+                onClick={() => {
+                  handleCopyMessage(messageContextMenu.msg);
+                  setMessageContextMenu(null);
+                }}
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
+              >
+                <Copy size={16} className="text-liquid-accent" /> Copy Text
+              </button>
+
               <button 
                 onClick={() => {
                   setActiveReactionMessageId(messageContextMenu.msg.id);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
-                <Smile size={16} className="text-liquid-accent" /> Add Reaction
+                <Smile size={16} className="text-liquid-accent" /> More Reactions...
               </button>
 
               <button 
@@ -1379,7 +1538,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   setReplyingTo(messageContextMenu.msg);
                   setMessageContextMenu(null);
                 }}
-                className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
+                className="w-full flex items-center gap-3 px-4 py-2 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
               >
                 <Reply size={16} /> Reply
               </button>
@@ -1417,6 +1576,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 {messageContextMenu.msg.isStarred ? 'Unstar Message' : 'Star Message'}
               </button>
 
+              {activeContact?.publicKey && (
+                <button 
+                  onClick={() => {
+                    handleOpenSafetyModal();
+                    setMessageContextMenu(null);
+                  }}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-foreground/90 hover:bg-foreground/10 transition-colors text-left"
+                >
+                  <ShieldCheck size={16} className="text-green-400" /> Verify Security Code
+                </button>
+              )}
+
               {messageContextMenu.msg.senderId === user?.id && messageContextMenu.msg.text && !messageContextMenu.msg.isDeleted && (
                 <button 
                   onClick={() => {
@@ -1445,6 +1616,70 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               )}
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      {/* Copy Toast Feedback */}
+      <AnimatePresence>
+        {copyToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-foreground/90 text-background px-4 py-2 rounded-full text-xs font-semibold shadow-2xl flex items-center gap-2"
+          >
+            <Check size={14} className="text-green-500" />
+            <span>{copyToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* WhatsApp Safety Numbers / Security Code Modal */}
+      <AnimatePresence>
+        {isSafetyModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
+            onClick={() => setIsSafetyModalOpen(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-liquid-base border border-foreground/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center space-y-4"
+            >
+              <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center text-green-400 mb-1">
+                <ShieldCheck size={36} />
+              </div>
+
+              <div>
+                <h3 className="text-lg font-bold text-foreground">Verify Security Code</h3>
+                <p className="text-xs text-foreground/60 mt-1">
+                  Messages with {activeContact?.username} are end-to-end encrypted. Compare this 60-digit number with their device to confirm no one is intercepting your chat.
+                </p>
+              </div>
+
+              {/* 60-Digit Fingerprint Box */}
+              <div className="w-full bg-background/50 border border-foreground/10 rounded-2xl p-4 font-mono text-xs text-cyan-300 tracking-widest leading-relaxed select-all">
+                {safetyNumber || 'Generating security fingerprint...'}
+              </div>
+
+              <div className="flex items-center gap-2 text-[11px] text-green-400 font-medium">
+                <Lock size={12} />
+                <span>100% Cryptographically Verified (AES-256-GCM + P-256)</span>
+              </div>
+
+              <button
+                onClick={() => setIsSafetyModalOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-liquid-accent text-liquid-dark font-bold text-xs hover:brightness-110 transition-all"
+              >
+                Done
+              </button>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

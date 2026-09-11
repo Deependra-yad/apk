@@ -239,13 +239,20 @@ export default function Home() {
     } catch (e) {}
   };
 
-  // Global Context Menu lock for privacy (Mobile & Desktop)
+  // Anti-tamper & inspection prevention for production builds
   useEffect(() => {
-    const lockContextMenu = (e: MouseEvent) => {
-      // e.preventDefault(); // Un-commenting this will completely disable native context menu globally
+    if (process.env.NODE_ENV !== 'production') return;
+    const blockDevtoolsShortcuts = (e: KeyboardEvent) => {
+      if (
+        e.key === 'F12' ||
+        (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i' || e.key === 'J' || e.key === 'j' || e.key === 'C' || e.key === 'c')) ||
+        (e.ctrlKey && (e.key === 'u' || e.key === 'U'))
+      ) {
+        e.preventDefault();
+      }
     };
-    window.addEventListener('contextmenu', lockContextMenu);
-    return () => window.removeEventListener('contextmenu', lockContextMenu);
+    window.addEventListener('keydown', blockDevtoolsShortcuts);
+    return () => window.removeEventListener('keydown', blockDevtoolsShortcuts);
   }, []);
 
   // Search user by 10-digit Liquid Number

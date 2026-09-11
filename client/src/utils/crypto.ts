@@ -101,6 +101,66 @@ export const decryptMessage = async (sharedKey: CryptoKey, base64Ciphertext: str
     return '[Decryption Failed]';
   }
 };
+export const encryptFile = async (sharedKey: CryptoKey, file: File | Blob) => {
+  const arrayBuffer = await file.arrayBuffer();
+  const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await window.crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: iv,
+    },
+    sharedKey,
+    arrayBuffer
+  );
+
+  const ciphertextBuffer = new Uint8Array(ciphertext);
+  return {
+    encryptedBlob: new Blob([ciphertextBuffer], { type: 'application/octet-stream' }),
+    iv: btoa(String.fromCharCode(...iv))
+  };
+};
+
+export const decryptFile = async (sharedKey: CryptoKey, encryptedBuffer: ArrayBuffer, base64Iv: string, mimeType: string = 'application/octet-stream') => {
+  try {
+    const binaryIv = atob(base64Iv);
+    const ivBytes = new Uint8Array(binaryIv.length);
+    for (let i = 0; i < binaryIv.length; i++) {
+      ivBytes[i] = binaryIv.charCodeAt(i);
+    }
+
+    const decrypted = await window.crypto.subtle.decrypt(
+      {
+        name: 'AES-GCM',
+        iv: ivBytes,
+      },
+      sharedKey,
+      encryptedBuffer
+    );
+
+    return new Blob([decrypted], { type: mimeType });
+  } catch (error) {
+    console.error('File decryption failed:', error);
+    throw error;
+  }
+};
+
+export const generateSafetyNumber = async (key1: string, key2: string): Promise<string> => {
+  const sorted = [key1, key2].sort().join(':');
+  const encoder = new TextEncoder();
+  const data = encoder.encode(sorted);
+  const hashBuffer = await window.crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  
+  // Convert into 12 5-digit segments (60 digits total like Signal & WhatsApp)
+  let numericString = '';
+  for (let i = 0; i < hashArray.length; i += 2) {
+    const val = (hashArray[i] << 8) | (hashArray[i + 1] || 0);
+    numericString += String(val % 100000).padStart(5, '0');
+  }
+
+  const chunks = numericString.slice(0, 60).match(/.{1,5}/g) || [];
+  return chunks.join(' ');
+};
 
 // IndexedDB Wrapper for Key Storage
 const DB_NAME = 'LiquidChatCryptoDB';

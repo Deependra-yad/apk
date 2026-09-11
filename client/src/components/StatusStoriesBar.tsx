@@ -172,6 +172,46 @@ export default function StatusStoriesBar() {
       await axios.post(`/api/stories/${currentStory.id}/react`, { emoji }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+
+      // WhatsApp feature: Send reaction message to the story creator's direct chat quoting the status
+      const targetUserId = currentStory.userId || currentStory.user?.id;
+      const { user } = useAuthStore.getState();
+      if (user && targetUserId && targetUserId !== user.id) {
+        const tempId = `temp-${Date.now()}`;
+        const statusQuote = currentStory.caption ? `Status: ${currentStory.caption}` : (currentStory.type === 'video' ? '🎥 Video Status' : '📷 Photo Status');
+        const baseMsg = {
+          id: tempId,
+          tempId,
+          senderId: user.id,
+          receiverId: targetUserId,
+          text: `Reacted ${emoji} to status`,
+          replyToText: statusQuote,
+          type: 'text',
+          isPending: true,
+          createdAt: new Date().toISOString(),
+          isSeen: false
+        };
+
+        let emitData: any = { ...baseMsg };
+        const targetPubKey = currentStory.user?.publicKey;
+        if (targetPubKey) {
+          try {
+            const { getKeyFromIDB, importPublicKey, deriveSharedKey, encryptMessage } = await import('@/utils/crypto');
+            const myKey = await getKeyFromIDB(user.id);
+            if (myKey) {
+              const otherPubKey = await importPublicKey(targetPubKey);
+              const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+              const encrypted = await encryptMessage(sharedKey, emitData.text);
+              emitData.text = encrypted.ciphertext;
+              emitData.iv = encrypted.iv;
+              emitData.isEncrypted = true;
+            }
+          } catch (e) {}
+        }
+
+        useChatStore.getState().addMessage(baseMsg as any);
+        socket?.emit('send_message', emitData);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -184,12 +224,14 @@ export default function StatusStoriesBar() {
       const targetUserId = currentStory.userId || currentStory.user?.id;
       const { user } = useAuthStore.getState();
       const tempId = `temp-${Date.now()}`;
+      const statusQuote = currentStory.caption ? `Status: ${currentStory.caption}` : (currentStory.type === 'video' ? '🎥 Video Status' : '📷 Photo Status');
       const baseMsg = {
         id: tempId,
         tempId,
         senderId: user?.id,
         receiverId: targetUserId,
-        text: `Reply to status: ${replyText}`,
+        text: replyText.trim(),
+        replyToText: statusQuote,
         type: 'text',
         isPending: true,
         createdAt: new Date().toISOString(),

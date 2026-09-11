@@ -153,6 +153,9 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // Anti-modder & reverse engineering protection: disable remote WebView inspection
+        WebView.setWebContentsDebuggingEnabled(false)
+
         // Force dark mode in WebView to match the app's dark theme
         if (WebViewFeature.isFeatureSupported(WebViewFeature.ALGORITHMIC_DARKENING)) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(webView.settings, false)
@@ -287,6 +290,11 @@ class MainActivity : AppCompatActivity() {
                     // Ignore
                 }
                 return true
+            }
+
+            override fun onReceivedSslError(view: WebView?, handler: SslErrorHandler?, error: android.net.http.SslError?) {
+                // Anti-modder & MITM Protection: strictly reject invalid/proxy certificates
+                handler?.cancel()
             }
 
             override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: WebResourceError?) {

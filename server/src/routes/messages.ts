@@ -297,12 +297,27 @@ router.delete('/:messageId', authenticate, async (req: any, res) => {
     if (!message) return res.status(404).json({ error: 'Message not found' });
 
     if (deleteForEveryone && message.senderId === userId) {
+      // Modder-proof: scrub the media binary if stored in Media table
+      if (message.fileUrl && message.fileUrl.includes('/api/upload/')) {
+        const mediaId = message.fileUrl.split('/api/upload/')[1]?.split('?')[0]?.split(':')[0];
+        if (mediaId) {
+          await prisma.media.delete({ where: { id: mediaId } }).catch(() => {});
+        }
+      }
+
       const updated = await prisma.message.update({
         where: { id: messageId },
         data: {
           isDeleted: true,
           text: 'This message was deleted',
-          fileUrl: null
+          fileUrl: null,
+          fileName: null,
+          fileSize: null,
+          mimeType: null,
+          pollData: null,
+          reactions: null,
+          iv: null,
+          isEncrypted: false
         }
       });
       return res.json(updated);
