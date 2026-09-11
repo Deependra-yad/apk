@@ -23,6 +23,38 @@ export interface QrSession {
 // In-memory active QR login sessions (auto-expire after 90 seconds)
 export const qrSessions = new Map<string, QrSession>();
 
+export interface ActiveLinkedSession {
+  id: string;
+  userId: string;
+  deviceName: string;
+  browser: string;
+  os: string;
+  ip: string;
+  linkedAt: number;
+  lastActive: number;
+}
+
+export const linkedSessions = new Map<string, ActiveLinkedSession>();
+
+export function parseDeviceInfo(ua: string) {
+  let browser = 'Chrome';
+  let os = 'Windows';
+
+  if (/Edg/i.test(ua)) browser = 'Microsoft Edge';
+  else if (/Chrome/i.test(ua)) browser = 'Google Chrome';
+  else if (/Firefox/i.test(ua)) browser = 'Mozilla Firefox';
+  else if (/Safari/i.test(ua)) browser = 'Apple Safari';
+  else if (/Opera|OPR/i.test(ua)) browser = 'Opera';
+
+  if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/Macintosh|Mac OS/i.test(ua)) os = 'macOS';
+  else if (/Linux/i.test(ua)) os = 'Linux';
+  else if (/Android/i.test(ua)) os = 'Android';
+  else if (/iPhone|iPad/i.test(ua)) os = 'iOS';
+
+  return { browser, os, deviceName: `${browser} on ${os}` };
+}
+
 // Cleanup stale sessions every 2 minutes
 setInterval(() => {
   const now = Date.now();
@@ -178,11 +210,27 @@ router.post('/approve', async (req, res) => {
     session.token = desktopToken;
     session.user = userPayload;
 
+    // Register active linked session
+    const ua = session.desktopDeviceInfo?.userAgent || 'Desktop Browser';
+    const parsed = parseDeviceInfo(ua);
+    const activeDevice: ActiveLinkedSession = {
+      id: sessionId,
+      userId: user.id,
+      deviceName: parsed.deviceName,
+      browser: parsed.browser,
+      os: parsed.os,
+      ip: session.desktopDeviceInfo?.ip || 'Unknown IP',
+      linkedAt: Date.now(),
+      lastActive: Date.now()
+    };
+    linkedSessions.set(sessionId, activeDevice);
+
     // Broadcast approval event to desktop room
     if (ioInstance) {
       ioInstance.to(`qr_${sessionId}`).emit('qr_login_success', {
         token: desktopToken,
-        user: userPayload
+        user: userPayload,
+        sessionId
       });
     }
 
@@ -190,6 +238,107 @@ router.post('/approve', async (req, res) => {
   } catch (err) {
     console.error('QR Approval error:', err);
     res.status(500).json({ error: 'Failed to authorize QR login' });
+  }
+});
+
+// 5. Get list of all currently active linked device sessions for the authenticated user
+router.get('/sessions', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    const userSessions: ActiveLinkedSession[] = [];
+    for (const s of linkedSessions.values()) {
+      if (s.userId === userId) {
+        userSessions.push(s);
+      }
+    }
+
+    // Also include recent successful login logs
+    if (userSessions.length === 0) {
+      const logs = await prisma.loginLog.findMany({
+        where: { userId, status: 'success' },
+        orderBy: { createdAt: 'desc' },
+        take: 5
+      });
+      logs.forEach((l: any) => {
+        const parsed = parseDeviceInfo(l.userAgent || '');
+        userSessions.push({
+          id: l.id,
+          userId,
+          deviceName: parsed.deviceName,
+          browser: parsed.browser,
+          os: parsed.os,
+          ip: l.ipAddress || 'Unknown IP',
+          linkedAt: new Date(l.createdAt).getTime(),
+          lastActive: new Date(l.createdAt).getTime()
+        });
+      });
+    }
+
+    res.json({ sessions: userSessions });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// 6. Terminate / log out a specific device session
+router.delete('/sessions/:sessionId', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  const { sessionId } = req.params;
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    linkedSessions.delete(sessionId);
+
+    if (ioInstance) {
+      ioInstance.to(`qr_${sessionId}`).emit('force_logout', { reason: 'Logged out from mobile device' });
+      ioInstance.to(`user_${userId}`).emit('force_logout_session', { sessionId });
+    }
+
+    res.json({ success: true, message: 'Device session terminated' });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+});
+
+// 7. Terminate / log out all linked devices
+router.delete('/sessions', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  try {
+    const token = authHeader.split(' ')[1];
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    for (const [id, s] of linkedSessions.entries()) {
+      if (s.userId === userId) {
+        linkedSessions.delete(id);
+        if (ioInstance) {
+          ioInstance.to(`qr_${id}`).emit('force_logout', { reason: 'All devices logged out' });
+        }
+      }
+    }
+
+    if (ioInstance) {
+      ioInstance.to(`user_${userId}`).emit('force_logout_all_sessions');
+    }
+
+    res.json({ success: true, message: 'All linked devices logged out' });
+  } catch (e) {
+    res.status(401).json({ error: 'Invalid token' });
   }
 });
 

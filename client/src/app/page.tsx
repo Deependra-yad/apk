@@ -298,6 +298,10 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     }
   }, [contactSearch, token]);
 
+  if (showLanding) {
+    return <LandingPage />;
+  }
+
   if (!isClient || !authChecked || !user) {
     return (
       <div className="min-h-screen bg-liquid-dark flex flex-col items-center justify-center">
@@ -395,10 +399,6 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   ].sort((a, b) => b.sortKey - a.sortKey);
 
   const isChatOpen = !!(activeContact || activeGroup);
-
-  if (showLanding) {
-    return <LandingPage />;
-  }
 
   return (
     <main className="w-full h-full max-h-screen flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
