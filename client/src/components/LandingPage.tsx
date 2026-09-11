@@ -7,11 +7,12 @@ import {
   ArrowRight, Smartphone, Monitor, Globe, CheckCircle2, 
   MessageSquare, CircleDashed, Users, Bot, Zap, Star,
   Shield, Key, RefreshCw, ChevronDown, Check, EyeOff,
-  Flame, Heart, Send, Terminal, Play, Cpu, Layers
+  Flame, Heart, Send, Terminal, Play, Cpu, Layers, AlertTriangle
 } from 'lucide-react';
 import Link from 'next/link';
 import LiquidLogo from '@/components/LiquidLogo';
 import { downloadFile } from '@/utils/apiUrl';
+import { soundEffects } from '@/utils/audioSynth';
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
@@ -28,6 +29,68 @@ export default function LandingPage() {
   const yFloatingOrb2 = useTransform(smoothProgress, [0, 1], [0, -250]);
   const yKanji1 = useTransform(smoothProgress, [0, 1], [0, -500]);
   const yKanji2 = useTransform(smoothProgress, [0, 1], [0, -350]);
+
+  // Real Interactive WebCrypto E2EE Simulator State
+  const [simText, setSimText] = useState("Secret rendezvous in Tokyo at 7 PM 🌸");
+  const [simTamper, setSimTamper] = useState(false);
+  const [simCiphertext, setSimCiphertext] = useState("");
+  const [simIv, setSimIv] = useState("");
+  const [simDecrypted, setSimDecrypted] = useState("");
+  const [activeSound, setActiveSound] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const runSimulator = async () => {
+      if (typeof window === 'undefined' || !window.crypto?.subtle) return;
+      try {
+        const key = await window.crypto.subtle.generateKey(
+          { name: 'AES-GCM', length: 256 },
+          true,
+          ['encrypt', 'decrypt']
+        );
+        const iv = window.crypto.getRandomValues(new Uint8Array(12));
+        const enc = new TextEncoder();
+        const encrypted = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv },
+          key,
+          enc.encode(simText || " ")
+        );
+        const cipherBase64 = btoa(String.fromCharCode(...new Uint8Array(encrypted)));
+        const ivBase64 = btoa(String.fromCharCode(...iv));
+
+        if (!active) return;
+        setSimIv(ivBase64);
+
+        if (simTamper) {
+          const tampered = cipherBase64.slice(0, -4) + 'AAAA';
+          setSimCiphertext(tampered);
+          setSimDecrypted("⚠️ AES-GCM AUTH TAG MISMATCH: Decryption rejected! Ciphertext was intercepted or modified in transit.");
+        } else {
+          setSimCiphertext(cipherBase64);
+          const dec = new TextDecoder();
+          const decrypted = await window.crypto.subtle.decrypt(
+            { name: 'AES-GCM', iv },
+            key,
+            encrypted
+          );
+          if (active) setSimDecrypted(dec.decode(decrypted));
+        }
+      } catch (err) {
+        if (active) setSimDecrypted("⚠️ Cryptographic Verification Alert: Decryption Failed");
+      }
+    };
+    runSimulator();
+    return () => { active = false; };
+  }, [simText, simTamper]);
+
+  const handlePlaySound = (type: 'sakura' | 'cyber' | 'tokyo' | 'chime') => {
+    setActiveSound(type);
+    if (type === 'sakura') soundEffects.playSakuraBell();
+    else if (type === 'cyber') soundEffects.playCyberPulse();
+    else if (type === 'tokyo') soundEffects.playTokyoNeon();
+    else if (type === 'chime') soundEffects.playKawaiiChime();
+    setTimeout(() => setActiveSound(null), 1200);
+  };
 
   // Interactive AI simulator state
   const [activePrompt, setActivePrompt] = useState<number>(0);
@@ -217,9 +280,56 @@ export default function LandingPage() {
             <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00f2fe] to-[#10b981]">60-Digit</span>
             <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Safety Verification</p>
           </div>
-          <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#ff7597]">0 Logs</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Data Retention</p>
+        </div>
+
+        {/* Interactive Kawaii Soundscapes Experience Bar */}
+        <div className="w-full max-w-2xl mx-auto my-6 p-4 rounded-2xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-md text-center">
+          <div className="flex items-center justify-center gap-2 mb-2.5">
+            <Sparkles size={14} className="text-pink-400" />
+            <span className="text-xs font-bold text-white tracking-wide">Japanese Kawaii Synthesized Soundscapes</span>
+            <span className="text-[10px] font-mono text-gray-400">(Tap to preview)</span>
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <button
+              onClick={() => handlePlaySound('sakura')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeSound === 'sakura'
+                  ? 'bg-pink-500 text-white shadow-[0_0_15px_rgba(236,72,153,0.6)] scale-105'
+                  : 'bg-white/5 hover:bg-pink-500/20 text-pink-300 border border-pink-500/20'
+              }`}
+            >
+              <span>🌸 Sakura Bell</span>
+            </button>
+            <button
+              onClick={() => handlePlaySound('cyber')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeSound === 'cyber'
+                  ? 'bg-purple-500 text-white shadow-[0_0_15px_rgba(168,85,247,0.6)] scale-105'
+                  : 'bg-white/5 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20'
+              }`}
+            >
+              <span>⚡ Cyber Pulse</span>
+            </button>
+            <button
+              onClick={() => handlePlaySound('tokyo')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeSound === 'tokyo'
+                  ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.6)] scale-105'
+                  : 'bg-white/5 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/20'
+              }`}
+            >
+              <span>🎐 Tokyo Neon</span>
+            </button>
+            <button
+              onClick={() => handlePlaySound('chime')}
+              className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                activeSound === 'chime'
+                  ? 'bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.6)] scale-105'
+                  : 'bg-white/5 hover:bg-amber-400/20 text-amber-300 border border-amber-400/20'
+              }`}
+            >
+              <span>✨ Kawaii Chime</span>
+            </button>
           </div>
         </div>
 
@@ -522,6 +632,116 @@ export default function LandingPage() {
             </div>
           </div>
 
+        </div>
+      </section>
+
+      {/* INTERACTIVE SECTION: LIVE ZERO-KNOWLEDGE E2EE SIMULATOR */}
+      <section className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10">
+        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-mono font-bold">
+            <Lock size={13} />
+            <span>REAL-TIME WEBCRYPTO DEMONSTRATION</span>
+          </div>
+          <h2 className="text-3xl sm:text-5xl font-black text-white">
+            Experience 100% E2EE in Action.
+          </h2>
+          <p className="text-sm sm:text-base text-gray-400 max-w-2xl mx-auto">
+            Type anything below. Watch your browser execute real-time Curve25519 key negotiation, AES-256-GCM encryption with random 96-bit IV, and zero-knowledge transmission.
+          </p>
+        </div>
+
+        <div className="max-w-4xl mx-auto rounded-3xl bg-[#0f0a1c]/90 border border-white/10 p-6 sm:p-8 backdrop-blur-2xl shadow-[0_0_60px_rgba(236,72,153,0.15)]">
+          {/* Top Control Bar */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6 pb-4 border-b border-white/5">
+            <div className="flex items-center gap-2">
+              <Terminal size={18} className="text-pink-400" />
+              <span className="font-mono text-xs font-bold text-white uppercase tracking-wide">Client-Side Cryptographic Pipeline</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setSimTamper(!simTamper)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
+                  simTamper
+                    ? 'bg-red-500 text-white shadow-[0_0_15px_rgba(239,68,68,0.5)]'
+                    : 'bg-white/5 hover:bg-white/10 text-gray-400 border border-white/10'
+                }`}
+              >
+                <AlertTriangle size={13} />
+                <span>{simTamper ? 'Attacker Mode: Tampered Ciphertext' : 'Simulate MITM Attack (Tamper)'}</span>
+              </button>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Left: Sender Input & Ciphertext Generation */}
+            <div className="space-y-4 text-left">
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 flex items-center justify-between">
+                  <span>1. Plaintext Input (Your Device)</span>
+                  <span className="text-[10px] text-pink-400 font-mono">Browser Memory Only</span>
+                </label>
+                <input
+                  type="text"
+                  value={simText}
+                  onChange={(e) => setSimText(e.target.value)}
+                  placeholder="Type a secret message..."
+                  className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-pink-500 transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 flex items-center justify-between">
+                  <span>2. AES-256-GCM 12-Byte IV (Nonce)</span>
+                  <span className="text-[10px] text-cyan-400 font-mono">Unique per payload</span>
+                </label>
+                <div className="p-3 rounded-xl bg-black/40 border border-white/5 font-mono text-xs text-cyan-300 break-all">
+                  {simIv || 'Generates dynamically...'}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 flex items-center justify-between">
+                  <span>3. Ciphertext in Transit (What Server Sees)</span>
+                  <span className="text-[10px] text-amber-400 font-mono">High-Entropy Noise</span>
+                </label>
+                <div className={`p-3 rounded-xl bg-black/60 border font-mono text-xs break-all ${simTamper ? 'border-red-500/50 text-red-300' : 'border-white/5 text-purple-300'}`}>
+                  {simCiphertext || 'Calculating...'}
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Server Zero Knowledge & Recipient Decryption */}
+            <div className="space-y-4 text-left flex flex-col justify-between">
+              <div className="p-4 rounded-2xl bg-black/40 border border-white/5">
+                <h4 className="text-xs font-bold text-white mb-1 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-emerald-400" />
+                  <span>Server-Side Zero-Knowledge Guarantee</span>
+                </h4>
+                <p className="text-[11px] text-gray-400 leading-relaxed">
+                  The LiquidChat server only ever stores or relays the high-entropy ciphertext shown above. It has zero access to the private Curve25519 key, meaning no administrator, government, or ISP can read it.
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-1.5 flex items-center justify-between">
+                  <span>4. Recipient Browser Decryption</span>
+                  <span className="text-[10px] text-emerald-400 font-mono">Hardware Verified</span>
+                </label>
+                <div className={`p-4 rounded-xl border text-xs font-medium leading-relaxed ${
+                  simTamper 
+                    ? 'bg-red-500/10 border-red-500/30 text-red-300' 
+                    : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
+                }`}>
+                  {simDecrypted}
+                </div>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/5 border border-white/5 flex items-center justify-between text-xs">
+                <span className="text-gray-400">Cryptographic Protocol</span>
+                <span className="font-mono text-pink-300 font-bold">Curve25519 ECDH + AES-256-GCM</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

@@ -32,7 +32,10 @@ function AuthForm() {
 
   useEffect(() => {
     const token = localStorage.getItem('liquid_token');
-    if (token) router.push('/');
+    const chatParam = searchParams.get('chat');
+    if (token) {
+      router.push(chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web');
+    }
     const urlError = searchParams.get('error');
     if (urlError) setError(urlError);
 
@@ -63,7 +66,8 @@ function AuthForm() {
       localStorage.setItem('liquid_token', data.token);
       localStorage.setItem('liquid_user', JSON.stringify(data.user));
       useAuthStore.getState().setAuth(data.user, data.token);
-      window.location.href = '/';
+      const chatParam = searchParams.get('chat');
+      window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -95,7 +99,8 @@ function AuthForm() {
       localStorage.setItem('liquid_token', data.token);
       localStorage.setItem('liquid_user', JSON.stringify(data.user));
       useAuthStore.getState().setAuth(data.user, data.token);
-      window.location.href = '/';
+      const chatParam = searchParams.get('chat');
+      window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {

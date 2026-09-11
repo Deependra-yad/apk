@@ -396,4 +396,41 @@ router.get('/search', authenticate, async (req: any, res) => {
   }
 });
 
+// Public User Lookup for Link Sharing (/c/[id])
+router.get('/public/:identifier', async (req, res) => {
+  try {
+    const { identifier } = req.params;
+    if (!identifier) return res.status(400).json({ error: 'Identifier is required' });
+
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { liquidNumber: identifier },
+          { username: { equals: identifier, mode: 'insensitive' } },
+          ...(identifier.length === 36 ? [{ id: identifier }] : [])
+        ]
+      },
+      select: {
+        id: true,
+        username: true,
+        liquidNumber: true,
+        avatar: true,
+        about: true,
+        publicKey: true,
+        lastSeen: true,
+        createdAt: true
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json(user);
+  } catch (error) {
+    console.error('Public user lookup error:', error);
+    res.status(500).json({ error: 'Failed to look up user' });
+  }
+});
+
 export default router;

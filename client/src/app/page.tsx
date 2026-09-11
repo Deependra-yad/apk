@@ -149,13 +149,63 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
 
+      // Check for target chat from URL (?chat=...) or localStorage (liquid_pending_chat)
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const chatQuery = urlParams?.get('chat');
+      const pendingChatRaw = typeof window !== 'undefined' ? localStorage.getItem('liquid_pending_chat') : null;
+      let pendingChatTarget = chatQuery;
+      let pendingUserData: any = null;
+
+      if (pendingChatRaw) {
+        try {
+          pendingUserData = JSON.parse(pendingChatRaw);
+          if (!pendingChatTarget && pendingUserData) {
+            pendingChatTarget = pendingUserData.liquidNumber || pendingUserData.username || pendingUserData.id;
+          }
+          localStorage.removeItem('liquid_pending_chat');
+        } catch (e) {}
+      }
+
       // Fetch active conversations list (full user objects with actual message history)
       axios.get('/api/users/conversations', {
         headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
+      }).then(async (res) => {
         const others = Array.isArray(res.data) ? res.data.filter((u: any) => u.id !== user.id) : [];
-        setUsers(others);
-        useChatStore.getState().setActiveConversations(others.map((u: any) => u.id));
+        let updatedList = [...others];
+
+        if (pendingChatTarget) {
+          // Check if target is already in conversations
+          let matched = others.find((u: any) => 
+            u.liquidNumber === pendingChatTarget || 
+            u.username?.toLowerCase() === pendingChatTarget.toLowerCase() || 
+            u.id === pendingChatTarget
+          );
+
+          if (!matched) {
+            // Target not in conversation list yet, fetch public user profile
+            try {
+              const pubRes = await axios.get(`/api/users/public/${encodeURIComponent(pendingChatTarget)}`);
+              if (pubRes.data && pubRes.data.id !== user.id) {
+                matched = pubRes.data;
+                updatedList = [matched, ...updatedList];
+              }
+            } catch (err) {
+              if (pendingUserData && pendingUserData.id !== user.id) {
+                matched = pendingUserData;
+                updatedList = [matched, ...updatedList];
+              }
+            }
+          }
+
+          if (matched) {
+            useChatStore.getState().setActiveContact(matched);
+            useChatStore.getState().setActiveGroup(null);
+            setShowLanding(false);
+          }
+        }
+
+        setUsers(updatedList);
+        useChatStore.getState().setActiveConversations(updatedList.map((u: any) => u.id));
       }).catch(console.error);
 
       // Fetch groups

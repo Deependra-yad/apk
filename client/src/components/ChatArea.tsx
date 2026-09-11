@@ -499,7 +499,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               emitData.iv = encryptedText.iv;
               emitData.isEncrypted = true;
             }
-            
+
+            if (emitData.fileUrl && !emitData.fileUrl.startsWith('ENC:')) {
+              const encryptedUrl = await encryptMessage(sharedKey, emitData.fileUrl);
+              emitData.fileUrl = `ENC:${encryptedUrl.ciphertext}:${encryptedUrl.iv}`;
+              emitData.isEncrypted = true;
+            }
 
           }
         }
