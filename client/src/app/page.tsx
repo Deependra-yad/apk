@@ -60,7 +60,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [contextMenuTarget, setContextMenuTarget] = useState<{ id: string; type: 'contact' | 'group'; name: string } | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const [showLanding, setShowLanding] = useState<boolean | null>(forceChat ? false : null);
+  const [showLanding, setShowLanding] = useState<boolean>(forceChat ? false : true);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // WebRTC Calling State
@@ -80,16 +80,15 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       setShowLanding(false);
       return;
     }
-    const isAndroid = typeof window !== 'undefined' && Boolean((window as any).Android || /Android/i.test(navigator.userAgent));
-    const isWeb = typeof window !== 'undefined' && (
+    const isNativeAndroidApp = typeof window !== 'undefined' && Boolean((window as any).Android);
+    const isWebSubdomainOrPath = typeof window !== 'undefined' && (
       window.location.hostname.startsWith('web.') || 
       window.location.pathname.startsWith('/web')
     );
-    const hasLocalToken = typeof window !== 'undefined' && Boolean(
-      localStorage.getItem('token') || localStorage.getItem('liquid_token')
-    );
 
-    if (isAndroid || isWeb || hasLocalToken) {
+    // If native Android APK or web.* subdomain or /web path, show chat.
+    // Visiting root domain liquidchat.online ALWAYS displays the landing page!
+    if (isNativeAndroidApp || isWebSubdomainOrPath) {
       setShowLanding(false);
     } else {
       setShowLanding(true);
@@ -397,16 +396,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
   const isChatOpen = !!(activeContact || activeGroup);
 
-  if (showLanding === true) {
+  if (showLanding) {
     return <LandingPage />;
-  }
-
-  if (showLanding === null) {
-    return (
-      <div className="w-screen h-screen bg-[#0a0a0f] flex items-center justify-center">
-        <div className="w-10 h-10 rounded-full border-2 border-liquid-accent/20 border-t-liquid-accent animate-spin" />
-      </div>
-    );
   }
 
   return (

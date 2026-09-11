@@ -45,7 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var customView: View? = null
 
-    private val WEB_URL = "https://liquidchat.online"
+    private val WEB_URL = "https://liquidchat.online/web"
  
     // Permission request launcher
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>

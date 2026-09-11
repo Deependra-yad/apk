@@ -209,3 +209,4 @@ export default function LinkedDevicesModal({ isOpen, onClose }: LinkedDevicesMod
     </AnimatePresence>
   );
 }
+

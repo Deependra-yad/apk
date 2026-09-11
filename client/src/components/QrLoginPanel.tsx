@@ -232,3 +232,4 @@ export default function QrLoginPanel({ onSuccess }: QrLoginPanelProps) {
     </div>
   );
 }
+
