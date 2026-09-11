@@ -371,7 +371,7 @@ export default function Home() {
   const isChatOpen = !!(activeContact || activeGroup);
 
   return (
-    <main className="w-full h-[100dvh] flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
+    <main className="w-full h-full max-h-screen flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
       <AnimatePresence>
         {showUpdateBanner && (
           <motion.div 

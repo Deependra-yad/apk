@@ -239,6 +239,15 @@ export const ensureUserKeyPair = async (userId: string, token?: string): Promise
           headers: { Authorization: `Bearer ${authToken}` }
         }).catch(err => console.warn('Failed to sync generated public key to server:', err));
       }
+    } else {
+      const authToken = token || localStorage.getItem('liquid_token');
+      if (authToken) {
+        const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
+        const axios = (await import('axios')).default;
+        axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        }).catch(() => {});
+      }
     }
     return keyPair;
   } catch (err) {

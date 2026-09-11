@@ -36,17 +36,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   logout: () => {
     if (typeof window !== 'undefined') {
-      const currentUserId = get().user?.id;
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('liquid_') || key === 'token' || key === 'user') {
           localStorage.removeItem(key);
         }
       });
-      if (currentUserId) {
-        import('../utils/crypto').then(({ deleteKeyFromIDB }) => {
-          deleteKeyFromIDB(currentUserId);
-        }).catch(() => {});
-      }
       import('./chatStore').then(({ useChatStore }) => {
         useChatStore.getState().resetChatStore();
       }).catch(() => {});

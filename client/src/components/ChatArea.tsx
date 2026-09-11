@@ -178,26 +178,37 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
                 loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
                   if (m.isEncrypted) {
+                    const rawCiphertext = m.rawText || m.text;
                     let text = m.text;
-                    if (text && m.iv) {
+                    if (rawCiphertext && m.iv) {
                       try {
-                        text = await decryptMessage(sharedKey, text, m.iv);
+                        const decrypted = await decryptMessage(sharedKey, rawCiphertext, m.iv);
+                        if (decrypted && decrypted !== '[Decryption Failed]') {
+                          text = decrypted;
+                        } else if (m.senderId !== user.id) {
+                          text = '[Decryption Failed]';
+                        }
                       } catch (e) {
                         console.error("Text decryption error for message", m.id, e);
+                        if (m.senderId !== user.id) text = '[Decryption Failed]';
                       }
                     }
+                    const rawFileUrl = m.rawFileUrl || m.fileUrl;
                     let fileUrl = m.fileUrl;
-                    if (fileUrl && fileUrl.startsWith('ENC:')) {
-                      const parts = fileUrl.substring(4).split(':');
+                    if (rawFileUrl && rawFileUrl.startsWith('ENC:')) {
+                      const parts = rawFileUrl.substring(4).split(':');
                       if (parts.length === 2) {
                         try {
-                          fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                          const decryptedUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                          if (decryptedUrl && decryptedUrl !== '[Decryption Failed]') {
+                            fileUrl = decryptedUrl;
+                          }
                         } catch (e) {
                           console.error("File decryption error for message", m.id, e);
                         }
                       }
                     }
-                    return { ...m, text, fileUrl };
+                    return { ...m, text, fileUrl, rawText: rawCiphertext, rawFileUrl };
                   }
                   return m;
                 }));
@@ -373,27 +384,32 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         contactPubKey = pkRes.data?.publicKey;
         if (contactPubKey) activeContact.publicKey = contactPubKey;
       }
-      if (!contactPubKey) {
-        alert("Contact has not registered an encryption key yet.");
-        return;
-      }
+      if (!contactPubKey) return;
       const myKey = await ensureUserKeyPair(user.id, token);
       if (!myKey) return;
       const otherPubKey = await importPublicKey(contactPubKey);
       const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
       
+      const rawText = msg.rawText || msg.text;
       let newText = msg.text;
-      if (msg.iv && msg.text) {
-        newText = await decryptMessage(sharedKey, msg.text, msg.iv);
-      }
-      let newFileUrl = msg.fileUrl;
-      if (msg.fileUrl && msg.fileUrl.startsWith('ENC:')) {
-        const parts = msg.fileUrl.substring(4).split(':');
-        if (parts.length === 2) {
-          newFileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+      if (msg.iv && rawText && rawText !== '[Decryption Failed]') {
+        const decrypted = await decryptMessage(sharedKey, rawText, msg.iv);
+        if (decrypted && decrypted !== '[Decryption Failed]') {
+          newText = decrypted;
         }
       }
-      setMessages(messages.map(m => m.id === msg.id ? { ...m, text: newText, fileUrl: newFileUrl } : m));
+      const rawFileUrl = msg.rawFileUrl || msg.fileUrl;
+      let newFileUrl = msg.fileUrl;
+      if (rawFileUrl && rawFileUrl.startsWith('ENC:')) {
+        const parts = rawFileUrl.substring(4).split(':');
+        if (parts.length === 2) {
+          const decryptedUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+          if (decryptedUrl && decryptedUrl !== '[Decryption Failed]') {
+            newFileUrl = decryptedUrl;
+          }
+        }
+      }
+      setMessages(messages.map(m => m.id === msg.id ? { ...m, text: newText, fileUrl: newFileUrl, rawText, rawFileUrl } : m));
     } catch (e) {
       console.error("Retry decryption error:", e);
     }
@@ -423,27 +439,37 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     
     let emitData = { ...data };
     
-    if (!isGroup && activeContact && activeContact.publicKey) {
+    if (!isGroup && activeContact) {
       try {
-        const myKey = await getKeyFromIDB(user!.id);
-        if (myKey) {
-          const otherPubKey = await importPublicKey(activeContact.publicKey);
-          const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
-          
-          if (emitData.text) {
-            const encryptedText = await encryptMessage(sharedKey, emitData.text);
-            emitData.text = encryptedText.ciphertext;
-            emitData.iv = encryptedText.iv;
-            emitData.isEncrypted = true;
-          }
-          
-          if (emitData.fileUrl) {
-            const encryptedFile = await encryptMessage(sharedKey, emitData.fileUrl);
-            emitData.fileUrl = `ENC:${encryptedFile.ciphertext}:${encryptedFile.iv}`;
-            // If there's no text but there's a file, we still need to send IV for the file url, but we can reuse it
-            if (!emitData.iv) {
-              emitData.iv = encryptedFile.iv;
+        let contactPubKey = activeContact.publicKey;
+        if (!contactPubKey && token) {
+          const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          contactPubKey = pkRes.data?.publicKey;
+          if (contactPubKey) activeContact.publicKey = contactPubKey;
+        }
+
+        if (contactPubKey) {
+          const myKey = await ensureUserKeyPair(user!.id, token || undefined);
+          if (myKey) {
+            const otherPubKey = await importPublicKey(contactPubKey);
+            const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+            
+            if (emitData.text) {
+              const encryptedText = await encryptMessage(sharedKey, emitData.text);
+              emitData.text = encryptedText.ciphertext;
+              emitData.iv = encryptedText.iv;
               emitData.isEncrypted = true;
+            }
+            
+            if (emitData.fileUrl) {
+              const encryptedFile = await encryptMessage(sharedKey, emitData.fileUrl);
+              emitData.fileUrl = `ENC:${encryptedFile.ciphertext}:${encryptedFile.iv}`;
+              if (!emitData.iv) {
+                emitData.iv = encryptedFile.iv;
+                emitData.isEncrypted = true;
+              }
             }
           }
         }
@@ -1291,21 +1317,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Text Body with Code Highlighting & Markdown */}
                       {msg.text && (
                         <div className="leading-relaxed text-sm break-words">
-                          {msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
-                            <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 select-none my-0.5">
-                              <Lock size={13} className="text-amber-400 shrink-0" />
-                              <span className="font-medium">End-to-end encrypted message</span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleRetryDecryptMessage(msg);
-                                }}
-                                className="ml-auto text-[11px] underline text-liquid-accent hover:text-white cursor-pointer font-bold"
-                              >
-                                Decrypt
-                              </button>
-                            </div>
+                          {!isMe && msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
+                            <span className="text-foreground/50 italic text-xs flex items-center gap-1.5 py-0.5 select-none">
+                              <Lock size={12} className="text-foreground/40 shrink-0" />
+                              <span>Waiting for this message. This may take a while.</span>
+                            </span>
                           ) : (
                             renderFormattedMessage(msg.text)
                           )}
@@ -1468,7 +1484,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </button>
         </div>
       ) : (
-        <div className="bg-liquid-base/95 backdrop-blur-2xl border-t border-foreground/5 px-2 py-2 sm:px-4 sm:py-2.5 flex items-end gap-1.5 sm:gap-2 z-20 relative shrink-0 pb-safe">
+        <div className="bg-liquid-base/95 backdrop-blur-2xl border-t border-foreground/5 px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 z-20 relative shrink-0">
           {/* Sticker & GIF Picker Modal */}
           <StickerGifPicker
             isOpen={isStickerPickerOpen}
@@ -1493,7 +1509,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               />
 
               {/* WhatsApp Input Capsule (Emoji + Textarea + Attachment) */}
-              <div className="flex-1 bg-[#202c33]/90 rounded-3xl min-h-[44px] flex items-end px-2 sm:px-3 border border-foreground/10 focus-within:border-liquid-accent/40 transition-colors shadow-inner">
+              <div className="flex-1 bg-[#202c33]/90 rounded-3xl min-h-[44px] flex items-center px-2 sm:px-3 border border-foreground/10 focus-within:border-liquid-accent/40 transition-colors shadow-inner">
                 {/* Emoji / Sticker Toggle */}
                 <button
                   onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
@@ -1519,12 +1535,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }}
                   rows={1}
                   placeholder="Message or /ai..."
-                  className="flex-1 bg-transparent border-none outline-none text-foreground text-[14px] sm:text-[15px] resize-none px-1 py-2.5 max-h-28 overflow-y-auto leading-relaxed placeholder:text-foreground/40"
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-[14px] sm:text-[15px] resize-none px-2 py-2 max-h-28 overflow-y-auto leading-relaxed placeholder:text-foreground/40"
                   style={{ height: '22px', minHeight: '22px', maxHeight: '110px' }}
                 />
 
                 {/* Attachment Clip Button */}
-                <div className="relative shrink-0 flex items-center mb-0.5">
+                <div className="relative shrink-0 flex items-center">
                   <button 
                     onPointerDown={(e) => {
                       e.preventDefault();
@@ -1903,54 +1919,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         )}
       </AnimatePresence>
 
-      {/* WhatsApp Safety Numbers / Security Code Modal */}
-      <AnimatePresence>
-        {isSafetyModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4"
-            onClick={() => setIsSafetyModalOpen(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              className="w-full max-w-md bg-liquid-base border border-foreground/10 rounded-3xl p-6 shadow-2xl flex flex-col items-center text-center space-y-4"
-            >
-              <div className="w-16 h-16 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center text-green-400 mb-1">
-                <ShieldCheck size={36} />
-              </div>
 
-              <div>
-                <h3 className="text-lg font-bold text-foreground">Verify Security Code</h3>
-                <p className="text-xs text-foreground/60 mt-1">
-                  Messages with {activeContact?.username} are end-to-end encrypted. Compare this 60-digit number with their device to confirm no one is intercepting your chat.
-                </p>
-              </div>
-
-              {/* 60-Digit Fingerprint Box */}
-              <div className="w-full bg-background/50 border border-foreground/10 rounded-2xl p-4 font-mono text-xs text-cyan-300 tracking-widest leading-relaxed select-all">
-                {safetyNumber || 'Generating security fingerprint...'}
-              </div>
-
-              <div className="flex items-center gap-2 text-[11px] text-green-400 font-medium">
-                <Lock size={12} />
-                <span>100% Cryptographically Verified (AES-256-GCM + P-256)</span>
-              </div>
-
-              <button
-                onClick={() => setIsSafetyModalOpen(false)}
-                className="w-full py-2.5 rounded-xl bg-liquid-accent text-liquid-dark font-bold text-xs hover:brightness-110 transition-all"
-              >
-                Done
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Liquid AI Copilot Modal */}
       <LiquidAiModal
