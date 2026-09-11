@@ -69,6 +69,8 @@ export default function SettingsPanel() {
       await axios.delete('/api/users/me', {
         headers: { Authorization: `Bearer ${token}` }
       });
+      const { clearCryptoDB } = await import('@/utils/crypto');
+      await clearCryptoDB();
       logout();
       window.location.href = '/auth';
     } catch (e) {

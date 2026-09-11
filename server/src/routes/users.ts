@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import prisma from '../prisma';
 import jwt from 'jsonwebtoken';
+import { sendActivityNotification } from '../utils/email';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
@@ -216,16 +217,59 @@ router.get('/conversations', authenticate, async (req: any, res) => {
 router.delete('/me', authenticate, async (req: any, res) => {
   const userId = req.userId;
   try {
-    await prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } });
-    await prisma.story.deleteMany({ where: { userId } });
-    await prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } });
-    await prisma.groupMember.deleteMany({ where: { userId } });
-    await prisma.group.deleteMany({ where: { creatorId: userId } });
-    await prisma.chatMeta.deleteMany({ where: { userId } });
-    await prisma.blockList.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } });
-    
-    await prisma.user.delete({ where: { id: userId } });
-    res.json({ success: true });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+
+    // 1. Reassign or delete groups created by this user
+    const createdGroups = await prisma.group.findMany({
+      where: { creatorId: userId },
+      include: { members: true }
+    });
+    for (const group of createdGroups) {
+      const otherMember = group.members.find((m: any) => m.userId !== userId);
+      if (otherMember) {
+        await prisma.group.update({
+          where: { id: group.id },
+          data: { creatorId: otherMember.userId }
+        });
+        await prisma.groupMember.update({
+          where: { groupId_userId: { groupId: group.id, userId: otherMember.userId } },
+          data: { role: 'admin' }
+        });
+      } else {
+        await prisma.message.deleteMany({ where: { groupId: group.id } });
+        await prisma.groupMember.deleteMany({ where: { groupId: group.id } });
+        await prisma.group.delete({ where: { id: group.id } });
+      }
+    }
+
+    // 2. Cascade delete all user records across every table
+    await prisma.$transaction([
+      prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } }),
+      prisma.groupMember.deleteMany({ where: { userId } }),
+      prisma.chatMeta.deleteMany({ where: { OR: [{ userId }, { targetId: userId }] } }),
+      prisma.blockList.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } }),
+      prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } }),
+      prisma.story.deleteMany({ where: { userId } }),
+      prisma.media.deleteMany({ where: { userId } }),
+      prisma.pushSubscription.deleteMany({ where: { userId } }),
+      prisma.userSettings.deleteMany({ where: { userId } }),
+      prisma.loginLog.deleteMany({ where: { userId } }),
+      prisma.user.delete({ where: { id: userId } })
+    ]);
+
+    if (user.email) {
+      await prisma.otpCode.deleteMany({ where: { email: user.email } }).catch(() => {});
+      sendActivityNotification(user.email, 'account_deleted', (req.ip as string) || 'Client', (req.headers['user-agent'] as string) || 'Web/Mobile App').catch(() => {});
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${userId}`).emit('force_logout');
+      io.emit('user_deleted', { userId });
+    }
+
+    res.json({ success: true, message: 'Account permanently deleted from everywhere' });
   } catch (error) {
     console.error('Failed to delete account:', error);
     res.status(500).json({ error: 'Failed to delete account' });

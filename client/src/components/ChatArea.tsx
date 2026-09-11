@@ -26,7 +26,7 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
-import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber } from '@/utils/crypto';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext } from '@/utils/crypto';
 import { ShieldCheck } from 'lucide-react';
 
 interface ChatAreaProps {
@@ -171,7 +171,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
           if (contactPubKey) {
             try {
-              const myKey = await getKeyFromIDB(user.id);
+              activeContact.publicKey = contactPubKey;
+              const myKey = await ensureUserKeyPair(user.id, token);
               if (myKey) {
                 const otherPubKey = await importPublicKey(contactPubKey);
                 const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
@@ -339,6 +340,43 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       }
     } catch (e) {
       console.error("Safety number generation error:", e);
+    }
+  };
+
+  const handleRetryDecryptMessage = async (msg: any) => {
+    if (!token || !user || !activeContact) return;
+    try {
+      let contactPubKey = activeContact.publicKey;
+      if (!contactPubKey) {
+        const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        contactPubKey = pkRes.data?.publicKey;
+        if (contactPubKey) activeContact.publicKey = contactPubKey;
+      }
+      if (!contactPubKey) {
+        alert("Contact has not registered an encryption key yet.");
+        return;
+      }
+      const myKey = await ensureUserKeyPair(user.id, token);
+      if (!myKey) return;
+      const otherPubKey = await importPublicKey(contactPubKey);
+      const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+      
+      let newText = msg.text;
+      if (msg.iv && msg.text) {
+        newText = await decryptMessage(sharedKey, msg.text, msg.iv);
+      }
+      let newFileUrl = msg.fileUrl;
+      if (msg.fileUrl && msg.fileUrl.startsWith('ENC:')) {
+        const parts = msg.fileUrl.substring(4).split(':');
+        if (parts.length === 2) {
+          newFileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+        }
+      }
+      setMessages(messages.map(m => m.id === msg.id ? { ...m, text: newText, fileUrl: newFileUrl } : m));
+    } catch (e) {
+      console.error("Retry decryption error:", e);
     }
   };
 
@@ -1234,7 +1272,24 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Text Body with Code Highlighting & Markdown */}
                       {msg.text && (
                         <div className="leading-relaxed text-sm break-words">
-                          {renderFormattedMessage(msg.text)}
+                          {msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
+                            <div className="flex items-center gap-2 py-1 px-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300 select-none my-0.5">
+                              <Lock size={13} className="text-amber-400 shrink-0" />
+                              <span className="font-medium">End-to-end encrypted message</span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRetryDecryptMessage(msg);
+                                }}
+                                className="ml-auto text-[11px] underline text-liquid-accent hover:text-white cursor-pointer font-bold"
+                              >
+                                Decrypt
+                              </button>
+                            </div>
+                          ) : (
+                            renderFormattedMessage(msg.text)
+                          )}
                         </div>
                       )}
                     </>

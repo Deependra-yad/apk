@@ -1,8 +1,81 @@
 import { Router } from 'express';
-import jwt from 'jsonwebtoken';
 
 const router = Router();
-const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
+
+async function callLlm(systemPrompt: string, userPrompt: string): Promise<string> {
+  // 1. Google Gemini API (if key provided)
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (geminiKey) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: [{ parts: [{ text: userPrompt }] }]
+        })
+      });
+      if (res.ok) {
+        const data: any = await res.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text.trim();
+      }
+    } catch (e) {
+      console.warn('Gemini API call failed, falling back:', e);
+    }
+  }
+
+  // 2. OpenAI API (if key provided)
+  const openaiKey = process.env.OPENAI_API_KEY;
+  if (openaiKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ]
+        })
+      });
+      if (res.ok) {
+        const data: any = await res.json();
+        const text = data.choices?.[0]?.message?.content;
+        if (text) return text.trim();
+      }
+    } catch (e) {
+      console.warn('OpenAI API call failed, falling back:', e);
+    }
+  }
+
+  // 3. High-speed conversational LLM fallback (Zero key required)
+  try {
+    const res = await fetch('https://text.pollinations.ai/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        model: 'openai'
+      })
+    });
+    if (res.ok) {
+      const text = await res.text();
+      if (text && text.trim()) return text.trim();
+    }
+  } catch (e) {
+    console.warn('Pollinations fallback failed:', e);
+  }
+
+  return `I received your request regarding "${userPrompt}". Please let me know how else I can assist!`;
+}
 
 // AI Chatbot Assistant & Smart Tools
 router.post('/chat', async (req, res) => {
@@ -10,43 +83,37 @@ router.post('/chat', async (req, res) => {
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   try {
-    let responseText = '';
+    let systemPrompt = 'You are Liquid AI, an intelligent, helpful, and friendly chat assistant integrated into LiquidChat. Provide concise, smart answers in clean Markdown.';
 
     if (mode === 'translate') {
-      const translations: Record<string, string> = {
-        Spanish: `🇪🇸 Traducción: "${prompt}"`,
-        French: `🇫🇷 Traduction: "${prompt}"`,
-        German: `🇩🇪 Übersetzung: "${prompt}"`,
-        Hindi: `🇮🇳 अनुवाद: "${prompt}"`,
-        Japanese: `🇯🇵 翻訳: "${prompt}"`,
-        Italian: `🇮🇹 Traduzione: "${prompt}"`
-      };
-      responseText = translations[targetLanguage] || `Translated to ${targetLanguage}: "${prompt}"`;
+      systemPrompt = `You are a professional language translator. Translate the user's text accurately to ${targetLanguage}. Output only the translation without any preamble or conversational filler.`;
     } else if (mode === 'summarize') {
-      responseText = `📋 **Chat Summary:**\n• **Core Topic:** ${prompt.slice(0, 60)}...\n• **Key Takeaways:** All tasks outlined and confirmed.\n• **Action Items:** Proceed with deployment and next sprint milestones.`;
+      systemPrompt = `You are an executive summary assistant. Summarize the user's conversation text concisely with bullet points for key topics, decisions, and action items.`;
     } else if (mode === 'suggest_replies') {
-      responseText = JSON.stringify([
-        "Sounds like a great plan! 👍",
-        "Got it, let's proceed 🚀",
-        "Could you provide a few more details? 🔍",
-        "I will check and get back to you shortly! ⚡"
-      ]);
-    } else {
-      // General intelligent assistant response
-      const lower = prompt.toLowerCase();
-      if (lower.includes('hello') || lower.includes('hi') || lower.includes('hey')) {
-        responseText = "Hello! 👋 I am your Liquid AI Assistant. I can help you write messages, summarize conversations, translate languages, explain code, and brainstorm ideas!";
-      } else if (lower.includes('help') || lower.includes('feature')) {
-        responseText = "🌊 **Liquid WhatsApp Capabilities:**\n- 📹 HD Voice & Video Calling with Screen Share\n- 👥 WhatsApp Groups with Admin Controls & Announcements\n- ⚡ In-line Message Editing & Forwarding with Badges\n- 📊 WhatsApp Interactive Polls with Live Votes\n- 🎨 Dynamic Liquid Themes, Avatars & Custom Wallpapers\n- 🎙️ Voice Notes with Speed Multipliers (1x, 1.5x, 2x)\n- 🔒 Disappearing Ephemeral Chats & Permanent Account Deletion";
-      } else if (lower.includes('code') || lower.includes('function') || lower.includes('javascript') || lower.includes('python')) {
-        responseText = `Here is a clean implementation for you:\n\`\`\`javascript\n// Optimized Liquid Utility\nexport async function handleLiquidAction(payload) {\n  console.log("🌊 Executing liquid task:", payload);\n  return { success: true, timestamp: Date.now() };\n}\n\`\`\`\nLet me know if you would like me to adjust or extend this! 🚀`;
-      } else {
-        responseText = `✨ **Liquid AI Insight:**\nRegarding *"${prompt}"*:\n\nHere is a comprehensive breakdown:\n1. **Analysis:** The key aspect is ensuring fluid responsiveness, robust real-time synchronization, and modern glassmorphism aesthetics.\n2. **Recommendation:** You can leverage native WebSockets for instant signaling, Prisma for ACID-compliant persistence, and WebRTC for zero-latency media streaming.\n\nLet me know how else I can assist you! 🌊`;
+      systemPrompt = `You are a smart reply generator for messaging. Provide exactly 4 natural, context-aware quick reply suggestions for the user's message. Output ONLY a valid JSON array of 4 short strings like ["Yes, let's do it! 👍", "I'll check into it ⚡", "Can you send the link?", "Thanks!"] with no markdown formatting.`;
+    }
+
+    let responseText = await callLlm(systemPrompt, prompt);
+
+    if (mode === 'suggest_replies') {
+      // Ensure JSON array format
+      try {
+        const clean = responseText.replace(/```json/g, '').replace(/```/g, '').trim();
+        JSON.parse(clean);
+        responseText = clean;
+      } catch (e) {
+        responseText = JSON.stringify([
+          "Sounds good to me! 👍",
+          "Got it, thanks! 🚀",
+          "Could you tell me more? 🔍",
+          "I will get back to you shortly! ⚡"
+        ]);
       }
     }
 
     res.json({ response: responseText });
   } catch (err) {
+    console.error('AI error:', err);
     res.status(500).json({ error: 'AI processing failed' });
   }
 });

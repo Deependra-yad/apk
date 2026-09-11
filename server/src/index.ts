@@ -126,11 +126,51 @@ const io = new Server(server, {
   transports: ['polling', 'websocket'],
   allowUpgrades: true
 });
+app.set('io', io);
 
-const sendPushNotification = async (userId: string, title: string, body: string, url: string = '/', force: boolean = false) => {
+interface PushOptions {
+  url?: string;
+  force?: boolean;
+  type?: 'message' | 'call' | 'story' | 'system';
+  callerId?: string;
+  callerName?: string;
+  isVideo?: boolean;
+  tag?: string;
+  actions?: Array<{ action: string; title: string }>;
+}
+
+const sendPushNotification = async (
+  userId: string, 
+  title: string, 
+  body: string, 
+  options: PushOptions | string = '/', 
+  forceLegacy: boolean = false
+) => {
+  const opts: PushOptions = typeof options === 'string' 
+    ? { url: options, force: forceLegacy } 
+    : options;
+
+  const url = opts.url || '/';
+  const force = opts.force || false;
+  const type = opts.type || 'message';
+
   try {
     const subscriptions = await prisma.pushSubscription.findMany({ where: { userId } });
-    const payload = JSON.stringify({ title, body, url });
+    const payloadData = {
+      title,
+      body,
+      url,
+      type,
+      callerId: opts.callerId,
+      callerName: opts.callerName,
+      isVideo: opts.isVideo,
+      tag: opts.tag || (type === 'call' ? 'incoming-call' : 'liquid-message'),
+      actions: opts.actions || (type === 'call' ? [
+        { action: 'accept', title: 'Pick Up' },
+        { action: 'decline', title: 'Hang Up' }
+      ] : undefined)
+    };
+    const payload = JSON.stringify(payloadData);
     const isConnected = !!connectedUsers.get(userId);
     
     for (const sub of subscriptions) {
@@ -139,8 +179,23 @@ const sendPushNotification = async (userId: string, title: string, body: string,
         try {
           await getMessaging().send({
             token: fcmToken,
-            data: { title, body, url },
-            notification: { title, body }
+            data: {
+              title,
+              body,
+              url,
+              type,
+              callerId: opts.callerId || '',
+              callerName: opts.callerName || '',
+              isVideo: opts.isVideo ? 'true' : 'false'
+            },
+            notification: { title, body },
+            android: {
+              priority: type === 'call' ? 'high' : 'normal',
+              notification: {
+                clickAction: 'OPEN_APP',
+                tag: type === 'call' ? 'incoming-call' : undefined
+              }
+            }
           });
         } catch (err: any) {
           if (err.code === 'messaging/registration-token-not-registered' || err.code === 'messaging/invalid-argument') {
@@ -461,8 +516,15 @@ io.on('connection', (socket) => {
       isVideo
     });
     
-    // Trigger push notification for incoming call (force=true)
-    sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`, '/', true);
+    // Trigger push notification for incoming call (force=true with interactive actions)
+    sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`, {
+      url: `/#call?from=${fromUser?.id}&video=${isVideo}`,
+      force: true,
+      type: 'call',
+      callerId: fromUser?.id,
+      callerName: fromUser?.username,
+      isVideo: !!isVideo
+    });
   });
 
   socket.on('call_answer', ({ to, answer }) => {

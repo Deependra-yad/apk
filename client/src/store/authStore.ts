@@ -28,12 +28,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     localStorage.setItem('liquid_token', token);
     localStorage.setItem('liquid_user', JSON.stringify(user));
     set({ user, token });
+    if (user?.id) {
+      import('../utils/crypto').then(({ ensureUserKeyPair }) => {
+        ensureUserKeyPair(user.id, token);
+      }).catch(() => {});
+    }
   },
   logout: () => {
-    localStorage.removeItem('liquid_token');
-    localStorage.removeItem('token');
-    localStorage.removeItem('liquid_user');
-    localStorage.removeItem('user');
+    if (typeof window !== 'undefined') {
+      const currentUserId = get().user?.id;
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('liquid_') || key === 'token' || key === 'user') {
+          localStorage.removeItem(key);
+        }
+      });
+      if (currentUserId) {
+        import('../utils/crypto').then(({ deleteKeyFromIDB }) => {
+          deleteKeyFromIDB(currentUserId);
+        }).catch(() => {});
+      }
+      import('./chatStore').then(({ useChatStore }) => {
+        useChatStore.getState().resetChatStore();
+      }).catch(() => {});
+    }
     set({ user: null, token: null });
   },
   fetchMe: async (tokenOverride?: string) => {
@@ -50,18 +67,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         
         // E2EE Key Management
         try {
-          const { generateKeyPair, exportPublicKey, getKeyFromIDB, saveKeyToIDB } = await import('../utils/crypto');
-          const existingKey = await getKeyFromIDB(newUser.id);
-          if (!existingKey) {
-            const keyPair = await generateKeyPair();
-            await saveKeyToIDB(newUser.id, keyPair);
-            const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
-            
-            // Send public key to server if it's missing or we just generated a new one
-            await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
-              headers: { Authorization: `Bearer ${token}` }
-            });
-            newUser.publicKey = pubKeyBase64;
+          const { ensureUserKeyPair, exportPublicKey } = await import('../utils/crypto');
+          const keyPair = await ensureUserKeyPair(newUser.id, token);
+          if (keyPair && !newUser.publicKey) {
+            newUser.publicKey = await exportPublicKey(keyPair.publicKey);
           }
         } catch (err) {
           console.error('Failed to initialize E2EE keys:', err);

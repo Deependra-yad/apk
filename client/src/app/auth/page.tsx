@@ -281,7 +281,10 @@ function AuthForm() {
               <button 
                 type="button"
                 onClick={() => {
-                  const googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com&redirect_uri=https://apk-flame.vercel.app/auth/callback&response_type=token&scope=email%20profile";
+                  const isAndroidApp = typeof window !== 'undefined' && !!(window as any).Android;
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://liquidchat.online';
+                  const statePayload = encodeURIComponent(JSON.stringify({ isApp: isAndroidApp, origin }));
+                  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com&redirect_uri=https://apk-flame.vercel.app/auth/callback&response_type=token&scope=email%20profile&state=${statePayload}`;
                   if (typeof window !== 'undefined' && (window as any).Android?.openExternalBrowser) {
                     (window as any).Android.openExternalBrowser(googleAuthUrl);
                   } else {

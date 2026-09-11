@@ -14,11 +14,26 @@ self.addEventListener('push', (event) => {
   if (event.data) {
     try {
       const data = event.data.json();
+      const isCall = data.type === 'call' || data.tag === 'incoming-call';
+      
       const options = {
         body: data.body,
         icon: '/icon-192x192.png',
         badge: '/icon-192x192.png',
-        data: { url: data.url || '/' }
+        tag: data.tag || (isCall ? 'incoming-call' : 'liquid-notification'),
+        renotify: true,
+        requireInteraction: isCall,
+        vibrate: isCall ? [300, 150, 300, 150, 300, 150, 600] : [200, 100, 200],
+        actions: isCall ? [
+          { action: 'accept', title: '📞 Pick Up' },
+          { action: 'decline', title: '❌ Hang Up' }
+        ] : (data.actions || []),
+        data: { 
+          url: data.url || '/',
+          type: data.type || 'message',
+          callerId: data.callerId,
+          isVideo: data.isVideo
+        }
       };
 
       event.waitUntil(
@@ -32,18 +47,32 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const urlToOpen = event.notification.data?.url || '/';
+  const notifData = event.notification.data || {};
+  const urlToOpen = notifData.url || '/';
+
+  if (event.action === 'decline') {
+    // Notify clients that call was declined
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'DECLINE_INCOMING_CALL', callerId: notifData.callerId });
+        });
+      })
+    );
+    return;
+  }
 
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windowClients) => {
-      // Check if there is already a window/tab open with the target URL
       for (let i = 0; i < windowClients.length; i++) {
         const client = windowClients[i];
-        if (client.url.includes(urlToOpen) && 'focus' in client) {
+        if ('focus' in client) {
+          if (event.action === 'accept') {
+            client.postMessage({ type: 'ACCEPT_INCOMING_CALL', callerId: notifData.callerId, isVideo: notifData.isVideo });
+          }
           return client.focus();
         }
       }
-      // If not, open a new window
       if (self.clients.openWindow) {
         return self.clients.openWindow(urlToOpen);
       }

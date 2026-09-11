@@ -202,3 +202,59 @@ export const getKeyFromIDB = async (userId: string): Promise<CryptoKeyPair | und
   });
 };
 
+export const deleteKeyFromIDB = async (userId: string): Promise<void> => {
+  try {
+    const db = await initDB();
+    return new Promise<void>((resolve, reject) => {
+      const transaction = db.transaction(STORE_NAME, 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      const request = store.delete(userId);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  } catch (e) {}
+};
+
+export const clearCryptoDB = async (): Promise<void> => {
+  try {
+    if (typeof window !== 'undefined' && window.indexedDB) {
+      window.indexedDB.deleteDatabase(DB_NAME);
+    }
+  } catch (e) {}
+};
+
+export const ensureUserKeyPair = async (userId: string, token?: string): Promise<CryptoKeyPair | null> => {
+  if (typeof window === 'undefined') return null;
+  try {
+    let keyPair = await getKeyFromIDB(userId);
+    if (!keyPair) {
+      keyPair = await generateKeyPair();
+      await saveKeyToIDB(userId, keyPair);
+      const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
+      
+      const authToken = token || localStorage.getItem('liquid_token');
+      if (authToken) {
+        const axios = (await import('axios')).default;
+        await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        }).catch(err => console.warn('Failed to sync generated public key to server:', err));
+      }
+    }
+    return keyPair;
+  } catch (err) {
+    console.error('Error ensuring user key pair:', err);
+    return null;
+  }
+};
+
+export const isBase64Ciphertext = (str: string): boolean => {
+  if (!str || typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if (trimmed.length < 16) return false;
+  if (/^[A-Za-z0-9+/]+={0,2}$/.test(trimmed)) {
+    return true;
+  }
+  return false;
+};
+
+

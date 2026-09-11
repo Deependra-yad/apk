@@ -427,23 +427,58 @@ router.delete('/account', async (req, res) => {
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
-    // Delete user's messages, stories, and call logs first
-    await prisma.message.deleteMany({
-      where: { OR: [{ senderId: userId }, { receiverId: userId }] }
-    });
-    await prisma.story.deleteMany({
-      where: { userId }
-    });
-    await prisma.callLog.deleteMany({
-      where: { OR: [{ callerId: userId }, { receiverId: userId }] }
-    });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // Delete user record
-    await prisma.user.delete({
-      where: { id: userId }
+    // 1. Reassign or delete groups created by this user
+    const createdGroups = await prisma.group.findMany({
+      where: { creatorId: userId },
+      include: { members: true }
     });
+    for (const group of createdGroups) {
+      const otherMember = group.members.find((m: any) => m.userId !== userId);
+      if (otherMember) {
+        await prisma.group.update({
+          where: { id: group.id },
+          data: { creatorId: otherMember.userId }
+        });
+        await prisma.groupMember.update({
+          where: { groupId_userId: { groupId: group.id, userId: otherMember.userId } },
+          data: { role: 'admin' }
+        });
+      } else {
+        await prisma.message.deleteMany({ where: { groupId: group.id } });
+        await prisma.groupMember.deleteMany({ where: { groupId: group.id } });
+        await prisma.group.delete({ where: { id: group.id } });
+      }
+    }
 
-    res.json({ success: true, message: 'Account permanently deleted' });
+    // 2. Cascade delete all user records across every table
+    await prisma.$transaction([
+      prisma.message.deleteMany({ where: { OR: [{ senderId: userId }, { receiverId: userId }] } }),
+      prisma.groupMember.deleteMany({ where: { userId } }),
+      prisma.chatMeta.deleteMany({ where: { OR: [{ userId }, { targetId: userId }] } }),
+      prisma.blockList.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } }),
+      prisma.callLog.deleteMany({ where: { OR: [{ callerId: userId }, { receiverId: userId }] } }),
+      prisma.story.deleteMany({ where: { userId } }),
+      prisma.media.deleteMany({ where: { userId } }),
+      prisma.pushSubscription.deleteMany({ where: { userId } }),
+      prisma.userSettings.deleteMany({ where: { userId } }),
+      prisma.loginLog.deleteMany({ where: { userId } }),
+      prisma.user.delete({ where: { id: userId } })
+    ]);
+
+    if (user.email) {
+      await prisma.otpCode.deleteMany({ where: { email: user.email } }).catch(() => {});
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.to(`user_${userId}`).emit('force_logout');
+      io.emit('user_deleted', { userId });
+    }
+
+    res.json({ success: true, message: 'Account permanently deleted from everywhere' });
   } catch (err) {
     console.error('Account deletion error:', err);
     res.status(500).json({ error: 'Failed to delete account' });

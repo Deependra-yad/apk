@@ -75,21 +75,9 @@ export default function Home() {
     setIsClient(true);
     setAuthChecked(true);
     
-    // Restore locally saved contacts from storage
+    // Clean up any legacy unscoped saved contacts
     try {
-      const saved = localStorage.getItem('liquid_saved_contacts');
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setUsers(prev => {
-            const map = new Map();
-            prev.forEach(u => map.set(u.id, u));
-            parsed.forEach((u: any) => map.set(u.id, u));
-            return Array.from(map.values());
-          });
-          parsed.forEach((u: any) => useChatStore.getState().addActiveConversation(u.id));
-        }
-      }
+      localStorage.removeItem('liquid_saved_contacts');
     } catch (e) {}
 
     // Check for Android App update
@@ -134,20 +122,13 @@ export default function Home() {
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
 
-      // Fetch active conversations list (full user objects)
+      // Fetch active conversations list (full user objects with actual message history)
       axios.get('/api/users/conversations', {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
-        const others = res.data.filter((u: any) => u.id !== user.id);
-        setUsers(prev => {
-          const map = new Map();
-          prev.forEach(u => map.set(u.id, u));
-          others.forEach((u: any) => map.set(u.id, u));
-          return Array.from(map.values());
-        });
-        const currentActive = useChatStore.getState().activeConversations;
-        const mergedIds = Array.from(new Set([...currentActive, ...others.map((u: any) => u.id)]));
-        useChatStore.getState().setActiveConversations(mergedIds);
+        const others = Array.isArray(res.data) ? res.data.filter((u: any) => u.id !== user.id) : [];
+        setUsers(others);
+        useChatStore.getState().setActiveConversations(others.map((u: any) => u.id));
       }).catch(console.error);
 
       // Fetch groups
@@ -314,12 +295,15 @@ export default function Home() {
     setActiveContact(contact);
     useChatStore.getState().addActiveConversation(contact.id);
 
-    // Persist to local storage so the contact is retained permanently
+    // Persist to local storage scoped to this user
     try {
-      const saved = localStorage.getItem('liquid_saved_contacts');
-      const list = saved ? JSON.parse(saved) : [];
-      const updated = [contact, ...list.filter((c: any) => c.id !== contact.id)];
-      localStorage.setItem('liquid_saved_contacts', JSON.stringify(updated));
+      if (user?.id) {
+        const key = `liquid_saved_contacts_${user.id}`;
+        const saved = localStorage.getItem(key);
+        const list = saved ? JSON.parse(saved) : [];
+        const updated = [contact, ...list.filter((c: any) => c.id !== contact.id)].slice(0, 50);
+        localStorage.setItem(key, JSON.stringify(updated));
+      }
     } catch (e) {}
 
     // Ensure they are in users list
@@ -588,8 +572,14 @@ export default function Home() {
             {/* Unified Chats & Groups List */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
               {unifiedChatList.length === 0 ? (
-                <div className="p-8 text-center text-foreground/50 text-xs">
-                  No conversations found in this filter
+                <div className="py-16 px-6 text-center flex flex-col items-center justify-center space-y-3 my-auto">
+                  <div className="w-14 h-14 rounded-full bg-liquid-accent/10 border border-liquid-accent/20 flex items-center justify-center text-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.1)]">
+                    <MessageSquare size={24} />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground">No conversations yet</h3>
+                  <p className="text-xs text-foreground/50 max-w-[220px] leading-relaxed">
+                    Search a username or 10-digit Liquid ID above to start chatting securely.
+                  </p>
                 </div>
               ) : (
                 unifiedChatList.map((item) => {

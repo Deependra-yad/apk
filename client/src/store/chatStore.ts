@@ -100,6 +100,7 @@ interface ChatState {
   toggleStarMessage: (messageId: string) => void;
   markMessagesAsSeenLocally: (seenByUserId: string) => void;
   setIncomingToast: (toast: any | null) => void;
+  resetChatStore: () => void;
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
@@ -177,30 +178,51 @@ export const useChatStore = create<ChatState>((set, get) => ({
     // 1-on-1 incoming message
     socket.on('receive_message', async (message: Message) => {
       let finalMessage = { ...message };
-      const senderPubKeyStr = (finalMessage.sender?.publicKey || get().activeContact?.publicKey) as string | undefined;
+      let senderPubKeyStr = (finalMessage.sender?.publicKey || get().activeContact?.publicKey) as string | undefined;
       
-      if (finalMessage.isEncrypted && finalMessage.iv && senderPubKeyStr) {
-        try {
-          const { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
-          const myKey = await getKeyFromIDB(userId);
-          if (myKey) {
-            const senderPubKey = await importPublicKey(senderPubKeyStr);
-            const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
-            
-            if (finalMessage.text) {
-              finalMessage.text = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
-            }
-            
-            if (finalMessage.fileUrl && finalMessage.fileUrl.startsWith('ENC:')) {
-              const parts = finalMessage.fileUrl.substring(4).split(':');
-              if (parts.length === 2) {
-                finalMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+      if (finalMessage.isEncrypted && finalMessage.iv) {
+        // If public key is not in payload, fetch it directly from server
+        if (!senderPubKeyStr && finalMessage.senderId) {
+          try {
+            const token = localStorage.getItem('liquid_token');
+            if (token) {
+              const res = await axios.get(`/api/users/${finalMessage.senderId}/public-key`, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+              if (res.data?.publicKey) {
+                senderPubKeyStr = res.data.publicKey;
+                const contact = get().activeContact;
+                if (contact && contact.id === finalMessage.senderId) {
+                  contact.publicKey = senderPubKeyStr;
+                }
               }
             }
+          } catch (e) {}
+        }
+
+        if (senderPubKeyStr) {
+          try {
+            const { ensureUserKeyPair, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
+            const myKey = await ensureUserKeyPair(userId);
+            if (myKey) {
+              const senderPubKey = await importPublicKey(senderPubKeyStr);
+              const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
+              
+              if (finalMessage.text) {
+                finalMessage.text = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
+              }
+              
+              if (finalMessage.fileUrl && finalMessage.fileUrl.startsWith('ENC:')) {
+                const parts = finalMessage.fileUrl.substring(4).split(':');
+                if (parts.length === 2) {
+                  finalMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Failed to decrypt incoming message', err);
+            finalMessage.text = '[Decryption Failed]';
           }
-        } catch (err) {
-          console.error('Failed to decrypt incoming message', err);
-          finalMessage.text = '[Decryption Failed]';
         }
       }
 
@@ -550,5 +572,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
     set((state) => ({
       messages: state.messages.map(m => m.receiverId === seenByUserId ? { ...m, isSeen: true } : m)
     }));
+  },
+
+  resetChatStore: () => {
+    const s = get().socket;
+    if (s) {
+      s.disconnect();
+    }
+    set({
+      socket: null,
+      messages: [],
+      groups: [],
+      onlineUsers: [],
+      typingUsers: [],
+      groupTypingUsers: {},
+      activeContact: null,
+      activeGroup: null,
+      replyingTo: null,
+      editingMessage: null,
+      selectedMessageIds: [],
+      searchQuery: '',
+      chatMetaMap: {},
+      activeConversations: [],
+      incomingToast: null,
+      unreadCounts: {}
+    });
   }
 }));
