@@ -38,6 +38,8 @@ class FCMService : FirebaseMessagingService() {
         val nm = getSystemService(NotificationManager::class.java)
 
         if (type == "call") {
+            val ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+
             // Intent to accept call
             val acceptIntent = android.content.Intent(this, MainActivity::class.java).apply {
                 action = "ACCEPT_CALL"
@@ -69,7 +71,8 @@ class FCMService : FirebaseMessagingService() {
                 .setCategory(NotificationCompat.CATEGORY_CALL)
                 .setAutoCancel(true)
                 .setOngoing(true)
-                .setVibrate(longArrayOf(0, 500, 250, 500, 250, 500))
+                .setSound(ringtoneUri)
+                .setVibrate(longArrayOf(0, 1000, 1000, 1000, 1000))
                 .setContentIntent(acceptPendingIntent)
                 .setFullScreenIntent(acceptPendingIntent, true)
                 .addAction(android.R.drawable.sym_action_call, "Pick Up", acceptPendingIntent)
@@ -85,6 +88,25 @@ class FCMService : FirebaseMessagingService() {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
 
+            val remoteInput = androidx.core.app.RemoteInput.Builder("key_quick_reply")
+                .setLabel("Quick Reply...")
+                .build()
+
+            val replyIntent = android.content.Intent(this, MainActivity::class.java).apply {
+                action = "QUICK_REPLY"
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val replyPendingIntent = android.app.PendingIntent.getActivity(
+                this, 103, replyIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_MUTABLE
+            )
+
+            val replyAction = NotificationCompat.Action.Builder(
+                android.R.drawable.ic_menu_send,
+                "Reply",
+                replyPendingIntent
+            ).addRemoteInput(remoteInput).build()
+
             val builder = NotificationCompat.Builder(this, "liquid_chat_messages")
                 .setSmallIcon(android.R.drawable.stat_notify_chat)
                 .setContentTitle(title)
@@ -92,6 +114,7 @@ class FCMService : FirebaseMessagingService() {
                 .setPriority(NotificationCompat.PRIORITY_HIGH)
                 .setAutoCancel(true)
                 .setContentIntent(contentPendingIntent)
+                .addAction(replyAction)
 
             nm.notify(System.currentTimeMillis().toInt(), builder.build())
         }

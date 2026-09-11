@@ -70,5 +70,52 @@ router.get('/history', authenticate, async (req: any, res) => {
   }
 });
 
+// Delete all call logs permanently for user
+router.delete('/history', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    const deleted = await prisma.callLog.deleteMany({
+      where: {
+        OR: [
+          { callerId: userId },
+          { receiverId: userId }
+        ]
+      }
+    });
+    res.json({ success: true, count: deleted.count, message: 'All call logs permanently deleted from server' });
+  } catch (error) {
+    console.error('Failed to delete call history:', error);
+    res.status(500).json({ error: 'Failed to delete call history' });
+  }
+});
+
+// Delete a specific call log permanently
+router.delete('/:id', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  const { id } = req.params;
+
+  try {
+    const log = await prisma.callLog.findFirst({
+      where: {
+        id,
+        OR: [
+          { callerId: userId },
+          { receiverId: userId }
+        ]
+      }
+    });
+
+    if (!log) {
+      return res.status(404).json({ error: 'Call record not found or not authorized' });
+    }
+
+    await prisma.callLog.delete({ where: { id } });
+    res.json({ success: true, message: 'Call record permanently deleted from server' });
+  } catch (error) {
+    console.error('Failed to delete call record:', error);
+    res.status(500).json({ error: 'Failed to delete call record' });
+  }
+});
+
 export default router;
 

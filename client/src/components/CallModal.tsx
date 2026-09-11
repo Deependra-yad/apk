@@ -195,6 +195,9 @@ export default function CallModal({
   const answerCall = async () => {
     if (!incomingCallData || !socket || !webrtcRef.current) return;
     soundEffects.stopRinging();
+    if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
+      try { (window as any).Android.stopCallRingtone(); } catch (e) {}
+    }
     try {
       const isVideo = incomingCallData.isVideo;
       setIsVideoCall(isVideo);
@@ -225,6 +228,9 @@ export default function CallModal({
   // Log Call and Tear Down
   const endCall = (status: 'completed' | 'missed' | 'rejected' = 'completed') => {
     soundEffects.stopRinging();
+    if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
+      try { (window as any).Android.stopCallRingtone(); } catch (e) {}
+    }
     const targetId = targetIdRef.current || activeContact?.id || incomingCallData?.from?.id;
 
     if (token && targetId) {

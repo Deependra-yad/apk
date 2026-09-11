@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Phone, Video, PhoneIncoming, PhoneOutgoing, 
-  PhoneMissed, Plus, Clock, Search 
+  PhoneMissed, Plus, Clock, Search, Trash2 
 } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
@@ -20,6 +20,7 @@ export default function CallsPanel({ onStartCallWithUser, users }: CallsPanelPro
   const [callHistory, setCallHistory] = useState<any[]>([]);
   const [isNewCallModalOpen, setIsNewCallModalOpen] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchCallHistory = async () => {
     if (!token) return;
@@ -35,6 +36,36 @@ export default function CallsPanel({ onStartCallWithUser, users }: CallsPanelPro
     fetchCallHistory();
   }, [token]);
 
+  const handleClearAllHistory = async () => {
+    if (!token) return;
+    if (!confirm('Permanently delete all your call history from the server?')) return;
+    setIsDeleting(true);
+    try {
+      await axios.delete('/api/calls/history', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setCallHistory([]);
+    } catch (e) {
+      alert('Failed to delete call history from server');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteSingleCall = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!token) return;
+    try {
+      setCallHistory(prev => prev.filter(c => c.id !== id));
+      await axios.delete(`/api/calls/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+    } catch (e) {
+      console.error('Failed to delete call record:', e);
+      fetchCallHistory();
+    }
+  };
+
   const filteredHistory = callHistory.filter(call => {
     const otherUser = call.callerId === user?.id ? call.receiver : call.caller;
     return otherUser?.username?.toLowerCase().includes(searchFilter.toLowerCase());
@@ -49,13 +80,27 @@ export default function CallsPanel({ onStartCallWithUser, users }: CallsPanelPro
           <p className="text-xs text-foreground/60">Recent voice and video calls</p>
         </div>
 
-        <button
-          onClick={() => setIsNewCallModalOpen(true)}
-          className="p-2.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground font-semibold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all"
-        >
-          <Plus size={16} />
-          <span>New Call</span>
-        </button>
+        <div className="flex items-center gap-2">
+          {callHistory.length > 0 && (
+            <button
+              onClick={handleClearAllHistory}
+              disabled={isDeleting}
+              className="p-2 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              title="Permanently clear call logs from server"
+            >
+              <Trash2 size={14} />
+              <span className="hidden sm:inline">Clear History</span>
+            </button>
+          )}
+
+          <button
+            onClick={() => setIsNewCallModalOpen(true)}
+            className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-foreground font-semibold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all cursor-pointer"
+          >
+            <Plus size={16} />
+            <span>New Call</span>
+          </button>
+        </div>
       </div>
 
       {/* Call History Search */}
@@ -117,14 +162,24 @@ export default function CallsPanel({ onStartCallWithUser, users }: CallsPanelPro
                   </div>
                 </div>
 
-                {/* One-Tap Call Back Action */}
-                <button
-                  onClick={() => onStartCallWithUser(otherPerson, isVideo)}
-                  className="p-2.5 rounded-full bg-foreground/10 hover:bg-liquid-accent/20 text-foreground/80 hover:text-liquid-accent transition-all"
-                  title={`Call back with ${isVideo ? 'Video' : 'Audio'}`}
-                >
-                  {isVideo ? <Video size={18} /> : <Phone size={18} />}
-                </button>
+                {/* Call Row Actions */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => onStartCallWithUser(otherPerson, isVideo)}
+                    className="p-2 sm:p-2.5 rounded-full bg-foreground/10 hover:bg-liquid-accent/20 text-foreground/80 hover:text-liquid-accent transition-all cursor-pointer"
+                    title={`Call back with ${isVideo ? 'Video' : 'Audio'}`}
+                  >
+                    {isVideo ? <Video size={17} /> : <Phone size={17} />}
+                  </button>
+
+                  <button
+                    onClick={(e) => handleDeleteSingleCall(call.id, e)}
+                    className="p-2 sm:p-2.5 rounded-full bg-foreground/5 hover:bg-red-500/20 text-foreground/40 hover:text-red-400 transition-all cursor-pointer"
+                    title="Permanently delete this call log from server"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
               </motion.div>
             );
           })

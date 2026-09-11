@@ -577,11 +577,11 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
               {(currentStory.userId !== user?.id && currentStory.user?.id !== user?.id) && (
                 <div className="flex flex-col gap-3 mt-4 z-30">
                   <div className="flex justify-center gap-4">
-                    {['ðŸ‘', 'â¤ï¸', 'ðŸ˜‚', 'ðŸ˜®', 'ðŸ˜¢', 'ðŸ”¥'].map(emoji => (
+                    {['👍', '❤️', '😂', '😮', '😢', '🔥', '🌸', '👏'].map(emoji => (
                       <button
                         key={emoji}
                         onClick={() => handleReact(emoji)}
-                        className="text-2xl hover:scale-125 transition-transform bg-background/20 backdrop-blur-md rounded-full w-10 h-10 flex items-center justify-center shadow-lg"
+                        className="text-2xl hover:scale-125 transition-transform bg-background/20 backdrop-blur-md rounded-full w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center shadow-lg cursor-pointer"
                       >
                         {emoji}
                       </button>

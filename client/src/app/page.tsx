@@ -263,6 +263,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
     const handleIncomingCall = (data: { from: any; offer: any; isVideo: boolean }) => {
       soundEffects.startIncomingRing();
+      if (typeof window !== 'undefined' && (window as any).Android?.startIncomingCallRingtone) {
+        try {
+          (window as any).Android.startIncomingCallRingtone(data.from?.username || 'Liquid User', data.isVideo);
+        } catch (e) {}
+      }
       setIncomingCallData(data);
       setIsVideoCall(data.isVideo);
       setCallState('receiving');
@@ -278,8 +283,19 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     return () => {
       socket.off('incoming_call', handleIncomingCall);
       socket.off('user_profile_updated', handleProfileUpdated);
+      if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
+        try { (window as any).Android.stopCallRingtone(); } catch (e) {}
+      }
     };
   }, [socket]);
+
+  useEffect(() => {
+    if (callState === 'idle' || callState === 'connected') {
+      if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
+        try { (window as any).Android.stopCallRingtone(); } catch (e) {}
+      }
+    }
+  }, [callState]);
 
   const handleStartCall = (isVideo: boolean) => {
     if (!activeContact) return;
@@ -467,7 +483,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const isChatOpen = !!(activeContact || activeGroup);
 
   return (
-    <main className="w-full h-full max-h-screen flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30 relative">
+    <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30">
       <AnimatePresence>
         {showUpdateBanner && (
           <motion.div 

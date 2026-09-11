@@ -1528,7 +1528,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </button>
         </div>
       ) : (
-        <div className="bg-liquid-base/95 backdrop-blur-2xl border-t border-foreground/5 px-3 py-2 sm:px-4 sm:py-2.5 flex items-center gap-2 z-20 relative shrink-0">
+        <div className="bg-liquid-base/95 backdrop-blur-2xl border-t border-foreground/5 px-2 sm:px-4 pt-2 pb-[max(0.625rem,env(safe-area-inset-bottom))] flex items-end gap-1.5 sm:gap-2 z-20 relative shrink-0">
           {/* Sticker & GIF Picker Modal */}
           <StickerGifPicker
             isOpen={isStickerPickerOpen}
@@ -1553,16 +1553,16 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               />
 
               {/* Kawaii Japanese Capsule Input (Emoji + Textarea + Attachment) */}
-              <div className="flex-1 bg-[#17122b]/90 rounded-full min-h-[44px] flex items-center px-2.5 sm:px-3.5 border border-[#ff7597]/30 focus-within:border-[#ff7597] shadow-[0_0_20px_rgba(255,117,151,0.15)] backdrop-blur-xl transition-all">
+              <div className="flex-1 bg-[#17122b]/90 rounded-[24px] min-h-[44px] flex items-end px-1.5 sm:px-3 py-1.5 border border-[#ff7597]/30 focus-within:border-[#ff7597] shadow-[0_0_20px_rgba(255,117,151,0.15)] backdrop-blur-xl transition-all min-w-0">
                 {/* Emoji / Sticker Toggle */}
                 <button
                   onClick={() => setIsStickerPickerOpen(!isStickerPickerOpen)}
-                  className={`p-2 sm:p-2.5 rounded-full transition-colors shrink-0 ${
+                  className={`p-1.5 sm:p-2 rounded-full transition-colors shrink-0 mb-0.5 ${
                     isStickerPickerOpen ? 'text-liquid-accent' : 'text-foreground/50 hover:text-liquid-accent'
                   }`}
                   title="Emojis & Stickers"
                 >
-                  <Smile size={20} />
+                  <Smile className="w-5 h-5" />
                 </button>
 
                 {/* Textarea */}
@@ -1579,25 +1579,25 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }}
                   rows={1}
                   placeholder="Message or /ai..."
-                  className="flex-1 bg-transparent border-none outline-none text-foreground text-[14px] sm:text-[15px] resize-none px-2 py-2 max-h-28 overflow-y-auto leading-relaxed placeholder:text-foreground/40"
+                  className="flex-1 bg-transparent border-none outline-none text-foreground text-[14px] sm:text-[15px] resize-none px-1.5 sm:px-2 py-1 max-h-28 overflow-y-auto leading-relaxed placeholder:text-foreground/40 min-w-0"
                   style={{ height: '22px', minHeight: '22px', maxHeight: '110px' }}
                 />
 
                 {/* Attachment Clip Button */}
-                <div className="relative shrink-0 flex items-center">
+                <div className="relative shrink-0 flex items-center mb-0.5">
                   <button 
                     onPointerDown={(e) => {
                       e.preventDefault();
                       setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
                     }}
-                    className={`p-2 sm:p-2.5 rounded-full transition-all ${
+                    className={`p-1.5 sm:p-2 rounded-full transition-all ${
                       isAttachmentMenuOpen 
                         ? 'text-liquid-accent rotate-45' 
                         : 'text-foreground/50 hover:text-liquid-accent'
                     }`}
                     title="Attach Media"
                   >
-                    <Plus size={22} />
+                    <Plus className="w-5 h-5 sm:w-[22px] sm:h-[22px]" />
                   </button>
 
                   {/* Attachment Dropdown Menu */}
@@ -1668,19 +1668,19 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   whileTap={{ scale: 0.9 }}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={handleSend}
-                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0"
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0 mb-0.5"
                   title={editingMessage ? "Save Edit" : "Send Message"}
                 >
-                  {editingMessage ? <Check size={20} className="text-white stroke-[2.5]" /> : <Send size={18} className="ml-0.5 text-white stroke-[2.5]" />}
+                  {editingMessage ? <Check size={19} className="text-white stroke-[2.5]" /> : <Send size={17} className="ml-0.5 text-white stroke-[2.5]" />}
                 </motion.button>
               ) : (
                 <button 
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => setIsRecordingVoice(true)}
-                  className="w-11 h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0"
+                  className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-gradient-to-tr from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white flex items-center justify-center shadow-[0_0_20px_rgba(255,75,130,0.5)] hover:shadow-[0_0_25px_rgba(255,75,130,0.7)] active:scale-90 transition-all cursor-pointer shrink-0 mb-0.5"
                   title="Record Voice Note"
                 >
-                  <Mic size={20} className="text-white stroke-[2.5]" />
+                  <Mic size={19} className="text-white stroke-[2.5]" />
                 </button>
               )}
             </>

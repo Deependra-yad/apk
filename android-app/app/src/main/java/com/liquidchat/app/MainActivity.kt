@@ -32,12 +32,21 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+import android.media.AudioAttributes
+import android.media.Ringtone
+import android.media.RingtoneManager
+import android.os.Vibrator
+import android.os.VibrationEffect
+import androidx.core.app.NotificationCompat
 import androidx.webkit.WebSettingsCompat
 import androidx.webkit.WebViewFeature
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+
+    private var activeRingtone: Ringtone? = null
+    private var callVibrator: Vibrator? = null
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
@@ -239,6 +248,20 @@ class MainActivity : AppCompatActivity() {
                     } catch (e: Exception) {
                         Toast.makeText(this@MainActivity, "Cannot open browser", Toast.LENGTH_SHORT).show()
                     }
+                }
+            }
+
+            @JavascriptInterface
+            fun startIncomingCallRingtone(callerName: String, isVideo: Boolean) {
+                runOnUiThread {
+                    startIncomingCallRingtoneInternal(callerName, isVideo)
+                }
+            }
+
+            @JavascriptInterface
+            fun stopCallRingtone() {
+                runOnUiThread {
+                    stopCallRingtoneInternal()
                 }
             }
         }, "Android")
@@ -507,6 +530,12 @@ class MainActivity : AppCompatActivity() {
                 enableVibration(true)
             }
 
+            val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            val audioAttributes = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .build()
+
             val callChannel = NotificationChannel(
                 "liquid_chat_calls",
                 "Calls",
@@ -514,8 +543,10 @@ class MainActivity : AppCompatActivity() {
             ).apply {
                 description = "Liquid Chat call notifications"
                 enableLights(true)
-                lightColor = Color.parseColor("#00d2ff")
+                lightColor = Color.parseColor("#ff7597")
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 1000, 1000, 1000)
+                setSound(ringtoneUri, audioAttributes)
             }
 
             val nm = getSystemService(NotificationManager::class.java)
@@ -674,6 +705,118 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleDeepLink(intent)
+        handleCallAction(intent)
+    }
+
+    private fun handleCallAction(intent: Intent?) {
+        when (intent?.action) {
+            "ACCEPT_CALL" -> {
+                stopCallRingtoneInternal()
+                val js = """
+                    (function() {
+                        var btn = document.querySelector('[data-testid="accept-call-btn"]') || 
+                                  document.querySelector('button[title*="Answer"]') ||
+                                  document.querySelector('button[title*="Pick"]');
+                        if (btn) btn.click();
+                    })();
+                """.trimIndent()
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
+            }
+            "DECLINE_CALL" -> {
+                stopCallRingtoneInternal()
+                val js = """
+                    (function() {
+                        var btn = document.querySelector('[data-testid="decline-call-btn"]') || 
+                                  document.querySelector('button[title*="Decline"]') ||
+                                  document.querySelector('button[title*="Hang"]');
+                        if (btn) btn.click();
+                    })();
+                """.trimIndent()
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
+            }
+        }
+    }
+
+    private fun startIncomingCallRingtoneInternal(callerName: String, isVideo: Boolean) {
+        try {
+            stopCallRingtoneInternal()
+
+            // Play Android system default incoming call ringtone
+            val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+            activeRingtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)?.apply {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    isLooping = true
+                }
+                play()
+            }
+
+            // Vibrate pattern
+            callVibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                callVibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 1000, 1000, 1000), 0))
+            } else {
+                @Suppress("DEPRECATION")
+                callVibrator?.vibrate(longArrayOf(0, 1000, 1000, 1000, 1000), 0)
+            }
+
+            showCallHeadsUpNotification(callerName, isVideo)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun stopCallRingtoneInternal() {
+        try {
+            activeRingtone?.stop()
+            activeRingtone = null
+            callVibrator?.cancel()
+            callVibrator = null
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.cancel(9999)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun showCallHeadsUpNotification(callerName: String, isVideo: Boolean) {
+        try {
+            val acceptIntent = Intent(this, MainActivity::class.java).apply {
+                action = "ACCEPT_CALL"
+                putExtra("isVideo", isVideo)
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val acceptPending = android.app.PendingIntent.getActivity(
+                this, 101, acceptIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val declineIntent = Intent(this, MainActivity::class.java).apply {
+                action = "DECLINE_CALL"
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val declinePending = android.app.PendingIntent.getActivity(
+                this, 102, declineIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = NotificationCompat.Builder(this, "liquid_chat_calls")
+                .setSmallIcon(android.R.drawable.sym_action_call)
+                .setContentTitle("Incoming " + (if (isVideo) "Video Call" else "Voice Call"))
+                .setContentText("$callerName is calling...")
+                .setPriority(NotificationCompat.PRIORITY_MAX)
+                .setCategory(NotificationCompat.CATEGORY_CALL)
+                .setOngoing(true)
+                .setAutoCancel(true)
+                .setContentIntent(acceptPending)
+                .setFullScreenIntent(acceptPending, true)
+                .addAction(android.R.drawable.sym_action_call, "Pick Up", acceptPending)
+                .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Hang Up", declinePending)
+
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify(9999, builder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
     }
 
     private fun handleDeepLink(intent: Intent?) {
@@ -705,6 +848,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     override fun onDestroy() {
+        stopCallRingtoneInternal()
         webView.destroy()
         super.onDestroy()
     }
