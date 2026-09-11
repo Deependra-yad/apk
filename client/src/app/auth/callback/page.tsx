@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 
@@ -8,6 +8,7 @@ function CallbackLogic() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const setAuth = useAuthStore((state) => state.setAuth);
+  const [deepLinkUrl, setDeepLinkUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const handleGoogleCallback = async () => {
@@ -37,10 +38,14 @@ function CallbackLogic() {
             setAuth(data.user, data.token);
             
             const userStr = encodeURIComponent(JSON.stringify(data.user));
+            const appUrl = `liquidchat://auth?token=${data.token}&user=${userStr}`;
+            setDeepLinkUrl(appUrl);
             
             if (!(window as any).Android) {
-              window.location.href = `liquidchat://auth?token=${data.token}&user=${userStr}`;
-              setTimeout(() => router.push("/"), 800);
+              window.location.href = appUrl;
+              setTimeout(() => {
+                // If app didn't take over, allow navigation
+              }, 1200);
             } else {
               router.push("/");
             }
@@ -67,11 +72,13 @@ function CallbackLogic() {
           const user = JSON.parse(decodeURIComponent(userStr));
           setAuth(user, token);
           
+          const appUrl = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
+          setDeepLinkUrl(appUrl);
+
           if (typeof window !== 'undefined' && !(window as any).Android) {
-              window.location.href = `liquidchat://auth?token=${token}&user=${encodeURIComponent(userStr)}`;
-              setTimeout(() => router.push("/"), 800);
+            window.location.href = appUrl;
           } else {
-              router.push("/");
+            router.push("/");
           }
         } catch (err) {
           console.error("Failed to parse user data:", err);
@@ -86,9 +93,29 @@ function CallbackLogic() {
   }, [searchParams, router, setAuth]);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center">
-      <div className="w-10 h-10 border-4 border-liquid-accent border-t-transparent rounded-full animate-spin mb-4" />
-      <p className="text-foreground/70 font-medium">Completing login...</p>
+    <div className="min-h-screen bg-liquid-dark flex flex-col items-center justify-center p-6 text-center">
+      <div className="w-12 h-12 border-4 border-liquid-accent border-t-transparent rounded-full animate-spin mb-6" />
+      <h2 className="text-xl font-bold text-foreground mb-2">Login Successful!</h2>
+      <p className="text-foreground/70 text-sm max-w-sm mb-6">
+        Redirecting you back to the Liquid Chat app...
+      </p>
+
+      {deepLinkUrl && (
+        <div className="flex flex-col items-center gap-3">
+          <a
+            href={deepLinkUrl}
+            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold text-sm shadow-[0_0_25px_rgba(0,210,255,0.4)] hover:brightness-110 transition-all"
+          >
+            Open Liquid Chat App
+          </a>
+          <button
+            onClick={() => router.push("/")}
+            className="text-xs text-foreground/50 hover:text-foreground mt-2 underline"
+          >
+            Or continue in browser
+          </button>
+        </div>
+      )}
     </div>
   );
 }

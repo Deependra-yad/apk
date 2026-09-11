@@ -125,6 +125,7 @@ class MainActivity : AppCompatActivity() {
             webView.restoreState(savedInstanceState)
         } else {
             webView.loadUrl(WEB_URL)
+            handleDeepLink(intent)
         }
     }
 
@@ -226,6 +227,20 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
+
+            @JavascriptInterface
+            fun openExternalBrowser(url: String) {
+                runOnUiThread {
+                    try {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(browserIntent)
+                    } catch (e: Exception) {
+                        Toast.makeText(this@MainActivity, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }, "Android")
 
         webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
@@ -268,6 +283,19 @@ class MainActivity : AppCompatActivity() {
 
             override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                 val url = request?.url?.toString() ?: return false
+
+                // Intercept Google OAuth and open in system browser (Chrome) to prevent disallowed_useragent 403
+                if (url.contains("accounts.google.com") || url.contains("google.com/o/oauth2")) {
+                    try {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        startActivity(browserIntent)
+                        return true
+                    } catch (e: Exception) {
+                        // Ignore
+                    }
+                }
 
                 // Intercept any file downloads natively
                 if (url.endsWith(".apk") || url.contains("/uploads/") || url.contains("/api/media/export/") || url.contains("download=1") || (url.contains("/api/upload/") && !url.contains("/api/upload/avatar"))) {
@@ -640,6 +668,40 @@ class MainActivity : AppCompatActivity() {
     override fun onPause() {
         super.onPause()
         webView.onPause()
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+    }
+
+    private fun handleDeepLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        val scheme = data.scheme
+        val host = data.host
+
+        if (scheme == "liquidchat" && host == "auth") {
+            val token = data.getQueryParameter("token")
+            val user = data.getQueryParameter("user")
+            if (!token.isNullOrEmpty()) {
+                val cleanUser = user ?: ""
+                val js = """
+                    (function() {
+                        try {
+                            localStorage.setItem('liquid_token', '$token');
+                            ${if (cleanUser.isNotEmpty()) "localStorage.setItem('liquid_user', decodeURIComponent('$cleanUser'));" else ""}
+                            window.location.href = '/';
+                        } catch(e) {
+                            console.error('Deep link auth error', e);
+                        }
+                    })();
+                """.trimIndent()
+                webView.postDelayed({
+                    webView.evaluateJavascript(js, null)
+                }, 600)
+            }
+        }
     }
 
     override fun onDestroy() {

@@ -278,13 +278,21 @@ function AuthForm() {
                 <span className="text-xs font-medium uppercase tracking-wider">Or</span>
                 <div className="h-px bg-foreground/20 flex-1" />
               </div>
-              <a 
-                href="https://accounts.google.com/o/oauth2/v2/auth?client_id=543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com&redirect_uri=https://apk-flame.vercel.app/auth/callback&response_type=token&scope=email%20profile"
-                className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors cursor-pointer"
+              <button 
+                type="button"
+                onClick={() => {
+                  const googleAuthUrl = "https://accounts.google.com/o/oauth2/v2/auth?client_id=543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com&redirect_uri=https://apk-flame.vercel.app/auth/callback&response_type=token&scope=email%20profile";
+                  if (typeof window !== 'undefined' && (window as any).Android?.openExternalBrowser) {
+                    (window as any).Android.openExternalBrowser(googleAuthUrl);
+                  } else {
+                    window.location.href = googleAuthUrl;
+                  }
+                }}
+                className="w-full bg-white text-black py-3 rounded-xl font-bold flex items-center justify-center gap-3 hover:bg-gray-100 transition-colors cursor-pointer shadow-md"
               >
                 <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
                 Continue with Google
-              </a>
+              </button>
             </>
           )}
 
