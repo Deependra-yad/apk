@@ -35,12 +35,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   logout: () => {
+    const currentToken = get().token || (typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null);
+    if (currentToken) {
+      axios.post('/api/auth/logout', {}, {
+        headers: { Authorization: `Bearer ${currentToken}` }
+      }).catch(() => {});
+    }
+
     if (typeof window !== 'undefined') {
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('liquid_') || key === 'token' || key === 'user') {
-          localStorage.removeItem(key);
-        }
-      });
+      localStorage.removeItem('liquid_token');
+      localStorage.removeItem('liquid_user');
+      localStorage.removeItem('liquid_pending_chat');
+      localStorage.removeItem('liquid_fcm_token');
       import('./chatStore').then(({ useChatStore }) => {
         useChatStore.getState().resetChatStore();
       }).catch(() => {});
@@ -55,6 +61,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.data?.user) {
+        if (res.data.user.isBanned) {
+          get().logout();
+          if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+            window.location.href = '/auth?error=AccountBanned';
+          }
+          return;
+        }
+
         const currentUser = get().user;
         const newUser = res.data.user;
         localStorage.setItem('liquid_user', JSON.stringify(newUser));
@@ -80,8 +94,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           set({ user: newUser, token });
         }
       }
-    } catch (e) {
-      console.warn("Failed to refresh user profile from /api/auth/me", e);
+    } catch (e: any) {
+      if (e?.response?.status === 401 || e?.response?.status === 403) {
+        console.warn("Session expired or unauthorized. Logging out cleanly...");
+        get().logout();
+        if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/auth')) {
+          window.location.href = '/auth?error=SessionExpired';
+        }
+      } else {
+        console.warn("Failed to refresh user profile from /api/auth/me", e);
+      }
     }
   },
   initAuth: () => {

@@ -31,13 +31,26 @@ function AuthForm() {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
+    const isLoggedOut = searchParams.get('logged_out') === '1';
+    if (isLoggedOut) {
+      localStorage.removeItem('liquid_token');
+      localStorage.removeItem('liquid_user');
+      localStorage.removeItem('liquid_pending_chat');
+      setMessage('You have been safely logged out.');
+      return;
+    }
+
     const token = localStorage.getItem('liquid_token');
     const chatParam = searchParams.get('chat');
     if (token) {
       router.push(chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web');
     }
     const urlError = searchParams.get('error');
-    if (urlError) setError(urlError);
+    if (urlError === 'SessionExpired') {
+      setError('Your session has expired. Please sign in again.');
+    } else if (urlError) {
+      setError(urlError);
+    }
 
     const isDesktop = typeof window !== 'undefined' && window.innerWidth >= 768 && !/Android|iPhone|iPad/i.test(navigator.userAgent);
     if (isDesktop || searchParams.get('qr') === '1') {
@@ -177,7 +190,8 @@ function AuthForm() {
         localStorage.setItem('liquid_token', data.token);
         localStorage.setItem('liquid_user', JSON.stringify(data.user));
         useAuthStore.getState().setAuth(data.user, data.token);
-        window.location.href = '/';
+        const chatParam = searchParams.get('chat');
+        window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
       }
     } catch (err: any) {
       setError(err.message);

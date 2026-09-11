@@ -17,6 +17,15 @@ import { useChatStore } from '@/store/chatStore';
 import { useSettingsStore, PrivacyAudience } from '@/store/settingsStore';
 import UserQrModal from '@/components/UserQrModal';
 import LinkedDevicesModal from '@/components/LinkedDevicesModal';
+import PinLockModal from '@/components/PinLockModal';
+import { 
+  isPinConfigured, 
+  isAppLockEnabled, 
+  setAppLockEnabled, 
+  getLockedChatIds, 
+  unlockChatPermanently, 
+  removeSecurityPin 
+} from '@/utils/securityLock';
 import axios from 'axios';
 
 export default function SettingsPanel() {
@@ -31,14 +40,10 @@ export default function SettingsPanel() {
 
   const [activeSection, setActiveSection] = useState<'main' | 'account' | 'privacy' | 'security' | 'chats' | 'notifications' | 'audio' | 'storage' | 'network' | 'help'>('main');
   const [copiedFingerprint, setCopiedFingerprint] = useState(false);
-  const [pinInput, setPinInput] = useState('');
+  const [pinModalMode, setPinModalMode] = useState<'set' | 'remove' | 'unlock_app'>('set');
   const [isPinModalOpen, setIsPinModalOpen] = useState(false);
-  const [pinLockEnabled, setPinLockEnabled] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return !!localStorage.getItem('liquid_app_pin');
-    }
-    return false;
-  });
+  const [appLockActive, setAppLockActive] = useState(() => isAppLockEnabled());
+  const [lockedChatsCount, setLockedChatsCount] = useState(() => getLockedChatIds().length);
   const [incognitoEnabled, setIncognitoEnabled] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('liquid_incognito_mode') === 'true';
@@ -537,9 +542,9 @@ export default function SettingsPanel() {
             <button
               onClick={() => {
                 logout();
-                window.location.href = '/auth';
+                window.location.href = '/auth?logged_out=1';
               }}
-              className="w-full h-11 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground/80 font-medium text-xs flex items-center justify-center gap-2 transition-all border border-foreground/5"
+              className="w-full h-11 rounded-xl bg-foreground/5 hover:bg-red-500/10 text-foreground/80 hover:text-red-400 font-medium text-xs flex items-center justify-center gap-2 transition-all border border-foreground/5 cursor-pointer"
             >
               <LogOut size={16} />
               <span>Log Out</span>
@@ -803,32 +808,68 @@ export default function SettingsPanel() {
               </div>
               <button
                 onClick={() => {
-                  if (pinLockEnabled) {
-                    localStorage.removeItem('liquid_app_pin');
-                    setPinLockEnabled(false);
+                  if (appLockActive) {
+                    setPinModalMode('remove');
+                    setIsPinModalOpen(true);
                   } else {
+                    setPinModalMode('set');
                     setIsPinModalOpen(true);
                   }
                 }}
-                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${pinLockEnabled ? 'bg-liquid-accent' : 'bg-gray-700'}`}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${appLockActive ? 'bg-liquid-accent' : 'bg-gray-700'}`}
               >
-                <div className={`w-5 h-5 rounded-full bg-white transition-transform ${pinLockEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                <div className={`w-5 h-5 rounded-full bg-white transition-transform ${appLockActive ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
             </div>
 
-            {pinLockEnabled && (
+            {appLockActive && (
               <div className="pt-2 border-t border-foreground/5 flex items-center justify-between text-xs">
                 <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
-                  <CheckCircle2 size={13} /> PIN Lock Active
+                  <CheckCircle2 size={13} /> App Lock Active
                 </span>
                 <button
-                  onClick={() => setIsPinModalOpen(true)}
-                  className="text-xs text-liquid-accent hover:underline font-semibold"
+                  onClick={() => {
+                    setPinModalMode('set');
+                    setIsPinModalOpen(true);
+                  }}
+                  className="text-xs text-liquid-accent hover:underline font-semibold cursor-pointer"
                 >
                   Change PIN
                 </button>
               </div>
             )}
+          </div>
+
+          {/* Protected & Locked Chats Manager */}
+          <div className="bg-foreground/5 rounded-2xl p-4 border border-foreground/5 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-violet-500/20 text-violet-400">
+                  <Lock size={18} />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-foreground">Protected & Locked Chats</h4>
+                  <p className="text-[10px] text-foreground/60">
+                    {lockedChatsCount > 0
+                      ? `${lockedChatsCount} chat${lockedChatsCount > 1 ? 's' : ''} locked behind PIN`
+                      : 'Lock individual chats from the chat header or context menu'}
+                  </p>
+                </div>
+              </div>
+              {lockedChatsCount > 0 && (
+                <button
+                  onClick={() => {
+                    if (confirm('Unlock all currently locked chats?')) {
+                      getLockedChatIds().forEach(id => unlockChatPermanently(id));
+                      setLockedChatsCount(0);
+                    }
+                  }}
+                  className="px-2.5 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Unlock All
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Incognito / Anti-Screenshot Shield */}
@@ -1575,69 +1616,17 @@ export default function SettingsPanel() {
         )}
       </AnimatePresence>
 
-      {/* PIN Lock Setup Modal */}
-      <AnimatePresence>
-        {isPinModalOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 backdrop-blur-xl p-4"
-          >
-            <motion.div
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              className="w-full max-w-sm bg-[#16112c]/95 border border-[#a855f7]/30 rounded-3xl p-6 shadow-2xl text-center space-y-4"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-pink-500/20 border border-pink-500/30 text-pink-400 flex items-center justify-center mx-auto">
-                <Lock size={22} />
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-foreground">Set 4-Digit App PIN</h3>
-                <p className="text-xs text-foreground/60 mt-1">This PIN protects your chats from physical access</p>
-              </div>
-
-              <input
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pinInput}
-                onChange={(e) => setPinInput(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                placeholder="• • • •"
-                className="w-48 h-14 mx-auto text-center text-2xl tracking-[0.5em] font-mono rounded-2xl bg-black/50 border border-[#ff7597]/40 text-foreground outline-none focus:border-[#ff7597] shadow-inner"
-                autoFocus
-              />
-
-              <div className="flex gap-2.5 pt-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setPinInput('');
-                    setIsPinModalOpen(false);
-                  }}
-                  className="flex-1 h-11 rounded-xl bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-semibold"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  disabled={pinInput.length !== 4}
-                  onClick={() => {
-                    localStorage.setItem('liquid_app_pin', pinInput);
-                    setPinLockEnabled(true);
-                    setPinInput('');
-                    setIsPinModalOpen(false);
-                  }}
-                  className="flex-1 h-11 rounded-xl bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white text-xs font-bold disabled:opacity-40 shadow-lg"
-                >
-                  Save PIN
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Cryptographic PIN Lock Modal */}
+      <PinLockModal
+        isOpen={isPinModalOpen}
+        mode={pinModalMode}
+        onSuccess={() => {
+          setIsPinModalOpen(false);
+          setAppLockActive(isAppLockEnabled());
+          setLockedChatsCount(getLockedChatIds().length);
+        }}
+        onCancel={() => setIsPinModalOpen(false)}
+      />
 
       <LinkedDevicesModal
         isOpen={isLinkedDevicesOpen}

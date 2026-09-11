@@ -432,6 +432,28 @@ router.get('/me', async (req, res) => {
   }
 });
 
+router.post('/logout', async (req, res) => {
+  const authHeader = req.headers.authorization;
+  if (authHeader) {
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      await prisma.loginLog.create({
+        data: {
+          userId: decoded.userId,
+          ipAddress: ip,
+          userAgent: userAgent ? `${userAgent} (Logged Out)` : 'Logout',
+          status: 'logout'
+        }
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  res.json({ success: true, message: 'Session successfully logged out' });
+});
+
 router.put('/profile', async (req, res) => {
   const authHeader = req.headers.authorization;
   if (!authHeader) return res.status(401).json({ error: 'No token provided' });

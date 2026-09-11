@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Users, Pin, BellOff, Archive, 
   MoreVertical, Plus, Check, Trash2, UserX, X,
-  Loader2, MessageSquare, AlertCircle, QrCode
+  Loader2, MessageSquare, AlertCircle, QrCode, Lock, ShieldCheck
 } from 'lucide-react';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
@@ -23,6 +23,18 @@ import NotificationToast from '@/components/NotificationToast';
 import LandingPage from '@/components/LandingPage';
 import UserQrModal from '@/components/UserQrModal';
 import LiquidLogo from '@/components/LiquidLogo';
+import PinLockModal from '@/components/PinLockModal';
+import { 
+  isPinConfigured,
+  isAppLockEnabled, 
+  isAppUnlockedForSession,
+  getLockedChatIds, 
+  isChatLocked, 
+  lockChat, 
+  unlockChatPermanently, 
+  isLockedChatsFolderUnlocked, 
+  setLockedChatsFolderUnlocked 
+} from '@/utils/securityLock';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore, GroupItem } from '@/store/chatStore';
 import { useSettingsStore } from '@/store/settingsStore';
@@ -64,6 +76,14 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const [showLanding, setShowLanding] = useState<boolean>(forceChat ? false : true);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
+  // WhatsApp-Grade App Lock & Chat Lock States
+  const [lockedChatIds, setLockedChatIds] = useState<string[]>([]);
+  const [isLockedFolderOpen, setIsLockedFolderOpen] = useState(false);
+  const [isUnlockFolderModalOpen, setIsUnlockFolderModalOpen] = useState(false);
+  const [isAppLockModalOpen, setIsAppLockModalOpen] = useState(false);
+  const [pinModalMode, setPinModalMode] = useState<'set' | 'unlock_app' | 'unlock_chats' | 'confirm_action'>('unlock_chats');
+  const [pendingChatToLock, setPendingChatToLock] = useState<string | null>(null);
+
   // WebRTC Calling State
   const [callState, setCallState] = useState<'idle' | 'calling' | 'receiving' | 'connected'>('idle');
   const [incomingCallData, setIncomingCallData] = useState<any>(null);
@@ -101,6 +121,16 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     setIsClient(true);
     setAuthChecked(true);
     
+    // Check app lock & locked chats status
+    if (typeof window !== 'undefined') {
+      const ids = getLockedChatIds();
+      setLockedChatIds(ids);
+      setIsLockedFolderOpen(isLockedChatsFolderUnlocked());
+      if (isAppLockEnabled() && !isAppUnlockedForSession()) {
+        setIsAppLockModalOpen(true);
+      }
+    }
+
     // Clean up any legacy unscoped saved contacts
     try {
       localStorage.removeItem('liquid_saved_contacts');
@@ -113,6 +143,32 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       setShowUpdateBanner(true);
     }
   }, [initAuth]);
+
+  // Sync locks reactively
+  useEffect(() => {
+    const handleSyncLocks = () => {
+      setLockedChatIds(getLockedChatIds());
+      setIsLockedFolderOpen(isLockedChatsFolderUnlocked());
+    };
+    window.addEventListener('storage', handleSyncLocks);
+    window.addEventListener('liquid_locks_updated', handleSyncLocks);
+    return () => {
+      window.removeEventListener('storage', handleSyncLocks);
+      window.removeEventListener('liquid_locks_updated', handleSyncLocks);
+    };
+  }, []);
+
+  // Close active chat if it gets locked and folder is not open
+  useEffect(() => {
+    if (!isLockedFolderOpen) {
+      if (activeContact && lockedChatIds.includes(activeContact.id)) {
+        setActiveContact(null);
+      }
+      if (activeGroup && lockedChatIds.includes(activeGroup.id)) {
+        setActiveGroup(null);
+      }
+    }
+  }, [isLockedFolderOpen, lockedChatIds, activeContact, activeGroup, setActiveContact, setActiveGroup]);
 
   // Handle hardware back button
   useEffect(() => {
@@ -403,6 +459,12 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   };
 
   const handleSelectContact = (contact: any) => {
+    if (lockedChatIds.includes(contact.id) && !isLockedChatsFolderUnlocked()) {
+      setPendingChatToLock(contact.id);
+      setPinModalMode('unlock_chats');
+      setIsUnlockFolderModalOpen(true);
+      return;
+    }
     markAsRead(contact.id);
     setActiveContact(contact);
     useChatStore.getState().addActiveConversation(contact.id);
@@ -431,6 +493,17 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     setSearchFeedback(null);
   };
 
+  const handleSelectGroup = (group: any) => {
+    if (lockedChatIds.includes(group.id) && !isLockedChatsFolderUnlocked()) {
+      setPendingChatToLock(group.id);
+      setPinModalMode('unlock_chats');
+      setIsUnlockFolderModalOpen(true);
+      return;
+    }
+    markAsRead(group.id);
+    setActiveGroup(group);
+  };
+
   const isTargetPinned = (targetId: string) => chatMetaMap[targetId]?.isPinned || false;
   const isTargetArchived = (targetId: string) => chatMetaMap[targetId]?.isArchived || false;
   const isTargetMuted = (targetId: string) => chatMetaMap[targetId]?.isMuted || false;
@@ -438,6 +511,12 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   // Filter Contacts
   const filteredUsers = users.filter(u => {
     if (user && u.id === user.id) return false;
+
+    // If chat is locked and folder is not open, hide from normal list
+    if (!isLockedFolderOpen && lockedChatIds.includes(u.id)) {
+      return false;
+    }
+
     const searchLow = contactSearch.toLowerCase().trim();
     const cleanSearchNum = contactSearch.replace(/\D/g, '');
     const matchesSearch = !searchLow || 
@@ -466,6 +545,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
   // Filter Groups
   const filteredGroups = groups.filter(g => {
+    // If group is locked and folder is not open, hide from normal list
+    if (!isLockedFolderOpen && lockedChatIds.includes(g.id)) {
+      return false;
+    }
+
     const searchLow = contactSearch.toLowerCase().trim();
     const matchesSearch = !searchLow || g.name.toLowerCase().startsWith(searchLow);
     const archived = isTargetArchived(g.id);
@@ -693,6 +777,46 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
             {/* Unified Chats & Groups List */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
+              {/* WhatsApp-Style Locked Chats Folder Item */}
+              {lockedChatIds.length > 0 && (
+                <div 
+                  onClick={() => {
+                    if (isLockedFolderOpen) {
+                      setLockedChatsFolderUnlocked(false);
+                      setIsLockedFolderOpen(false);
+                    } else {
+                      setPinModalMode('unlock_chats');
+                      setIsUnlockFolderModalOpen(true);
+                    }
+                  }}
+                  className={`mx-1 mb-2 p-3 rounded-2xl flex items-center justify-between cursor-pointer transition-all border ${
+                    isLockedFolderOpen
+                      ? 'bg-gradient-to-r from-[#ff4b82]/15 via-[#a855f7]/15 to-transparent border-[#ff4b82]/40 shadow-[0_0_20px_rgba(255,75,130,0.15)]'
+                      : 'bg-foreground/5 hover:bg-foreground/10 border-foreground/10'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#ff4b82] to-[#a855f7] flex items-center justify-center text-white shadow-md shadow-pink-500/25">
+                      <Lock size={18} />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-foreground">Locked Chats</h4>
+                        <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-[#ff4b82]/25 text-[#ff4b82] border border-[#ff4b82]/30">
+                          {lockedChatIds.length}
+                        </span>
+                      </div>
+                      <p className="text-[10px] text-foreground/50">
+                        {isLockedFolderOpen ? 'Folder unlocked • Tap to re-lock' : 'Protected • Tap to unlock'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-[11px] font-bold text-[#ff4b82] px-2.5 py-1 rounded-lg bg-[#ff4b82]/10">
+                    {isLockedFolderOpen ? 'Lock 🔒' : 'Unlock 🔓'}
+                  </span>
+                </div>
+              )}
+
               {unifiedChatList.length === 0 ? (
                 <div className="py-16 px-6 text-center flex flex-col items-center justify-center space-y-3 my-auto">
                   <div className="w-14 h-14 rounded-full bg-liquid-accent/10 border border-liquid-accent/20 flex items-center justify-center text-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.1)]">
@@ -717,9 +841,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
                       onClick={() => {
-                        markAsRead(item.id);
                         if (isGroupItem) {
-                          setActiveGroup(item as any);
+                          handleSelectGroup(item);
                         } else {
                           handleSelectContact(item);
                         }
@@ -759,9 +882,14 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                       {/* Content */}
                       <div className="flex-1 min-w-0">
                         <div className="flex justify-between items-center mb-1">
-                          <h3 className={`text-sm font-semibold truncate ${isActive ? 'text-foreground font-bold' : 'text-foreground/90'}`}>
-                            {isGroupItem ? item.name : (item as any).username}
-                          </h3>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <h3 className={`text-sm font-semibold truncate ${isActive ? 'text-foreground font-bold' : 'text-foreground/90'}`}>
+                              {isGroupItem ? item.name : (item as any).username}
+                            </h3>
+                            {lockedChatIds.includes(item.id) && (
+                              <Lock size={12} className="text-[#ff4b82] shrink-0" />
+                            )}
+                          </div>
 
                           <div className="flex items-center gap-1.5 shrink-0">
                             {unreadCounts[item.id] > 0 && (
@@ -897,6 +1025,56 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                 <span>{isTargetArchived(contextMenuTarget.id) ? 'Unarchive Chat' : 'Archive Chat'}</span>
               </button>
 
+              <button
+                onClick={() => {
+                  const targetId = contextMenuTarget.id;
+                  const isLocked = isChatLocked(targetId);
+                  setPendingChatToLock(targetId);
+                  if (isLocked) {
+                    setPinModalMode('confirm_action');
+                    setIsUnlockFolderModalOpen(true);
+                  } else {
+                    if (!isPinConfigured()) {
+                      setPinModalMode('set');
+                      setIsUnlockFolderModalOpen(true);
+                    } else {
+                      lockChat(targetId);
+                      setLockedChatIds(getLockedChatIds());
+                      setContextMenuTarget(null);
+                      if (activeContact?.id === targetId) setActiveContact(null);
+                      if (activeGroup?.id === targetId) setActiveGroup(null);
+                    }
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium"
+              >
+                <Lock size={16} className={isChatLocked(contextMenuTarget.id) ? "text-[#ff4b82]" : ""} />
+                <span>{isChatLocked(contextMenuTarget.id) ? 'Unlock Chat 🔓' : 'Lock Chat 🔒'}</span>
+              </button>
+
+              <button
+                onClick={async () => {
+                  if (confirm(`Permanently remove ${contextMenuTarget.name} from your conversation list?`)) {
+                    if (contextMenuTarget.type === 'group') {
+                      try {
+                        await axios.delete(`/api/groups/${contextMenuTarget.id}/leave`, {
+                          headers: { Authorization: `Bearer ${token}` }
+                        });
+                      } catch (e) {}
+                    } else {
+                      socket?.emit('clear_chat', { targetId: contextMenuTarget.id });
+                    }
+                    if (activeContact?.id === contextMenuTarget.id) setActiveContact(null);
+                    if (activeGroup?.id === contextMenuTarget.id) setActiveGroup(null);
+                    setContextMenuTarget(null);
+                  }
+                }}
+                className="w-full flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-red-500/15 text-red-400 text-xs font-medium"
+              >
+                <Trash2 size={16} />
+                <span>Delete Chat</span>
+              </button>
+
               {contextMenuTarget.type === 'contact' && (
                 <button
                   onClick={async () => {
@@ -952,6 +1130,57 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
         onStartChatWithUser={(targetUser) => {
           handleSelectContact(targetUser);
           setIsQrModalOpen(false);
+        }}
+      />
+
+      {/* WhatsApp-Grade Fullscreen App Lock PIN Modal */}
+      <PinLockModal
+        isOpen={isAppLockModalOpen}
+        mode="unlock_app"
+        onSuccess={() => {
+          setIsAppLockModalOpen(false);
+        }}
+      />
+
+      {/* WhatsApp-Grade Folder / Action PIN Modal */}
+      <PinLockModal
+        isOpen={isUnlockFolderModalOpen}
+        mode={pinModalMode}
+        onSuccess={() => {
+          if (pinModalMode === 'unlock_chats') {
+            setLockedChatsFolderUnlocked(true);
+            setIsLockedFolderOpen(true);
+            if (pendingChatToLock) {
+              const targetUser = users.find(u => u.id === pendingChatToLock);
+              const targetGroup = groups.find(g => g.id === pendingChatToLock);
+              if (targetGroup) {
+                setActiveGroup(targetGroup as any);
+              } else if (targetUser) {
+                handleSelectContact(targetUser);
+              }
+              setPendingChatToLock(null);
+            }
+          } else if (pinModalMode === 'set') {
+            if (pendingChatToLock) {
+              lockChat(pendingChatToLock);
+              setLockedChatIds(getLockedChatIds());
+              if (activeContact?.id === pendingChatToLock) setActiveContact(null);
+              if (activeGroup?.id === pendingChatToLock) setActiveGroup(null);
+              setPendingChatToLock(null);
+            }
+          } else if (pinModalMode === 'confirm_action') {
+            if (pendingChatToLock) {
+              unlockChatPermanently(pendingChatToLock);
+              setLockedChatIds(getLockedChatIds());
+              setPendingChatToLock(null);
+            }
+          }
+          setContextMenuTarget(null);
+          setIsUnlockFolderModalOpen(false);
+        }}
+        onCancel={() => {
+          setIsUnlockFolderModalOpen(false);
+          setPendingChatToLock(null);
         }}
       />
     </main>

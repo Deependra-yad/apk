@@ -30,6 +30,13 @@ import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryp
 import { ShieldCheck, Camera, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CameraQrScannerModal from './CameraQrScannerModal';
+import PinLockModal from './PinLockModal';
+import { 
+  isPinConfigured, 
+  isChatLocked, 
+  lockChat, 
+  unlockChatPermanently 
+} from '@/utils/securityLock';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -101,6 +108,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [copyToast, setCopyToast] = useState<string | null>(null);
   const [hoveredMessageId, setHoveredMessageId] = useState<string | null>(null);
+  const [isPinLockModalOpen, setIsPinLockModalOpen] = useState(false);
+  const [pinLockMode, setPinLockMode] = useState<'set' | 'confirm_action'>('set');
+  const [currentChatLocked, setCurrentChatLocked] = useState(false);
   const [isSafetyModalOpen, setIsSafetyModalOpen] = useState(false);
   const [safetyNumber, setSafetyNumber] = useState<string>('');
   const [isScanningSafetyCode, setIsScanningSafetyCode] = useState(false);
@@ -147,6 +157,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const isMultiSelectMode = selectedMessageIds.length > 0;
   const targetId = activeContact?.id || activeGroup?.id || '';
   const targetName = isGroup ? activeGroup?.name : activeContact?.username || '';
+
+  useEffect(() => {
+    if (targetId) {
+      setCurrentChatLocked(isChatLocked(targetId));
+    }
+  }, [targetId]);
 
   // Load chat history & mark seen
   useEffect(() => {
@@ -1016,6 +1032,31 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         <span>Verify Security Code</span>
                       </button>
                     )}
+
+                    <button
+                      onClick={() => {
+                        setIsHeaderMenuOpen(false);
+                        const targetId = activeContact?.id || activeGroup?.id;
+                        if (!targetId) return;
+                        if (currentChatLocked) {
+                          setPinLockMode('confirm_action');
+                          setIsPinLockModalOpen(true);
+                        } else {
+                          if (!isPinConfigured()) {
+                            setPinLockMode('set');
+                            setIsPinLockModalOpen(true);
+                          } else {
+                            lockChat(targetId);
+                            setCurrentChatLocked(true);
+                            if (onBack) onBack();
+                          }
+                        }
+                      }}
+                      className="w-full px-4 py-2.5 text-left text-foreground hover:bg-foreground/10 transition-colors flex items-center gap-2.5 text-xs font-medium"
+                    >
+                      <Lock size={16} className={currentChatLocked ? "text-[#ff4b82]" : ""} />
+                      <span>{currentChatLocked ? 'Unlock Chat 🔓' : 'Lock Chat 🔒'}</span>
+                    </button>
 
                     <div className="h-[1px] bg-foreground/10 my-1" />
 
@@ -2343,6 +2384,29 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Cryptographic Chat Lock PIN Modal */}
+      <PinLockModal
+        isOpen={isPinLockModalOpen}
+        mode={pinLockMode}
+        onSuccess={() => {
+          const targetId = activeContact?.id || activeGroup?.id;
+          if (pinLockMode === 'set') {
+            if (targetId) {
+              lockChat(targetId);
+              setCurrentChatLocked(true);
+              if (onBack) onBack();
+            }
+          } else if (pinLockMode === 'confirm_action') {
+            if (targetId) {
+              unlockChatPermanently(targetId);
+              setCurrentChatLocked(false);
+            }
+          }
+          setIsPinLockModalOpen(false);
+        }}
+        onCancel={() => setIsPinLockModalOpen(false)}
+      />
     </div>
   );
 }
