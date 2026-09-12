@@ -427,3 +427,4 @@ export default function LapzHero3D() {
     />
   );
 }
+
