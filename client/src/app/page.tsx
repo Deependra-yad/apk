@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -474,6 +474,92 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     }
   }, [callState]);
 
+  // Check and pop up active ringing call from REST backend
+  const checkActiveCall = useCallback(async () => {
+    if (!token) return;
+    try {
+      const res = await axios.get('/api/calls/active', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.data?.hasActiveCall && res.data.call) {
+        const call = res.data.call;
+        soundEffects.startIncomingRing();
+        if (typeof window !== 'undefined' && (window as any).Android?.startIncomingCallRingtone) {
+          try {
+            (window as any).Android.startIncomingCallRingtone(call.from?.username || 'Liquid User', call.isVideo);
+          } catch (e) {}
+        }
+        setIncomingCallData({
+          callId: call.callId,
+          from: call.from,
+          offer: call.offer,
+          isVideo: call.isVideo
+        });
+        setIsVideoCall(call.isVideo);
+        setCallState('receiving');
+        setShowLanding(false);
+      }
+    } catch (err) {}
+  }, [token]);
+
+  // Handle call intents from native Android notifications
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__liquidHandleIncomingCallIntent = (callerId: string, callId: string, isVideo: boolean) => {
+        checkActiveCall();
+      };
+
+      if ((window as any).__liquidPendingCallIntent) {
+        delete (window as any).__liquidPendingCallIntent;
+        checkActiveCall();
+      }
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).__liquidHandleIncomingCallIntent;
+      }
+    };
+  }, [checkActiveCall]);
+
+  // React to real-time status and presence changes
+  useEffect(() => {
+    const handleStatusChange = (e: any) => {
+      const { userId, isOnline, lastSeen } = e.detail || {};
+      if (!userId) return;
+      setUsers(prev => prev.map(u => {
+        if (u.id === userId) {
+          return {
+            ...u,
+            isOnline,
+            lastSeen: lastSeen || u.lastSeen
+          };
+        }
+        return u;
+      }));
+    };
+    window.addEventListener('liquid_status_changed', handleStatusChange);
+    return () => window.removeEventListener('liquid_status_changed', handleStatusChange);
+  }, []);
+
+  // Presence Heartbeat & Call Sync on App Focus / Resume
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        useChatStore.getState().refreshOnlineUsers();
+        checkActiveCall();
+        if (socket && user?.id) {
+          socket.emit('presence_ping');
+        }
+      }
+    };
+    window.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('focus', handleVisibility);
+    return () => {
+      window.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('focus', handleVisibility);
+    };
+  }, [checkActiveCall, socket, user?.id]);
+
   const handleStartCall = (isVideo: boolean) => {
     if (!activeContact) return;
     setIsVideoCall(isVideo);
@@ -698,8 +784,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
             className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-gradient-to-r from-blue-600/95 to-indigo-600/95 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-4 shadow-[0_0_40px_rgba(37,99,235,0.3)] flex items-center justify-between gap-4"
           >
             <div className="text-white text-sm font-medium">
-              <strong className="block text-base mb-0.5">🚀 LiquidChat v2.0.0 (Pro) Available!</strong>
-              E2EE key healing, hardware back gesture, and keyboard shortcuts. Install now!
+              <strong className="block text-base mb-0.5">🚀 LiquidChat v2.0.1 (Pro) Available!</strong>
+              Live real-time presence, instant call answer, and background push notifications. Install now!
             </div>
             <div className="flex flex-col gap-2 shrink-0">
               <button 

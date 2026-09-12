@@ -833,6 +833,28 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const isDirectTyping = activeContact ? typingUsers.includes(activeContact.id) : false;
   const groupTypers = activeGroup ? (groupTypingUsers[activeGroup.id] || []) : [];
 
+  // Live timer tick for real-time relative "last seen" formatting
+  const [, setLiveTimeTicker] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setLiveTimeTicker(t => t + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatLastSeenTime = (dateStr?: string | Date | null) => {
+    if (!dateStr) return 'Offline';
+    try {
+      const d = new Date(dateStr);
+      const diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diffSec < 45) return 'Last seen just now';
+      if (diffSec < 3600) return `Last seen ${Math.max(1, Math.floor(diffSec / 60))}m ago`;
+      if (isToday(d)) return `Last seen today at ${format(d, 'h:mm a')}`;
+      if (isYesterday(d)) return `Last seen yesterday at ${format(d, 'h:mm a')}`;
+      return `Last seen ${format(d, 'MMM d, yyyy')}`;
+    } catch (e) {
+      return 'Offline';
+    }
+  };
+
   // In-chat search filter
   const filteredMessages = chatSearchTerm.trim()
     ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchTerm.toLowerCase()) || m.fileName?.toLowerCase().includes(chatSearchTerm.toLowerCase()))
@@ -948,16 +970,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 ) : (
                   <p className="text-[11px] sm:text-xs text-foreground/60 font-medium truncate">
                     {isOnline ? (
-                      <span className="text-green-400 font-medium">Online</span>
-                    ) : activeContact?.lastSeen ? (
-                      (() => {
-                        const d = new Date(activeContact.lastSeen);
-                        if (isToday(d)) return `Last seen today at ${format(d, 'h:mm a')}`;
-                        if (isYesterday(d)) return `Last seen yesterday at ${format(d, 'h:mm a')}`;
-                        return `Last seen ${format(d, 'MMM d, yyyy')}`;
-                      })()
+                      <span className="text-green-400 font-medium flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                        Online
+                      </span>
                     ) : (
-                      'Offline'
+                      formatLastSeenTime(activeContact?.lastSeen)
                     )}
                   </p>
                 )}

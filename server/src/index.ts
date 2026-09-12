@@ -142,6 +142,40 @@ app.post('/api/calls/action', async (req, res) => {
   res.json({ success: true });
 });
 
+// Retrieve active ringing call session for the authenticated user
+app.get('/api/calls/active', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded: any = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+    if (!userId) return res.status(401).json({ error: 'Invalid token' });
+
+    let call = activeCalls.get(userId);
+    if (!call) {
+      call = Array.from(activeCalls.values()).find(c => c.receiverId === userId && c.status === 'ringing');
+    }
+
+    if (call && call.status === 'ringing' && (Date.now() - call.createdAt < 45000)) {
+      return res.json({
+        hasActiveCall: true,
+        call: {
+          callId: call.callId,
+          from: call.fromUser,
+          offer: call.offer,
+          isVideo: call.isVideo,
+          createdAt: call.createdAt
+        }
+      });
+    }
+
+    return res.json({ hasActiveCall: false });
+  } catch (err) {
+    return res.status(500).json({ error: 'Failed to query active call' });
+  }
+});
+
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
   res.status(200).send('Liquid Chat Backend is running successfully.');
@@ -208,11 +242,7 @@ const sendPushNotification = async (
       ] : undefined)
     };
     const payload = JSON.stringify(payloadData);
-    const isConnected = !!connectedUsers.get(userId);
-    if (isConnected && !force) {
-      // Recipient is connected and active in the app! Do not send intrusive push notifications
-      return;
-    }
+    const isConnected = userSockets.has(userId) && (userSockets.get(userId)?.size || 0) > 0;
     
     for (const sub of subscriptions) {
       if (sub.endpoint.startsWith('fcm://')) {
@@ -228,7 +258,8 @@ const sendPushNotification = async (
                 type: 'call',
                 callerId: opts.callerId || '',
                 callerName: opts.callerName || '',
-                isVideo: opts.isVideo ? 'true' : 'false'
+                isVideo: opts.isVideo ? 'true' : 'false',
+                callId: (opts as any).callId || ''
               },
               android: {
                 priority: 'high',
@@ -263,7 +294,7 @@ const sendPushNotification = async (
           console.error('FCM Push Error:', err);
         }
       } else {
-        if (isConnected && !force) continue; // Skip web push if user is connected via websocket (unless forced)
+        if (isConnected && !force) continue; // Skip web push if user is actively connected via websocket (in-app toast handles it)
         const pushSub = {
           endpoint: sub.endpoint,
           keys: { p256dh: sub.p256dh, auth: sub.auth }
@@ -282,10 +313,16 @@ const sendPushNotification = async (
   }
 };
 
-// Map of userId -> socketId
-const connectedUsers = new Map<string, string>();
+// Map of userId -> Set of socketIds (supports multiple tabs, devices, reconnections)
+const userSockets = new Map<string, Set<string>>();
 // Map of socketId -> userId
 const socketToUser = new Map<string, string>();
+// Legacy alias
+const connectedUsers = {
+  get: (uid: string) => (userSockets.get(uid)?.size ? Array.from(userSockets.get(uid)!)[0] : undefined),
+  has: (uid: string) => (userSockets.get(uid)?.size || 0) > 0,
+  keys: () => userSockets.keys()
+};
 
 interface ActiveCallSession {
   callId: string;
@@ -346,14 +383,27 @@ io.on('connection', (socket) => {
 
   const registerUser = async (uid: string, sid?: string) => {
     if (!uid) return;
-    connectedUsers.set(uid, socket.id);
+    let sockets = userSockets.get(uid);
+    const wasOffline = !sockets || sockets.size === 0;
+    if (!sockets) {
+      sockets = new Set<string>();
+      userSockets.set(uid, sockets);
+    }
+    sockets.add(socket.id);
     socketToUser.set(socket.id, uid);
     socket.join(`user_${uid}`);
     if (sid) {
       socket.join(`session_${sid}`);
     }
-    io.emit('online_users', Array.from(connectedUsers.keys()));
-    io.emit('user_status_changed', { userId: uid, isOnline: true });
+
+    // Broadcast if user transitioned from offline to online
+    if (wasOffline) {
+      io.emit('online_users', Array.from(userSockets.keys()));
+      io.emit('user_status_changed', { userId: uid, isOnline: true });
+    } else {
+      // Send fresh online user list to this specific client
+      socket.emit('online_users', Array.from(userSockets.keys()));
+    }
 
     // Automatically join all group rooms the user is a member of (crucial for reconnections)
     try {
@@ -679,7 +729,7 @@ io.on('connection', (socket) => {
     
     // Trigger push notification for incoming call (force=true with interactive actions)
     sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`, {
-      url: `/#call?from=${fromUser?.id}&video=${isVideo}&callId=${callId}`,
+      url: `/web?callId=${callId}&from=${fromUser?.id}&video=${isVideo}#call`,
       force: true,
       type: 'call',
       callerId: fromUser?.id,
@@ -741,32 +791,63 @@ io.on('connection', (socket) => {
     io.to(`user_${to}`).emit('call_ended', { callId });
   });
 
+  // Client requests fresh list of online user IDs
+  socket.on('get_online_users', () => {
+    socket.emit('online_users', Array.from(userSockets.keys()));
+  });
+
+  // Client presence heartbeat
+  socket.on('presence_ping', () => {
+    const uid = socketToUser.get(socket.id);
+    if (uid) {
+      let sockets = userSockets.get(uid);
+      if (!sockets) {
+        sockets = new Set<string>();
+        userSockets.set(uid, sockets);
+      }
+      sockets.add(socket.id);
+      socket.emit('online_users', Array.from(userSockets.keys()));
+    }
+  });
+
   // --- Disconnection ---
   socket.on('disconnect', async () => {
     const disconnectedUserId = socketToUser.get(socket.id);
     if (disconnectedUserId) {
-      connectedUsers.delete(disconnectedUserId);
       socketToUser.delete(socket.id);
+      const sockets = userSockets.get(disconnectedUserId);
+      if (sockets) {
+        sockets.delete(socket.id);
+        // Only mark user as offline if they have no active sockets left
+        if (sockets.size === 0) {
+          userSockets.delete(disconnectedUserId);
 
-      // If this disconnected user was in an active call, end it cleanly
-      for (const [recId, call] of activeCalls.entries()) {
-        if (call.callerId === disconnectedUserId || call.receiverId === disconnectedUserId) {
-          if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
-          activeCalls.delete(recId);
-          const targetId = call.callerId === disconnectedUserId ? call.receiverId : call.callerId;
-          io.to(`user_${targetId}`).emit('call_ended', { callId: call.callId });
+          // If this disconnected user was in an active call, end it cleanly
+          for (const [recId, call] of activeCalls.entries()) {
+            if (call.callerId === disconnectedUserId || call.receiverId === disconnectedUserId) {
+              if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
+              activeCalls.delete(recId);
+              const targetId = call.callerId === disconnectedUserId ? call.receiverId : call.callerId;
+              io.to(`user_${targetId}`).emit('call_ended', { callId: call.callId });
+            }
+          }
+
+          const now = new Date();
+          try {
+            await prisma.user.update({
+              where: { id: disconnectedUserId },
+              data: { lastSeen: now }
+            });
+          } catch (e) {}
+
+          io.emit('online_users', Array.from(userSockets.keys()));
+          io.emit('user_status_changed', { 
+            userId: disconnectedUserId, 
+            isOnline: false, 
+            lastSeen: now.toISOString() 
+          });
         }
       }
-
-      try {
-        await prisma.user.update({
-          where: { id: disconnectedUserId },
-          data: { lastSeen: new Date() }
-        });
-      } catch (e) {}
-
-      io.emit('online_users', Array.from(connectedUsers.keys()));
-      io.emit('user_status_changed', { userId: disconnectedUserId, isOnline: false, lastSeen: new Date() });
     }
   });
 });

@@ -51,8 +51,12 @@ export default function CallModal({
 
   // Keep target ID updated in ref
   useEffect(() => {
-    targetIdRef.current = activeContact?.id || incomingCallData?.from?.id || targetIdRef.current;
-  }, [activeContact, incomingCallData]);
+    if (callState === 'receiving' || incomingCallData) {
+      targetIdRef.current = incomingCallData?.from?.id || incomingCallData?.from || targetIdRef.current;
+    } else if (callState === 'calling' && activeContact?.id) {
+      targetIdRef.current = activeContact.id;
+    }
+  }, [callState, activeContact, incomingCallData]);
 
   // Instantiate WebRTC Manager once on mount
   useEffect(() => {
@@ -254,7 +258,9 @@ export default function CallModal({
     if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
       try { (window as any).Android.stopCallRingtone(); } catch (e) {}
     }
-    const targetId = targetIdRef.current || activeContact?.id || incomingCallData?.from?.id;
+    const targetId = (callState === 'receiving' || incomingCallData)
+      ? (incomingCallData?.from?.id || incomingCallData?.from || targetIdRef.current)
+      : (targetIdRef.current || activeContact?.id);
     const callId = incomingCallData?.callId;
 
     if (token && targetId) {

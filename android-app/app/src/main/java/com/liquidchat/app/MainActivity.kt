@@ -743,10 +743,18 @@ class MainActivity : AppCompatActivity() {
         when (action) {
             "ACCEPT_CALL" -> {
                 stopCallRingtoneInternal()
+                val callerId = intent.getStringExtra("callerId") ?: ""
+                val callId = intent.getStringExtra("callId") ?: ""
+                val isVideo = intent.getBooleanExtra("isVideo", true)
                 val js = """
                     (function() {
                         try {
                             window.__liquidAutoAnswer = true;
+                            if (typeof window !== 'undefined' && typeof window.__liquidHandleIncomingCallIntent === 'function') {
+                                window.__liquidHandleIncomingCallIntent('$callerId', '$callId', $isVideo);
+                            } else if (typeof window !== 'undefined') {
+                                window.__liquidPendingCallIntent = { callerId: '$callerId', callId: '$callId', isVideo: $isVideo };
+                            }
                             if (typeof window !== 'undefined' && typeof window.__liquidAnswerCall === 'function') {
                                 window.__liquidAnswerCall();
                                 return;
@@ -810,6 +818,26 @@ class MainActivity : AppCompatActivity() {
             }
             "OPEN_CALL" -> {
                 stopCallRingtoneInternal()
+                val callerId = intent.getStringExtra("callerId") ?: ""
+                val callId = intent.getStringExtra("callId") ?: ""
+                val isVideo = intent.getBooleanExtra("isVideo", true)
+                val js = """
+                    (function() {
+                        try {
+                            if (typeof window !== 'undefined' && typeof window.__liquidHandleIncomingCallIntent === 'function') {
+                                window.__liquidHandleIncomingCallIntent('$callerId', '$callId', $isVideo);
+                            } else if (typeof window !== 'undefined') {
+                                window.__liquidPendingCallIntent = { callerId: '$callerId', callId: '$callId', isVideo: $isVideo };
+                            }
+                        } catch(e) {
+                            console.error('Call open intent error:', e);
+                        }
+                    })();
+                """.trimIndent()
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 100)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 500)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1200)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 2500)
             }
         }
     }

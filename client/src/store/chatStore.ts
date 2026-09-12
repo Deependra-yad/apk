@@ -102,6 +102,7 @@ interface ChatState {
   toggleStarMessage: (messageId: string) => void;
   markMessagesAsSeenLocally: (seenByUserId: string) => void;
   setIncomingToast: (toast: any | null) => void;
+  refreshOnlineUsers: () => void;
   resetChatStore: () => void;
 }
 
@@ -166,6 +167,30 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     socket.on('online_users', (users: string[]) => {
       set({ onlineUsers: users });
+    });
+
+    socket.on('user_status_changed', (data: { userId: string; isOnline: boolean; lastSeen?: string }) => {
+      const { onlineUsers, activeContact } = get();
+      if (data.isOnline) {
+        if (!onlineUsers.includes(data.userId)) {
+          set({ onlineUsers: [...onlineUsers, data.userId] });
+        }
+      } else {
+        set({ onlineUsers: onlineUsers.filter(id => id !== data.userId) });
+      }
+
+      if (activeContact && activeContact.id === data.userId) {
+        set({
+          activeContact: {
+            ...activeContact,
+            lastSeen: data.lastSeen || new Date().toISOString()
+          }
+        });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('liquid_status_changed', { detail: data }));
+      }
     });
 
     socket.on('force_logout', (data?: any) => {
@@ -509,6 +534,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (socket) {
       socket.disconnect();
       set({ socket: null, onlineUsers: [], typingUsers: [] });
+    }
+  },
+
+  refreshOnlineUsers: () => {
+    const socket = get().socket;
+    if (socket && socket.connected) {
+      socket.emit('get_online_users');
+      socket.emit('presence_ping');
     }
   },
 
