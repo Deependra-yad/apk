@@ -60,12 +60,20 @@ export default function PublicContactSharePage() {
 
           if (isAndroid || isMobile) {
             setAppLaunchAttempted(true);
-            // 1. Android Intent URI (Forces OS to invoke com.liquidchat.app package if installed)
             const intentUrl = `intent://chat/${cleanId}#Intent;scheme=liquidchat;package=com.liquidchat.app;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
-            // 2. Custom Scheme
             const customSchemeUrl = `liquidchat://chat/${cleanId}`;
 
-            // Attempt launch
+            // Hidden iframe dispatch for instant app invocation without popup blockage
+            try {
+              const iframe = document.createElement('iframe');
+              iframe.style.display = 'none';
+              iframe.src = customSchemeUrl;
+              document.body.appendChild(iframe);
+              setTimeout(() => {
+                try { document.body.removeChild(iframe); } catch(e){}
+              }, 2000);
+            } catch (e) {}
+
             try {
               window.location.href = intentUrl;
             } catch (e) {
@@ -84,23 +92,20 @@ export default function PublicContactSharePage() {
     fetchContact();
   }, [id]);
 
-  const handleOpenInApp = () => {
-    if (!contact) return;
-    const identifier = contact.liquidNumber || contact.username || contact.id;
-    const cleanId = encodeURIComponent(identifier);
-    const intentUrl = `intent://chat/${cleanId}#Intent;scheme=liquidchat;package=com.liquidchat.app;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
-    const customSchemeUrl = `liquidchat://chat/${cleanId}`;
+  const targetIdentifier = contact?.liquidNumber || contact?.username || contact?.id || id;
+  const cleanId = encodeURIComponent(targetIdentifier || '');
+  const intentUrl = `intent://chat/${cleanId}#Intent;scheme=liquidchat;package=com.liquidchat.app;S.browser_fallback_url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')};end`;
+  const customSchemeUrl = `liquidchat://chat/${cleanId}`;
 
+  const handleOpenInApp = (e?: React.MouseEvent) => {
     try {
       window.location.href = intentUrl;
-    } catch (e) {
+    } catch (err) {
       window.location.href = customSchemeUrl;
     }
-
-    // Secondary fallback after 2s
     setTimeout(() => {
       window.location.href = customSchemeUrl;
-    }, 500);
+    }, 400);
   };
 
   const handleStartChatOnWeb = () => {
@@ -282,14 +287,15 @@ export default function PublicContactSharePage() {
               {/* Action Buttons */}
               <div className="space-y-3">
                 {/* 1. Forceful Primary Launch Button */}
-                <button
+                <a
+                  href={intentUrl}
                   onClick={handleOpenInApp}
-                  className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(56,189,248,0.4)] hover:shadow-[0_0_40px_rgba(56,189,248,0.6)] active:scale-[0.98] flex items-center justify-center gap-2.5 cursor-pointer"
+                  className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(56,189,248,0.4)] hover:shadow-[0_0_40px_rgba(56,189,248,0.6)] active:scale-[0.98] flex items-center justify-center gap-2.5 cursor-pointer no-underline text-center"
                 >
                   <Smartphone size={18} className="animate-bounce" />
                   <span>OPEN IN LIQUID CHAT APP</span>
                   <ArrowRight size={16} />
-                </button>
+                </a>
 
                 {/* Secondary Actions */}
                 <div className="grid grid-cols-2 gap-2.5">

@@ -110,15 +110,67 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       window.location.hostname.startsWith('web.') || 
       window.location.pathname.startsWith('/web')
     );
+    const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const hasChatParam = Boolean(urlParams?.get('chat'));
 
-    // If native Android APK or web.* subdomain or /web path, show chat.
-    // Visiting root domain liquidchat.online ALWAYS displays the landing page!
-    if (isNativeAndroidApp || isWebSubdomainOrPath) {
+    // If native Android APK or web.* subdomain or /web path or ?chat=..., show chat.
+    // Visiting root domain liquidchat.online without parameters displays the landing page.
+    if (isNativeAndroidApp || isWebSubdomainOrPath || hasChatParam) {
       setShowLanding(false);
     } else {
       setShowLanding(true);
     }
   }, [forceChat]);
+
+  // Global deep-link chat bridge for native Android APK
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    (window as any).__liquidOpenChat = async (targetId: string) => {
+      if (!targetId) return;
+      try {
+        const cleanTarget = decodeURIComponent(targetId).trim();
+        setShowLanding(false);
+
+        // Check if already active
+        const currentActive = useChatStore.getState().activeContact;
+        if (
+          currentActive &&
+          (currentActive.liquidNumber === cleanTarget ||
+           currentActive.username?.toLowerCase() === cleanTarget.toLowerCase() ||
+           currentActive.id === cleanTarget)
+        ) {
+          return;
+        }
+
+        // Search existing users state or fetch from API
+        let matched = users.find((u: any) =>
+          u.liquidNumber === cleanTarget ||
+          u.username?.toLowerCase() === cleanTarget.toLowerCase() ||
+          u.id === cleanTarget
+        );
+
+        if (!matched) {
+          const res = await axios.get(`/api/users/public/${encodeURIComponent(cleanTarget)}`);
+          if (res.data) {
+            matched = res.data;
+            setUsers((prev) => [matched, ...prev.filter((u) => u.id !== matched.id)]);
+          }
+        }
+
+        if (matched) {
+          useChatStore.getState().setActiveContact(matched);
+          useChatStore.getState().setActiveGroup(null);
+        }
+      } catch (err) {
+        console.error('Deep link open chat error:', err);
+      }
+    };
+
+    return () => {
+      delete (window as any).__liquidOpenChat;
+    };
+  }, [users]);
 
   useEffect(() => {
     initAuth();

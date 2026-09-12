@@ -176,12 +176,18 @@ class MainActivity : AppCompatActivity() {
 
         setupWebView()
 
+        val deepLinkChatId = extractChatIdFromIntent(intent)
         if (savedInstanceState != null) {
             webView.restoreState(savedInstanceState)
         } else {
-            webView.loadUrl(WEB_URL)
-            handleDeepLink(intent)
+            val initialUrl = if (!deepLinkChatId.isNullOrEmpty()) {
+                "$WEB_URL/?chat=${Uri.encode(deepLinkChatId)}"
+            } else {
+                WEB_URL
+            }
+            webView.loadUrl(initialUrl)
         }
+        handleDeepLink(intent)
         handleCallAction(intent)
     }
 
@@ -943,21 +949,39 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        handleDeepLink(intent)
-        handleCallAction(intent)
+    private fun extractChatIdFromIntent(intent: Intent?): String? {
+        val data = intent?.data ?: return null
+        val scheme = data.scheme ?: ""
+        val host = data.host ?: ""
+        val path = data.path ?: ""
+
+        if (scheme.equals("liquidchat", ignoreCase = true)) {
+            if (host.equals("chat", ignoreCase = true) || host.equals("c", ignoreCase = true) || host.equals("open", ignoreCase = true)) {
+                return path.trimStart('/').ifEmpty { null }
+                    ?: data.getQueryParameter("id")
+                    ?: data.getQueryParameter("chat")
+            } else if (host.isNotEmpty() && !host.equals("auth", ignoreCase = true)) {
+                return host
+            }
+        } else if (scheme.equals("https", ignoreCase = true) || scheme.equals("http", ignoreCase = true)) {
+            if (path.startsWith("/c/")) {
+                return path.substring(3).trim().ifEmpty { null }
+            } else if (path.startsWith("/chat/")) {
+                return path.substring(6).trim().ifEmpty { null }
+            } else {
+                return data.getQueryParameter("chat") ?: data.getQueryParameter("id")
+            }
+        }
+        return null
     }
 
     private fun handleDeepLink(intent: Intent?) {
         val data = intent?.data ?: return
         val scheme = data.scheme ?: ""
         val host = data.host ?: ""
-        val path = data.path ?: ""
 
         // 1. Google or web auth token return
-        if (scheme == "liquidchat" && host == "auth") {
+        if (scheme.equals("liquidchat", ignoreCase = true) && host.equals("auth", ignoreCase = true)) {
             val token = data.getQueryParameter("token")
             val user = data.getQueryParameter("user")
             if (!token.isNullOrEmpty()) {
@@ -980,29 +1004,8 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        // 2. Shared Contact / Chat ID deep links:
-        // - liquidchat://chat/{id}
-        // - liquidchat://c/{id}
-        // - https://liquidchat.online/c/{id}
-        // - https://web.liquidchat.online/c/{id}
-        var targetChatId: String? = null
-
-        if (scheme == "liquidchat") {
-            if (host == "chat" || host == "c") {
-                targetChatId = path.trimStart('/').ifEmpty { null }
-                    ?: data.getQueryParameter("id")
-                    ?: data.getQueryParameter("chat")
-            }
-        } else if (scheme == "https" || scheme == "http") {
-            if (path.startsWith("/c/")) {
-                targetChatId = path.substring(3).trim().ifEmpty { null }
-            } else if (path.startsWith("/chat/")) {
-                targetChatId = path.substring(6).trim().ifEmpty { null }
-            } else {
-                targetChatId = data.getQueryParameter("chat")
-            }
-        }
-
+        // 2. Shared Contact / Chat ID deep links
+        val targetChatId = extractChatIdFromIntent(intent)
         if (!targetChatId.isNullOrEmpty()) {
             val cleanTarget = targetChatId.trim()
             val js = """
@@ -1012,7 +1015,7 @@ class MainActivity : AppCompatActivity() {
                         if (typeof window.__liquidOpenChat === 'function') {
                             window.__liquidOpenChat('$cleanTarget');
                         } else {
-                            const currentUrl = new URL(window.location.href);
+                            var currentUrl = new URL(window.location.href);
                             currentUrl.searchParams.set('chat', '$cleanTarget');
                             window.location.href = currentUrl.toString();
                         }
@@ -1022,9 +1025,9 @@ class MainActivity : AppCompatActivity() {
                 })();
             """.trimIndent()
 
-            webView.postDelayed({
-                webView.evaluateJavascript(js, null)
-            }, 600)
+            webView.evaluateJavascript(js, null)
+            webView.postDelayed({ webView.evaluateJavascript(js, null) }, 500)
+            webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1500)
         }
     }
 

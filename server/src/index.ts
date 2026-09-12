@@ -102,6 +102,23 @@ app.get(['/LiquidChat.apk', '/download/apk', '/api/download/apk'], (req, res) =>
   res.status(404).send('APK file not found on server');
 });
 
+// Digital Asset Links for Android App Links verification
+app.get(['/.well-known/assetlinks.json', '/assetlinks.json'], (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.json([
+    {
+      relation: ["delegate_permission/common.handle_all_urls"],
+      target: {
+        namespace: "android_app",
+        package_name: "com.liquidchat.app",
+        sha256_cert_fingerprints: [
+          "D4:F8:CF:39:08:C0:2C:5F:0E:B8:D0:DF:11:F5:82:A0:3B:CB:79:A3:DF:CD:A2:73:F8:9F:5C:56:F9:A9:65:35"
+        ]
+      }
+    }
+  ]);
+});
+
 // Express JSON parser for API routes (Increased limit for Base64 image handling)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
