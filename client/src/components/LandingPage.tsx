@@ -21,11 +21,11 @@ import ScrollytellingExperience from './ScrollytellingExperience';
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
 
-  // Snappy, instant scroll transforms (zero rubber-banding lag)
+  // Instant scroll transforms (zero rubber-banding lag)
   const yHeroText = useTransform(scrollYProgress, [0, 0.25], [0, -50]);
-  const yMockup = useTransform(scrollYProgress, [0, 0.35], [0, -90]);
-  const rotateMockup = useTransform(scrollYProgress, [0, 0.35], [-2, 2]);
-  const scaleMockup = useTransform(scrollYProgress, [0, 0.3], [1, 1.03]);
+  const yPhone = useTransform(scrollYProgress, [0, 0.3], [0, -80]);
+  const rotatePhone = useTransform(scrollYProgress, [0, 0.3], [-2, 2]);
+  const scalePhone = useTransform(scrollYProgress, [0, 0.25], [1, 1.04]);
 
   // Stereoscopic multi-depth floating badges
   const yBadge1 = useTransform(scrollYProgress, [0, 0.4], [0, -180]);
@@ -42,14 +42,14 @@ export default function LandingPage() {
   // Responsive mouse parallax for 3D hero tilt
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 120, damping: 24 });
-  const springY = useSpring(mouseY, { stiffness: 120, damping: 24 });
+  const springX = useSpring(mouseX, { stiffness: 140, damping: 24 });
+  const springY = useSpring(mouseY, { stiffness: 140, damping: 24 });
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const { clientX, clientY } = e;
     const { innerWidth, innerHeight } = window;
-    const x = (clientX / innerWidth - 0.5) * 30;
-    const y = (clientY / innerHeight - 0.5) * 30;
+    const x = (clientX / innerWidth - 0.5) * 24;
+    const y = (clientY / innerHeight - 0.5) * 24;
     mouseX.set(x);
     mouseY.set(y);
   };
@@ -58,36 +58,36 @@ export default function LandingPage() {
   const [activeHeroChat, setActiveHeroChat] = useState<number>(0);
   const heroChats = [
     {
-      name: 'Raj kumar',
-      avatarLetter: 'R',
+      name: 'Sakura (Tokyo)',
+      avatar: '🌸',
       tag: 'ID: 8343254978',
-      preview: 'Call audio is crystal clear with WebRTC noise gate! ⚡',
+      preview: 'Secret rendezvous in Tokyo at 7 PM 🌸',
       time: '8:11 PM',
       messages: [
-        { text: 'Hey! Did you see the new LiquidChat v2.0.1 update? Decryption is instant and back button navigation works like a charm! 🌊', isMe: false },
-        { text: 'Yes! And all messages are preserved in zero-knowledge local storage even across reloads. 100% E2EE verified! ✨', isMe: true }
+        { text: 'Secret rendezvous in Tokyo at 7 PM 🌸', isMe: false, time: '8:11 PM' },
+        { text: 'Ratchet keys verified. 0 bytes left on disk! ✨', isMe: true, time: '8:12 PM' }
       ]
     },
     {
       name: 'NandniJamwal',
-      avatarLetter: 'N',
+      avatar: '💎',
       tag: 'Mutual Contact',
-      preview: 'Sent encrypted file: project_architecture.pdf',
+      preview: 'Confidential project audit attached.',
       time: '7:45 PM',
       messages: [
-        { text: 'Attached the confidential security audit document. Encrypted with your Curve25519 public key.', isMe: false },
-        { text: 'Downloaded and verified in-browser. Zero plaintext left on the server disk! 🌸', isMe: true }
+        { text: 'Attached the confidential security audit report. Sealed with Curve25519.', isMe: false, time: '7:45 PM' },
+        { text: 'Downloaded and verified in-browser. Zero plaintext on server! 🌊', isMe: true, time: '7:46 PM' }
       ]
     },
     {
       name: 'ujwalsharma',
-      avatarLetter: 'U',
+      avatar: '⚡',
       tag: 'ID: 4192019482',
       preview: 'Check out the new Tokyo chime ringtone',
       time: 'Yesterday',
       messages: [
-        { text: 'The new Tokyo Neon synthesized ringtone sounds like a futuristic cyberpunk anime arcade!', isMe: false },
-        { text: 'Haha totally! The Sakura Bell and Cyber Pulse chimes are synthesized directly via Web Audio API.', isMe: true }
+        { text: 'The new Tokyo Neon synthesized ringtone sounds like cyberpunk anime!', isMe: false, time: 'Yesterday' },
+        { text: 'Web Audio API synthesizer chimes are live in settings. 🎵', isMe: true, time: 'Yesterday' }
       ]
     }
   ];
@@ -199,7 +199,7 @@ export default function LandingPage() {
         className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_25px_rgba(255,75,130,0.9)]"
       />
 
-      {/* 3D WebGL Three.js Particle & Quantum Torus Kinetic Scene (Strict Fixed Viewport) */}
+      {/* 3D WebGL Kinetic Scene (Strict Fixed Viewport) */}
       <ThreeHeroScene />
 
       {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) */}
@@ -242,17 +242,17 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <a href="#features" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              Features
+            <a href="#parallax-depth" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
+              3D Architecture
+            </a>
+            <a href="#scrollytelling" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
+              Scrollytelling
             </a>
             <a href="#security" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               Security
             </a>
             <a href="#download" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               APK Download
-            </a>
-            <a href="#comparison" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              Compare
             </a>
             <a href="/auth" className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:text-white transition-colors">
               Sign In
@@ -269,7 +269,7 @@ export default function LandingPage() {
         </div>
       </header>
 
-      {/* HERO SECTION WITH 3D PERSPECTIVE PARALLAX & MOUSE SPRING */}
+      {/* HERO SECTION WITH 3D CYBER-GLASS SMARTPHONE & PARALLAX PHYSICS */}
       <section className="relative w-full max-w-7xl mx-auto px-6 pt-16 pb-24 flex flex-col items-center text-center z-10">
         
         {/* Glow pill badge */}
@@ -284,7 +284,7 @@ export default function LandingPage() {
           </span>
         </motion.div>
 
-        {/* Hero Title with Kinetic Physics */}
+        {/* Hero Title */}
         <motion.h1 
           style={{ y: yHeroText }}
           className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.08] max-w-5xl mx-auto mb-6"
@@ -326,179 +326,195 @@ export default function LandingPage() {
           </a>
         </motion.div>
 
-        {/* STEREOSCOPIC 3D PARALLAX SHOWCASE CONTAINER */}
-        <div className="relative w-full max-w-5xl mx-auto mb-12">
+        {/* ========================================================================= */}
+        {/* CENTERPIECE: 3D CYBER-GLASS SMARTPHONE WITH STEREOSCOPIC PARALLAX BADGES */}
+        {/* ========================================================================= */}
+        <div className="relative w-full max-w-4xl mx-auto mb-14">
           
-          {/* Floating Stereoscopic Depth Badge 1: Top-Left */}
+          {/* Floating Stereoscopic Depth Badge 1: Top-Left (0.3x Parallax) */}
           <motion.div
             style={{ y: yBadge1, x: springX }}
-            className="hidden lg:flex absolute -left-12 top-6 z-30 p-3.5 rounded-2xl bg-[#1a1233]/90 backdrop-blur-2xl border border-[#ff7597]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-3 text-left"
+            className="hidden lg:flex absolute -left-14 top-10 z-30 p-4 rounded-3xl bg-[#18102e]/90 backdrop-blur-3xl border border-[#ff7597]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
           >
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5">
-              <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=TokyoGirl" alt="Avatar" className="w-full h-full rounded-full bg-black" />
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5 shadow-md">
+              <div className="w-full h-full rounded-[14px] bg-black flex items-center justify-center text-lg">
+                🌸
+              </div>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white">Sakura</span>
-                <span className="text-[9px] font-mono px-1 rounded bg-[#ff7597]/20 text-[#ff7597] font-bold">E2EE</span>
+                <span className="text-xs font-bold text-white">Zero-Knowledge Vault</span>
+                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-[#ff7597]/20 text-[#ff7597] font-bold">E2EE</span>
               </div>
-              <p className="text-[11px] text-foreground/70">Tokyo Neon call is connected 🌸</p>
+              <p className="text-[11px] text-foreground/70">Curve25519 Verified • 0 Plaintext</p>
             </div>
           </motion.div>
 
-          {/* Floating Stereoscopic Depth Badge 2: Top-Right */}
+          {/* Floating Stereoscopic Depth Badge 2: Top-Right (0.6x Parallax) */}
           <motion.div
             style={{ y: yBadge2, x: springY }}
-            className="hidden lg:flex absolute -right-12 top-14 z-30 p-3.5 rounded-2xl bg-[#0e192c]/90 backdrop-blur-2xl border border-[#00f2fe]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-3 text-left"
+            className="hidden lg:flex absolute -right-14 top-16 z-30 p-4 rounded-3xl bg-[#0b1626]/90 backdrop-blur-3xl border border-[#00f2fe]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
           >
-            <div className="w-9 h-9 rounded-full bg-[#00f2fe]/20 text-[#00f2fe] flex items-center justify-center">
-              <ShieldCheck size={20} />
+            <div className="w-10 h-10 rounded-2xl bg-[#00f2fe]/20 text-[#00f2fe] flex items-center justify-center border border-[#00f2fe]/30">
+              <ShieldCheck size={22} />
             </div>
             <div>
               <span className="text-xs font-bold text-white flex items-center gap-1">
-                Zero-Knowledge Vault
+                1.2ms Ratchet Speed
               </span>
-              <p className="text-[11px] text-emerald-400 font-mono font-bold">Curve25519 Verified</p>
+              <p className="text-[11px] text-emerald-400 font-mono font-bold">Sub-Millisecond Hardware Decryption</p>
             </div>
           </motion.div>
 
-          {/* Floating Stereoscopic Depth Badge 3: Bottom-Left */}
+          {/* Floating Stereoscopic Depth Badge 3: Bottom-Left (0.9x Parallax) */}
           <motion.div
             style={{ y: yBadge3, x: springY }}
-            className="hidden lg:flex absolute -left-8 bottom-12 z-30 p-3 rounded-2xl bg-[#160f29]/90 backdrop-blur-2xl border border-[#a855f7]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-2.5 text-left"
+            className="hidden lg:flex absolute -left-10 bottom-14 z-30 p-3.5 rounded-2xl bg-[#170e2b]/90 backdrop-blur-3xl border border-[#a855f7]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-full bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center">
-              <Zap size={16} />
+            <div className="w-9 h-9 rounded-xl bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center border border-[#a855f7]/30">
+              <Lock size={18} />
             </div>
             <div>
-              <span className="text-xs font-bold text-white">1.2ms Ratchet Speed</span>
-              <p className="text-[10px] text-foreground/50 font-mono">Zero-Latency Hardware</p>
+              <span className="text-xs font-bold text-white">0 Phone Number Required</span>
+              <p className="text-[10px] text-foreground/50 font-mono">Anonymous 10-Digit Liquid ID</p>
             </div>
           </motion.div>
 
-          {/* Floating Stereoscopic Depth Badge 4: Bottom-Right */}
+          {/* Floating Stereoscopic Depth Badge 4: Bottom-Right (1.3x Parallax) */}
           <motion.div
             style={{ y: yBadge4, x: springX }}
-            className="hidden lg:flex absolute -right-8 bottom-8 z-30 p-3 rounded-2xl bg-[#121c21]/90 backdrop-blur-2xl border border-[#10b981]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-2.5 text-left"
+            className="hidden lg:flex absolute -right-10 bottom-10 z-30 p-3.5 rounded-2xl bg-[#101a1c]/90 backdrop-blur-3xl border border-[#10b981]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
           >
-            <div className="w-8 h-8 rounded-full bg-[#10b981]/20 text-[#10b981] flex items-center justify-center">
-              <Smartphone size={16} />
+            <div className="w-9 h-9 rounded-xl bg-[#10b981]/20 text-[#10b981] flex items-center justify-center border border-[#10b981]/30">
+              <Video size={18} />
             </div>
             <div>
-              <span className="text-xs font-bold text-white">Anonymous Liquid ID</span>
-              <p className="text-[10px] text-emerald-400 font-mono">0 Phone Number</p>
+              <span className="text-xs font-bold text-white">Mirrored HD Optics</span>
+              <p className="text-[10px] text-emerald-400 font-mono">Acoustic DSP Noise Gate</p>
             </div>
           </motion.div>
 
-          {/* Interactive 3D Perspective Device Showcase */}
+          {/* ICONIC 3D CYBER SMARTPHONE MOCKUP */}
           <motion.div 
             style={{ 
-              y: yMockup, 
-              rotateX: rotateMockup, 
-              scale: scaleMockup,
+              y: yPhone, 
+              rotateX: rotatePhone, 
+              scale: scalePhone,
               rotateY: springX,
               perspective: 1200 
             }}
-            className="w-full rounded-[2.5rem] bg-gradient-to-b from-[#1c1438] to-[#0c0919] p-3 sm:p-5 border border-[#ff7597]/30 shadow-[0_0_90px_rgba(168,85,247,0.35)] overflow-hidden"
+            className="w-[320px] sm:w-[380px] mx-auto rounded-[3.2rem] bg-gradient-to-b from-[#241a42] via-[#150f28] to-[#0a0614] p-3 sm:p-4 border-[5px] border-[#2c1e4d] shadow-[0_25px_80px_rgba(0,0,0,0.85),0_0_60px_rgba(255,117,151,0.25)] relative overflow-hidden"
           >
-            <div className="w-full h-auto rounded-[2rem] bg-[#0c0919] border border-white/10 overflow-hidden shadow-2xl relative">
+            {/* Glossy screen highlight reflection */}
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-gradient-to-br from-white/12 to-transparent rounded-full blur-2xl pointer-events-none" />
+
+            {/* Inner Cyber Screen */}
+            <div className="w-full rounded-[2.6rem] bg-[#0c0818] border border-white/10 overflow-hidden text-left flex flex-col justify-between h-[580px] shadow-2xl relative">
               
-              {/* Window Controls Bar */}
-              <div className="h-10 px-5 bg-[#140e29] border-b border-white/5 flex items-center justify-between">
+              {/* Top Dynamic Island / Status Bar */}
+              <div className="pt-3 px-5 pb-2 bg-[#120a24]/90 border-b border-white/5 flex items-center justify-between z-10">
                 <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full bg-[#ff5f56]" />
-                  <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
-                  <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
+                  <span className="text-[11px] font-mono font-bold text-white">9:41</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 </div>
-                <div className="text-[11px] font-mono text-foreground/50 flex items-center gap-1.5">
-                  <Lock size={11} className="text-[#ff7597]" />
-                  <span>https://web.liquidchat.online • 256-bit AES-GCM</span>
+                {/* Dynamic Island Capsule */}
+                <div className="px-3 py-1 rounded-full bg-black/80 border border-[#ff7597]/40 flex items-center gap-1.5 text-[9px] font-mono text-[#00f2fe]">
+                  <Lock size={9} className="text-[#ff7597]" />
+                  <span>LQ-2130-8255 • 256-BIT</span>
                 </div>
-                <span className="text-[10px] font-mono text-[#00f2fe] font-bold">E2EE ACTIVE</span>
+                <span className="text-[10px] font-mono text-emerald-400 font-bold">100%</span>
               </div>
 
-              {/* Real UI Screen Capture Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-12 h-[380px] sm:h-[460px] bg-[#0c0919] text-left">
-                {/* Left Sidebar Mockup */}
-                <div className="hidden md:flex md:col-span-4 border-r border-white/5 flex-col p-4 space-y-2 bg-[#110d24]/70">
-                  <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                    <span className="text-xs font-bold text-white">Active Chats</span>
-                    <span className="text-[10px] font-mono text-[#ff7597] font-bold">ONLINE (3)</span>
+              {/* Chat Contact Header */}
+              <div className="px-4 py-3 bg-[#160d2e]/70 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5">
+                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-base">
+                      {heroChats[activeHeroChat].avatar}
+                    </div>
                   </div>
-                  {heroChats.map((chat, idx) => (
+                  <div>
+                    <h4 className="text-xs font-bold text-white">{heroChats[activeHeroChat].name}</h4>
+                    <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Curve25519 • 1.2ms
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 text-foreground/70">
+                  <div className="p-2 rounded-xl bg-white/5 text-[#ff7597]"><Video size={13} /></div>
+                  <div className="p-2 rounded-xl bg-white/5 text-[#00f2fe]"><Phone size={13} /></div>
+                </div>
+              </div>
+
+              {/* Chat Message Stream */}
+              <div className="flex-1 p-4 space-y-3 overflow-y-auto">
+                {/* E2EE Info Pill */}
+                <div className="mx-auto text-center">
+                  <span className="px-3 py-1 rounded-full bg-[#00f2fe]/10 border border-[#00f2fe]/25 text-[9px] font-mono text-[#00f2fe] inline-block">
+                    🔒 100% Zero-Knowledge • 0 Bytes Plaintext on Server
+                  </span>
+                </div>
+
+                {heroChats[activeHeroChat].messages.map((m, mIdx) => (
+                  <div 
+                    key={mIdx}
+                    className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
+                      m.isMe
+                        ? 'ml-auto bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white shadow-lg'
+                        : 'bg-white/5 text-foreground/85 border border-white/10'
+                    }`}
+                  >
+                    <div>{m.text}</div>
+                    <div className={`text-[9px] mt-1 font-mono text-right ${m.isMe ? 'text-white/60' : 'text-foreground/40'}`}>
+                      {m.time} {m.isMe && '✓✓'}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Simulated Audio Chime Bubble */}
+                <div className="p-3 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
                     <button 
-                      key={idx} 
-                      onClick={() => setActiveHeroChat(idx)}
-                      className={`w-full p-3 rounded-2xl flex items-center gap-3 transition-all text-left cursor-pointer ${
-                        activeHeroChat === idx 
-                          ? 'bg-[#ff7597]/15 border border-[#ff7597]/40 shadow-md' 
-                          : 'bg-white/[0.02] hover:bg-white/[0.05] border border-transparent'
-                      }`}
+                      onClick={() => handlePlaySound('sakura')} 
+                      className="w-7 h-7 rounded-full bg-[#ff7597] text-white flex items-center justify-center cursor-pointer shadow-md"
                     >
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5 shrink-0">
-                        <div className="w-full h-full rounded-full bg-black flex items-center justify-center font-bold text-xs text-white">
-                          {chat.avatarLetter}
-                        </div>
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex justify-between items-baseline">
-                          <h4 className="text-xs font-bold text-white truncate">{chat.name}</h4>
-                          <span className="text-[10px] text-foreground/40">{chat.time}</span>
-                        </div>
-                        <p className="text-[11px] text-foreground/60 truncate mt-0.5">{chat.preview}</p>
-                      </div>
+                      <Play size={11} fill="currentColor" />
                     </button>
-                  ))}
-                </div>
-
-                {/* Right Chat Mockup */}
-                <div className="col-span-12 md:col-span-8 flex flex-col justify-between p-5 bg-[#0c0919]/95 relative">
-                  {/* Chat header */}
-                  <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-full bg-[#ff7597]/20 flex items-center justify-center font-bold text-xs text-[#ff7597]">
-                        {heroChats[activeHeroChat].avatarLetter}
-                      </div>
-                      <div>
-                        <h4 className="text-xs font-bold text-white">{heroChats[activeHeroChat].name}</h4>
-                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                          End-to-End Encrypted • {heroChats[activeHeroChat].tag}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-xl bg-white/5 text-[#ff7597] hover:bg-white/10 transition-colors cursor-pointer"><Video size={14} /></div>
-                      <div className="p-2 rounded-xl bg-white/5 text-[#00f2fe] hover:bg-white/10 transition-colors cursor-pointer"><Phone size={14} /></div>
-                      <div className="p-2 rounded-xl bg-white/5 text-emerald-400 hover:bg-white/10 transition-colors cursor-pointer"><ShieldCheck size={14} /></div>
+                    <div>
+                      <div className="text-[10px] font-bold text-white">Sakura Bell 🌸 (Preview)</div>
+                      <div className="text-[8px] font-mono text-foreground/40">Pentatonic Blossom Synthesizer</div>
                     </div>
                   </div>
-
-                  {/* Message Bubbles */}
-                  <div className="space-y-3 py-4 flex-1 overflow-y-auto">
-                    {heroChats[activeHeroChat].messages.map((m, mIdx) => (
-                      <div 
-                        key={mIdx}
-                        className={`max-w-[78%] p-3.5 rounded-2xl text-xs leading-relaxed ${
-                          m.isMe
-                            ? 'ml-auto bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white shadow-lg'
-                            : 'bg-white/5 text-foreground/85 border border-white/5'
-                        }`}
-                      >
-                        {m.text}
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Input Mockup */}
-                  <div className="p-2 rounded-2xl bg-[#140e29] border border-[#ff7597]/30 flex items-center justify-between gap-2">
-                    <span className="text-xs text-foreground/40 px-3">Type message or /ai...</span>
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white flex items-center justify-center shadow-md">
-                      <Send size={14} />
-                    </div>
-                  </div>
+                  <span className="text-[9px] font-mono text-[#00f2fe]">0:02</span>
                 </div>
               </div>
+
+              {/* Interactive Tab Switchers */}
+              <div className="p-2.5 bg-[#120a24]/90 border-t border-white/5 flex items-center justify-between gap-1.5">
+                {heroChats.map((c, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => setActiveHeroChat(idx)}
+                    className={`flex-1 py-1.5 px-2 rounded-xl text-[10px] font-mono transition-all truncate cursor-pointer ${
+                      activeHeroChat === idx 
+                        ? 'bg-[#ff7597]/20 border border-[#ff7597]/50 text-white font-bold' 
+                        : 'bg-white/5 text-foreground/50 border border-transparent'
+                    }`}
+                  >
+                    {c.name.split(' ')[0]}
+                  </button>
+                ))}
+              </div>
+
+              {/* Bottom Input Pill */}
+              <div className="p-3 bg-[#0d071b] border-t border-white/5 flex items-center justify-between gap-2">
+                <span className="text-[11px] text-foreground/40 px-2">Message or /ai...</span>
+                <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white flex items-center justify-center shadow-md">
+                  <Send size={11} />
+                </div>
+              </div>
+
             </div>
           </motion.div>
         </div>
@@ -523,136 +539,25 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* Interactive Kawaii Soundscapes Experience Bar */}
-        <div className="w-full max-w-3xl mx-auto my-8 p-5 rounded-3xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-2xl text-center">
-          <div className="flex items-center justify-center gap-2 mb-3">
-            <Sparkles size={16} className="text-pink-400" />
-            <span className="text-sm font-bold text-white tracking-wide">Japanese Kawaii Synthesized Soundscapes</span>
-            <span className="text-[10px] font-mono text-gray-400">(Tap button to preview)</span>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-            {[
-              { id: 'sakura', name: 'Sakura Bell 🌸', desc: 'Pentatonic Blossom' },
-              { id: 'cyber', name: 'Cyber Pulse ⚡', desc: 'Tokyo Synth Wave' },
-              { id: 'kawaii', name: 'Kawaii Chime 🎐', desc: 'Anime Sparkle' },
-              { id: 'tokyo', name: 'Tokyo Neon 🌃', desc: 'Future Arpeggio' }
-            ].map(tone => (
-              <button
-                key={tone.id}
-                onClick={() => handlePlaySound(tone.id as any)}
-                className={`p-3 rounded-2xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 cursor-pointer ${
-                  activeSound === tone.id
-                    ? 'bg-gradient-to-r from-pink-500 to-purple-600 text-white shadow-[0_0_20px_rgba(236,72,153,0.7)] scale-105'
-                    : 'bg-white/5 hover:bg-pink-500/20 text-pink-300 border border-pink-500/20'
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  <Play size={11} fill="currentColor" />
-                  <span>{tone.name}</span>
-                </div>
-                <span className="text-[9px] font-normal text-foreground/60">{tone.desc}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-
       </section>
 
-      {/* ACT 1: 3D HARDWARE EXPLODED VIEW (SCROLL-DRIVEN ARCHITECTURAL DECONSTRUCTION) */}
-      <ExplodedViewSection />
+      {/* ========================================================================= */}
+      {/* TECHNIQUE 1: SCROLL-DRIVEN 3D HARDWARE EXPLODED VIEW                      */}
+      {/* ========================================================================= */}
+      <div id="parallax-depth">
+        <ExplodedViewSection />
+      </div>
 
-      {/* ACT 2: DEDICATED SCROLL-DRIVEN SCROLLYTELLING PACKET JOURNEY */}
-      <ScrollytellingExperience />
+      {/* ========================================================================= */}
+      {/* TECHNIQUE 2: CRYPTOGRAPHIC SCROLLYTELLING (PACKET TRANSIT & DEFENSE)      */}
+      {/* ========================================================================= */}
+      <div id="scrollytelling">
+        <ScrollytellingExperience />
+      </div>
 
-      {/* NEW PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
-      <motion.section 
-        id="download" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20"
-      >
-        <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.25)] relative overflow-hidden">
-          {/* Radial ambient glow */}
-          <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#00f2fe]/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[#ff7597]/15 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12 text-left relative z-10">
-            <div className="flex-1 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30 text-[#ff7597] text-xs font-mono font-bold">
-                <Flame size={14} />
-                <span>OFFICIAL ANDROID RELEASE • v2.0.1 (BUILD 6)</span>
-              </div>
-
-              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-                Download the Native <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#00f2fe] to-[#a855f7]">
-                  LiquidChat Android APK.
-                </span>
-              </h2>
-
-              <p className="text-sm sm:text-base text-foreground/75 leading-relaxed font-normal">
-                Direct installation with zero Google Play tracking or background telemetry. Includes hardware back button navigation, offline E2EE key synchronization, and Tokyo sound synthesis engine.
-              </p>
-
-              {/* Release Feature Bullet Points */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Zero-Knowledge Key Healing</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Hardware Back Gesture Integrated</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Universal Keyboard Shortcuts</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Mirrored HD Front Camera Feed</span>
-                </div>
-              </div>
-
-              {/* Download Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-                <button
-                  onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_35px_rgba(255,75,130,0.6)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
-                >
-                  <Download size={20} />
-                  <span>Download APK Directly (6.6 MB)</span>
-                </button>
-
-                <div className="text-xs font-mono text-foreground/50">
-                  SHA-256 Verified • Universal APK
-                </div>
-              </div>
-            </div>
-
-            {/* Live QR Scan to Download Card */}
-            <div className="p-6 rounded-3xl bg-[#0c0819]/90 border border-white/10 backdrop-blur-2xl text-center space-y-3 shrink-0 shadow-2xl">
-              <span className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
-                <Smartphone size={14} className="text-[#00f2fe]" />
-                <span>Scan from Phone to Install</span>
-              </span>
-
-              <div className="p-3 bg-white rounded-2xl shadow-xl inline-block">
-                <img 
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://liquidchat.online/LiquidChat.apk" 
-                  alt="Scan to download APK" 
-                  className="w-36 h-36"
-                />
-              </div>
-
-              <div className="text-[10px] font-mono text-foreground/40">
-                Direct Link: liquidchat.online/LiquidChat.apk
-              </div>
-            </div>
-          </div>
-        </div>
-      </motion.section>
+      {/* ========================================================================= */}
+      {/* TECHNIQUE 3: SCROLL-TRIGGERED FEATURE SUITE & INTERACTIVE LABS            */}
+      {/* ========================================================================= */}
 
       {/* SECTION: DESKTOP QR CODE LOGIN */}
       <motion.section 
@@ -974,6 +879,96 @@ export default function LandingPage() {
               </tr>
             </tbody>
           </table>
+        </div>
+      </motion.section>
+
+      {/* SECTION: PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
+      <motion.section 
+        id="download" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20"
+      >
+        <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.25)] relative overflow-hidden">
+          {/* Radial ambient glow */}
+          <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#00f2fe]/15 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[#ff7597]/15 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex flex-col lg:flex-row items-center justify-between gap-12 text-left relative z-10">
+            <div className="flex-1 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30 text-[#ff7597] text-xs font-mono font-bold">
+                <Flame size={14} />
+                <span>OFFICIAL ANDROID RELEASE • v2.0.1 (BUILD 6)</span>
+              </div>
+
+              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
+                Download the Native <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#00f2fe] to-[#a855f7]">
+                  LiquidChat Android APK.
+                </span>
+              </h2>
+
+              <p className="text-sm sm:text-base text-foreground/75 leading-relaxed font-normal">
+                Direct installation with zero Google Play tracking or background telemetry. Includes hardware back button navigation, offline E2EE key synchronization, and Tokyo sound synthesis engine.
+              </p>
+
+              {/* Release Feature Bullet Points */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <div className="flex items-center gap-2 text-foreground/90">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Zero-Knowledge Key Healing</span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground/90">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Hardware Back Gesture Integrated</span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground/90">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Universal Keyboard Shortcuts</span>
+                </div>
+                <div className="flex items-center gap-2 text-foreground/90">
+                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+                  <span>Mirrored HD Front Camera Feed</span>
+                </div>
+              </div>
+
+              {/* Download Action Bar */}
+              <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
+                <button
+                  onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
+                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_35px_rgba(255,75,130,0.6)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
+                >
+                  <Download size={20} />
+                  <span>Download APK Directly (6.6 MB)</span>
+                </button>
+
+                <div className="text-xs font-mono text-foreground/50">
+                  SHA-256 Verified • Universal APK
+                </div>
+              </div>
+            </div>
+
+            {/* Live QR Scan to Download Card */}
+            <div className="p-6 rounded-3xl bg-[#0c0819]/90 border border-white/10 backdrop-blur-2xl text-center space-y-3 shrink-0 shadow-2xl">
+              <span className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
+                <Smartphone size={14} className="text-[#00f2fe]" />
+                <span>Scan from Phone to Install</span>
+              </span>
+
+              <div className="p-3 bg-white rounded-2xl shadow-xl inline-block">
+                <img 
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://liquidchat.online/LiquidChat.apk" 
+                  alt="Scan to download APK" 
+                  className="w-36 h-36"
+                />
+              </div>
+
+              <div className="text-[10px] font-mono text-foreground/40">
+                Direct Link: liquidchat.online/LiquidChat.apk
+              </div>
+            </div>
+          </div>
         </div>
       </motion.section>
 
