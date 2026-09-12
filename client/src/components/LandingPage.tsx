@@ -14,6 +14,8 @@ import Link from 'next/link';
 import LiquidLogo from '@/components/LiquidLogo';
 import { downloadFile } from '@/utils/apiUrl';
 import { soundEffects } from '@/utils/audioSynth';
+import ThreeHeroScene from './ThreeHeroScene';
+import ScrollytellingExperience from './ScrollytellingExperience';
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
@@ -173,6 +175,9 @@ export default function LandingPage() {
         style={{ scaleX: smoothProgress }}
         className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_20px_rgba(255,75,130,0.9)]"
       />
+
+      {/* 3D WebGL Three.js Particle & Quantum Torus Kinetic Scene */}
+      <ThreeHeroScene />
 
       {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) */}
       <motion.div style={{ y: yKanji1 }} className="hidden md:block absolute top-40 -left-12 text-8xl font-black text-white/[0.025] select-none pointer-events-none rotate-90 z-0">
@@ -482,8 +487,8 @@ export default function LandingPage() {
             <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Safety Verification</p>
           </div>
           <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#ff7597]">v2.0.0 PRO</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Official Build 5</p>
+            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#ff7597]">v2.0.1 PRO</span>
+            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Official Build 6</p>
           </div>
         </div>
 
@@ -522,7 +527,10 @@ export default function LandingPage() {
 
       </section>
 
-      {/* NEW PROMINENT APK DOWNLOAD HUB (v2.0.0 PRO) */}
+      {/* DEDICATED SCROLL-DRIVEN SCROLLYTELLING EXPERIENCE */}
+      <ScrollytellingExperience />
+
+      {/* NEW PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
       <section id="download" className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20">
         <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.2)] relative overflow-hidden">
           {/* Radial ambient glow */}
@@ -533,7 +541,7 @@ export default function LandingPage() {
             <div className="flex-1 space-y-6">
               <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30 text-[#ff7597] text-xs font-mono font-bold">
                 <Flame size={14} />
-                <span>OFFICIAL ANDROID RELEASE • v2.0.0 (BUILD 5)</span>
+                <span>OFFICIAL ANDROID RELEASE • v2.0.1 (BUILD 6)</span>
               </div>
 
               <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
