@@ -15,6 +15,7 @@ import LiquidLogo from '@/components/LiquidLogo';
 import { downloadFile } from '@/utils/apiUrl';
 import { soundEffects } from '@/utils/audioSynth';
 import ThreeHeroScene from './ThreeHeroScene';
+import ExplodedViewSection from './ExplodedViewSection';
 import ScrollytellingExperience from './ScrollytellingExperience';
 
 export default function LandingPage() {
@@ -557,7 +558,10 @@ export default function LandingPage() {
 
       </section>
 
-      {/* DEDICATED SCROLL-DRIVEN SCROLLYTELLING EXPERIENCE */}
+      {/* ACT 1: 3D HARDWARE EXPLODED VIEW (SCROLL-DRIVEN ARCHITECTURAL DECONSTRUCTION) */}
+      <ExplodedViewSection />
+
+      {/* ACT 2: DEDICATED SCROLL-DRIVEN SCROLLYTELLING PACKET JOURNEY */}
       <ScrollytellingExperience />
 
       {/* NEW PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
