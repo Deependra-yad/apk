@@ -460,9 +460,23 @@ export const ensureUserKeyPair = async (userId: string, token?: string, password
       
       if (authToken) {
         const axios = (await import('axios')).default;
-        await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        }).catch(err => console.warn('Failed to sync generated public key to server:', err));
+        // Check if server already has a public key for user
+        let hasExistingKey = false;
+        try {
+          const userRes = await axios.get('/api/auth/me', {
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+          if (userRes.data?.user?.publicKey) {
+            hasExistingKey = true;
+          }
+        } catch (e) {}
+
+        // Only upload new public key if user did NOT have one previously registered
+        if (!hasExistingKey) {
+          await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          }).catch(err => console.warn('Failed to sync generated public key to server:', err));
+        }
 
         if (password) {
           await backupKeyWithPassword(userId, password, keyPair, authToken);
@@ -505,5 +519,31 @@ export const isBase64Ciphertext = (str: string): boolean => {
   if (trimmed.length % 4 !== 0) return false;
   return /^[A-Za-z0-9+/]+={0,2}$/.test(trimmed);
 };
+
+// Zero-Knowledge Local Decrypted Message Cache
+export const cacheDecryptedMessage = (userId: string, msgId: string, data: { text?: string; fileUrl?: string }) => {
+  if (typeof window === 'undefined' || !userId || !msgId) return;
+  try {
+    const key = `liquid_msg_cache_${userId}_${msgId}`;
+    localStorage.setItem(key, JSON.stringify({
+      text: data.text,
+      fileUrl: data.fileUrl,
+      timestamp: Date.now()
+    }));
+  } catch (e) {}
+};
+
+export const getCachedDecryptedMessage = (userId: string, msgId: string): { text?: string; fileUrl?: string } | null => {
+  if (typeof window === 'undefined' || !userId || !msgId) return null;
+  try {
+    const key = `liquid_msg_cache_${userId}_${msgId}`;
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {}
+  return null;
+};
+
 
 

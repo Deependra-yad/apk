@@ -7,7 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Search, Users, Pin, BellOff, Archive, 
   MoreVertical, Plus, Check, Trash2, UserX, X,
-  Loader2, MessageSquare, AlertCircle, QrCode, Lock, ShieldCheck
+  Loader2, MessageSquare, AlertCircle, QrCode, Lock, ShieldCheck,
+  Keyboard, Command
 } from 'lucide-react';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
@@ -93,6 +94,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const [searchedContact, setSearchedContact] = useState<any | null>(null);
   const [isSearchingNumber, setIsSearchingNumber] = useState(false);
   const [searchFeedback, setSearchFeedback] = useState<string | null>(null);
+  const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const initialFetchDone = useRef(false);
 
   // Determine if Landing page or Chat App should be shown
@@ -170,25 +173,118 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     }
   }, [isLockedFolderOpen, lockedChatIds, activeContact, activeGroup, setActiveContact, setActiveGroup]);
 
-  // Handle hardware back button
+  // Universal Back Navigation (Used by Android Hardware Back Gesture & Escape Key)
   useEffect(() => {
-    if (activeContact || activeGroup) {
-      if (typeof window !== 'undefined' && window.location.hash !== '#chat') {
-        window.history.pushState({ chatOpen: true }, '', '#chat');
+    const handleUniversalBack = (): boolean => {
+      if (isShortcutsModalOpen) {
+        setIsShortcutsModalOpen(false);
+        return true;
       }
-    }
-  }, [activeContact, activeGroup]);
-
-  useEffect(() => {
-    const handlePopState = (e: PopStateEvent) => {
+      if (fullScreenImage) {
+        setFullScreenImage(null);
+        return true;
+      }
+      if (isQrModalOpen) {
+        setIsQrModalOpen(false);
+        return true;
+      }
+      if (isProfileOpen) {
+        setIsProfileOpen(false);
+        return true;
+      }
+      if (isNewGroupModalOpen) {
+        setIsNewGroupModalOpen(false);
+        return true;
+      }
+      if (isUnlockFolderModalOpen) {
+        setIsUnlockFolderModalOpen(false);
+        return true;
+      }
+      // If inside Settings sub-sections or Settings panel
+      if (typeof window !== 'undefined' && typeof (window as any).__liquidSettingsBack === 'function') {
+        const handledBySettings = (window as any).__liquidSettingsBack();
+        if (handledBySettings) return true;
+      }
+      // If in Settings, Stories, Calls, or Starred tabs, return to Chats
+      if (activeTab !== 'chat') {
+        setActiveTab('chat');
+        return true;
+      }
+      // If inside an active conversation, close it
       if (activeContact || activeGroup) {
         setActiveContact(null);
         setActiveGroup(null);
+        return true;
+      }
+      // If contact search is active, clear it
+      if (contactSearch) {
+        setContactSearch('');
+        setSearchedContact(null);
+        setSearchFeedback(null);
+        return true;
+      }
+      return false;
+    };
+
+    if (typeof window !== 'undefined') {
+      (window as any).__liquidHandleBack = handleUniversalBack;
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Escape key triggers universal back
+      if (e.key === 'Escape') {
+        handleUniversalBack();
+        return;
+      }
+
+      // Ctrl + K or Cmd + K: Focus search
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        return;
+      }
+
+      // Ctrl + N or Cmd + N: New group
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'n') {
+        e.preventDefault();
+        setIsNewGroupModalOpen(true);
+        return;
+      }
+
+      // Ctrl + , or Cmd + ,: Settings
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setActiveTab('settings');
+        return;
+      }
+
+      // Ctrl + Shift + L or Alt + L: Lock App
+      if (((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') || (e.altKey && e.key.toLowerCase() === 'l')) {
+        e.preventDefault();
+        setIsAppLockModalOpen(true);
+        return;
+      }
+
+      // ? for shortcuts cheat sheet
+      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as any)?.tagName)) {
+        e.preventDefault();
+        setIsShortcutsModalOpen(prev => !prev);
+        return;
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [activeContact, activeGroup, setActiveContact, setActiveGroup]);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      if (typeof window !== 'undefined') {
+        delete (window as any).__liquidHandleBack;
+      }
+    };
+  }, [
+    isShortcutsModalOpen, fullScreenImage, isQrModalOpen, isProfileOpen, 
+    isNewGroupModalOpen, isUnlockFolderModalOpen, activeTab, 
+    activeContact, activeGroup, contactSearch, setActiveContact, setActiveGroup
+  ]);
 
   // Auth Guard & Initial Data Fetch (Runs ONCE per session to preserve contacts)
   useEffect(() => {
@@ -602,8 +698,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
             className="absolute top-4 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-md bg-gradient-to-r from-blue-600/95 to-indigo-600/95 backdrop-blur-xl border border-blue-400/30 rounded-2xl p-4 shadow-[0_0_40px_rgba(37,99,235,0.3)] flex items-center justify-between gap-4"
           >
             <div className="text-white text-sm font-medium">
-              <strong className="block text-base mb-0.5">🚀 New Update Available!</strong>
-              Fixes native file downloading & scrolling. Install now!
+              <strong className="block text-base mb-0.5">🚀 LiquidChat v2.0.0 (Pro) Available!</strong>
+              E2EE key healing, hardware back gesture, and keyboard shortcuts. Install now!
             </div>
             <div className="flex flex-col gap-2 shrink-0">
               <button 
@@ -705,10 +801,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
               <div className="h-10 bg-background/30 rounded-xl px-3 flex-1 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
                 <Search size={16} className="text-foreground/60 shrink-0" />
                 <input
+                  ref={searchInputRef}
                   type="text"
                   value={contactSearch}
                   onChange={(e) => setContactSearch(e.target.value)}
-                  placeholder="Search name or 10-digit Liquid ID..."
+                  placeholder="Search name or 10-digit Liquid ID (Ctrl+K)..."
                   className="flex-1 bg-transparent border-none outline-none text-foreground text-xs placeholder-gray-500 min-w-0"
                 />
                 {contactSearch && (
@@ -965,7 +1062,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
         {/* Tab 5: SETTINGS */}
         {activeTab === 'settings' && (
-          <SettingsPanel />
+          <SettingsPanel onBackToChats={() => setActiveTab('chat')} />
         )}
       </div>
 
@@ -1208,6 +1305,64 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
           setPendingChatToLock(null);
         }}
       />
+
+      {/* Keyboard Shortcuts Cheat Sheet Modal */}
+      <AnimatePresence>
+        {isShortcutsModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsShortcutsModalOpen(false)}
+            className="fixed inset-0 z-[120] bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md bg-liquid-base border border-foreground/15 rounded-3xl p-6 shadow-[0_0_50px_rgba(255,117,151,0.2)] text-foreground relative"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-foreground/10 mb-4">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-liquid-accent/20 text-liquid-accent">
+                    <Keyboard size={18} />
+                  </div>
+                  <h3 className="text-base font-bold">Keyboard Shortcuts</h3>
+                </div>
+                <button
+                  onClick={() => setIsShortcutsModalOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-foreground/10 text-foreground/60 hover:text-foreground transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-2.5 text-xs">
+                {[
+                  { key: 'Esc', desc: 'Go back / Close modal / Exit chat' },
+                  { key: 'Ctrl + K  /  ⌘ + K', desc: 'Focus contact search' },
+                  { key: 'Ctrl + N  /  ⌘ + N', desc: 'Create new group' },
+                  { key: 'Ctrl + ,  /  ⌘ + ,', desc: 'Open settings' },
+                  { key: 'Ctrl + Shift + L', desc: 'Lock application with PIN' },
+                  { key: '?', desc: 'Toggle shortcuts cheat sheet' }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-2.5 rounded-xl bg-foreground/5 border border-foreground/5">
+                    <span className="text-foreground/80">{item.desc}</span>
+                    <kbd className="px-2 py-1 rounded-lg bg-black/40 border border-foreground/10 font-mono text-[11px] font-bold text-liquid-accent shadow-sm">
+                      {item.key}
+                    </kbd>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-foreground/10 text-center">
+                <p className="text-[11px] text-foreground/40 font-mono">Liquid Chat Pro Accessibility Engine</p>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </main>
   );
 }

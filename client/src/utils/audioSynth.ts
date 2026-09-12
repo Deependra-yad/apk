@@ -52,37 +52,25 @@ class SoundEffects {
     this.ringInterval = setInterval(playTone, 4000);
   }
 
-  // Play incoming call melody
+  // Play incoming call melody according to user preference
   startIncomingRing() {
     this.stopRinging();
-    const playChime = () => {
-      try {
-        const ctx = this.getContext();
-        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 (Liquid ripple melody)
-        
-        notes.forEach((freq, idx) => {
-          const now = ctx.currentTime + idx * 0.18;
-          const osc = ctx.createOscillator();
-          const gain = ctx.createGain();
-
-          osc.type = 'sine';
-          osc.frequency.setValueAtTime(freq, now);
-
-          gain.gain.setValueAtTime(0, now);
-          gain.gain.linearRampToValueAtTime(0.2, now + 0.05);
-          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-
-          osc.connect(gain);
-          gain.connect(ctx.destination);
-
-          osc.start(now);
-          osc.stop(now + 0.6);
-        });
-      } catch (e) {}
+    const ringtone = (typeof window !== 'undefined' ? localStorage.getItem('liquid_ringtone') : null) || 'sakura';
+    
+    const playSelectedChime = () => {
+      if (ringtone === 'cyber') {
+        this.playCyberPulse();
+      } else if (ringtone === 'kawaii') {
+        this.playKawaiiChime();
+      } else if (ringtone === 'tokyo') {
+        this.playTokyoNeon();
+      } else {
+        this.playSakuraBell();
+      }
     };
 
-    playChime();
-    this.ringInterval = setInterval(playChime, 2500);
+    playSelectedChime();
+    this.ringInterval = setInterval(playSelectedChime, 2400);
   }
 
   stopRinging() {

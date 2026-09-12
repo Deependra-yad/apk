@@ -24,6 +24,7 @@ import android.view.WindowManager
 import android.webkit.*
 import android.widget.FrameLayout
 import android.widget.Toast
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
@@ -67,6 +68,31 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Modern Back Pressed & Gesture Navigation Dispatcher
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (::webView.isInitialized) {
+                    webView.evaluateJavascript("window.__liquidHandleBack ? window.__liquidHandleBack() : false") { result ->
+                        if (result != null && (result.contains("true") || result.equals("\"true\"") || result.equals("true"))) {
+                            // Handled cleanly by web layer (dismissed modal, settings sub-section, or closed chat)
+                            return@evaluateJavascript
+                        } else if (webView.canGoBack()) {
+                            webView.goBack()
+                        } else {
+                            // Nothing to back out of inside WebView, allow normal system back / minimize
+                            isEnabled = false
+                            onBackPressedDispatcher.onBackPressed()
+                            isEnabled = true
+                        }
+                    }
+                } else {
+                    isEnabled = false
+                    onBackPressedDispatcher.onBackPressed()
+                    isEnabled = true
+                }
+            }
+        })
 
         // Fix overlapping items by fitting system windows, but hide nav bar for full screen
         WindowCompat.setDecorFitsSystemWindows(window, true)

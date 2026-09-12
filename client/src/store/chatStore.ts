@@ -262,6 +262,11 @@ export const useChatStore = create<ChatState>((set, get) => ({
                   }
                 }
               }
+
+              if (finalMessage.text && finalMessage.text !== '[Decryption Failed]') {
+                const { cacheDecryptedMessage } = await import('@/utils/crypto');
+                cacheDecryptedMessage(userId, finalMessage.id, { text: finalMessage.text, fileUrl: finalMessage.fileUrl });
+              }
             }
           } catch (err) {
             console.error('Failed to decrypt incoming message', err);
@@ -385,6 +390,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
         } catch (err) {
           console.error('Failed to decrypt message_sent fallback:', err);
         }
+      }
+
+      if (confirmedMessage.id && confirmedMessage.text && confirmedMessage.text !== '[Decryption Failed]') {
+        import('@/utils/crypto').then(({ cacheDecryptedMessage }) => {
+          cacheDecryptedMessage(userId, confirmedMessage.id, { text: confirmedMessage.text, fileUrl: confirmedMessage.fileUrl });
+        }).catch(() => {});
       }
 
       set((state) => {

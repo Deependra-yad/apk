@@ -26,7 +26,7 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
-import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext } from '@/utils/crypto';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext, cacheDecryptedMessage, getCachedDecryptedMessage } from '@/utils/crypto';
 import { ShieldCheck, Camera, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CameraQrScannerModal from './CameraQrScannerModal';
@@ -151,7 +151,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     addMessage
   } = useChatStore();
 
-  const { enterToSend, blockedUsers, toggleBlockUser } = useSettingsStore();
+  const { enterToSend, blockedUsers, toggleBlockUser, chatFontSize } = useSettingsStore();
 
   const isGroup = !!activeGroup;
   const isBlocked = !isGroup && !!activeContact && Array.isArray(blockedUsers) && blockedUsers.some(u => (u?.id || u) === activeContact.id);
@@ -199,6 +199,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 const otherPubKey = await importPublicKey(contactPubKey);
                 const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
                 loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
+                  // Check persistent zero-knowledge local cache first
+                  const cached = getCachedDecryptedMessage(user.id, m.id);
+                  if (cached && cached.text) {
+                    return { ...m, text: cached.text, fileUrl: cached.fileUrl || m.fileUrl, rawText: m.text, rawFileUrl: m.fileUrl };
+                  }
+
                   if (m.isEncrypted) {
                     const rawCiphertext = m.rawText || m.text;
                     let text = m.text;
@@ -207,6 +213,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         const decrypted = await decryptMessage(sharedKey, rawCiphertext, m.iv);
                         if (decrypted && decrypted !== '[Decryption Failed]') {
                           text = decrypted;
+                          cacheDecryptedMessage(user.id, m.id, { text, fileUrl: m.fileUrl });
                         } else if (m.senderId !== user.id) {
                           text = '[Decryption Failed]';
                         }
@@ -224,6 +231,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                           const decryptedUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
                           if (decryptedUrl && decryptedUrl !== '[Decryption Failed]') {
                             fileUrl = decryptedUrl;
+                            cacheDecryptedMessage(user.id, m.id, { text, fileUrl });
                           }
                         } catch (e) {
                           console.error("File decryption error for message", m.id, e);
@@ -238,6 +246,15 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             } catch (err) {
               console.error("Bulk decryption error:", err);
             }
+          } else {
+            // Even if contact public key is pending, check local decrypted cache
+            loadedMessages = loadedMessages.map((m: any) => {
+              const cached = getCachedDecryptedMessage(user.id, m.id);
+              if (cached && cached.text) {
+                return { ...m, text: cached.text, fileUrl: cached.fileUrl || m.fileUrl, rawText: m.text, rawFileUrl: m.fileUrl };
+              }
+              return m;
+            });
           }
           
           setMessages(loadedMessages);
@@ -472,6 +489,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           }
         }
       }
+      if (newText && newText !== '[Decryption Failed]') {
+        cacheDecryptedMessage(user.id, msg.id, { text: newText, fileUrl: newFileUrl });
+      }
       setMessages(messages.map(m => m.id === msg.id ? { ...m, text: newText, fileUrl: newFileUrl, rawText, rawFileUrl } : m));
     } catch (e) {
       console.error("Retry decryption error:", e);
@@ -492,6 +512,10 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
   const emitSendMessage = async (data: any) => {
     const tempId = `temp-${Date.now()}`;
+    // Zero-knowledge local cache for sender's device
+    if (user?.id && data.text) {
+      cacheDecryptedMessage(user.id, tempId, { text: data.text, fileUrl: data.fileUrl });
+    }
     // Optimistic UI updates with plaintext
     addMessage({
       ...data,
@@ -1413,21 +1437,38 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                       {/* Text Body with Code Highlighting & Markdown */}
                       {msg.text && (
-                        <div className="leading-relaxed text-sm break-words">
+                        <div className={`leading-relaxed break-words ${
+                          chatFontSize === 'small' ? 'text-[13px]' : chatFontSize === 'large' ? 'text-[16px]' : 'text-sm'
+                        }`}>
                           {msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleRetryDecryptMessage(msg); }}
-                              className="text-foreground/50 italic text-xs flex items-center gap-1.5 py-0.5 select-none hover:text-liquid-accent transition-colors cursor-pointer"
-                              disabled={retryingMsgId === msg.id}
-                            >
-                              <Lock size={12} className="text-foreground/40 shrink-0" />
-                              <span>Waiting for this message. This may take a while.</span>
-                              {retryingMsgId === msg.id ? (
-                                <RefreshCw size={12} className="animate-spin text-liquid-accent shrink-0" />
-                              ) : (
-                                <RefreshCw size={12} className="text-foreground/40 shrink-0" />
-                              )}
-                            </button>
+                            !isMe ? (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); handleRetryDecryptMessage(msg); }}
+                                className="text-foreground/50 italic text-xs flex items-center gap-1.5 py-0.5 select-none hover:text-liquid-accent transition-colors cursor-pointer"
+                                disabled={retryingMsgId === msg.id}
+                              >
+                                <Lock size={12} className="text-foreground/40 shrink-0" />
+                                <span>Waiting for this message. This may take a while.</span>
+                                {retryingMsgId === msg.id ? (
+                                  <RefreshCw size={12} className="animate-spin text-liquid-accent shrink-0" />
+                                ) : (
+                                  <RefreshCw size={12} className="text-foreground/40 shrink-0" />
+                                )}
+                              </button>
+                            ) : (
+                              <div className="text-foreground/70 italic text-xs flex items-center gap-1.5 py-0.5 select-none">
+                                <Lock size={12} className="text-foreground/50 shrink-0" />
+                                <span>🔒 Encrypted message</span>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleRetryDecryptMessage(msg); }}
+                                  className="p-1 text-foreground/50 hover:text-liquid-accent transition-colors"
+                                  disabled={retryingMsgId === msg.id}
+                                  title="Retry Decryption"
+                                >
+                                  <RefreshCw size={11} className={retryingMsgId === msg.id ? "animate-spin text-liquid-accent" : ""} />
+                                </button>
+                              </div>
+                            )
                           ) : (
                             renderFormattedMessage(msg.text)
                           )}

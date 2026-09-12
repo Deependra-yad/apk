@@ -8,7 +8,7 @@ import {
   Trash2, AlertTriangle, UserX, Database, HardDrive, 
   ChevronRight, Lock, Eye, MessageSquare, Sun, Smartphone, QrCode,
   FileText, Image as ImageIcon, Music, Video, CheckSquare, Square,
-  RefreshCw, X, Filter, CheckCircle2, ChevronDown,
+  RefreshCw, X, Filter, CheckCircle2, ChevronDown, ArrowLeft,
   ShieldCheck, Key, Copy, EyeOff, Play, Sliders, Activity, Radio, ArrowUpRight, ArrowDownLeft
 } from 'lucide-react';
 import { soundEffects } from '@/utils/audioSynth';
@@ -28,7 +28,7 @@ import {
 } from '@/utils/securityLock';
 import axios from 'axios';
 
-export default function SettingsPanel() {
+export default function SettingsPanel({ onBackToChats }: { onBackToChats?: () => void }) {
   const { user, token, setAuth, logout } = useAuthStore();
   const { socket } = useChatStore();
   const { 
@@ -104,6 +104,27 @@ export default function SettingsPanel() {
       setAboutText(user.about);
     }
   }, [user?.about]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__liquidSettingsBack = () => {
+        if (activeSection !== 'main') {
+          setActiveSection('main');
+          return true;
+        }
+        if (onBackToChats) {
+          onBackToChats();
+          return true;
+        }
+        return false;
+      };
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).__liquidSettingsBack;
+      }
+    };
+  }, [activeSection, onBackToChats]);
 
   const userFingerprint = useMemo(() => {
     const seed = user?.publicKey || user?.id || 'liquid-secure-seed-v3';
@@ -287,29 +308,51 @@ export default function SettingsPanel() {
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-y-auto p-4 space-y-4 no-scrollbar">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-bold text-foreground">
-            {activeSection === 'main' ? 'Settings' : 
-             activeSection === 'security' ? 'Security & Vault' :
-             activeSection === 'audio' ? 'Audio & Calling' :
-             activeSection === 'network' ? 'Network & Data' :
-             activeSection === 'storage' ? 'Manage Storage' :
-             activeSection === 'privacy' ? 'Privacy Settings' :
-             activeSection === 'chats' ? 'Chats & Appearance' :
-             activeSection === 'notifications' ? 'Notifications' :
-             activeSection === 'account' ? 'Account Profile' : 'Help & About'}
-          </h2>
-          <p className="text-xs text-foreground/60">
-            {activeSection === 'security' ? 'Hardware-backed Curve25519 & AES-256 vault' :
-             activeSection === 'audio' ? 'Kawaii ringtones, camera mirroring & audio gate' :
-             activeSection === 'network' ? 'Live bandwidth counters, call metrics & data saver' :
-             activeSection === 'storage' ? 'Inspect and permanently wipe server media' : 'Preferences, privacy & accounts'}
-          </p>
+      {/* Header with Universal Back Button */}
+      <div className="flex items-center justify-between pb-2 border-b border-foreground/5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {activeSection !== 'main' ? (
+            <button 
+              onClick={() => setActiveSection('main')} 
+              className="p-2 rounded-xl bg-foreground/5 hover:bg-foreground/10 text-foreground/80 hover:text-foreground transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
+              title="Back to All Settings"
+            >
+              <ArrowLeft size={16} />
+              <span className="text-xs font-semibold">Settings</span>
+            </button>
+          ) : onBackToChats ? (
+            <button 
+              onClick={onBackToChats} 
+              className="p-2 rounded-xl bg-liquid-accent/15 hover:bg-liquid-accent/25 text-liquid-accent transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
+              title="Back to Chats"
+            >
+              <ArrowLeft size={16} />
+              <span className="text-xs font-semibold">Chats</span>
+            </button>
+          ) : null}
+
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-foreground truncate">
+              {activeSection === 'main' ? 'Settings' : 
+               activeSection === 'security' ? 'Security & Vault' :
+               activeSection === 'audio' ? 'Audio & Calling' :
+               activeSection === 'network' ? 'Network & Data' :
+               activeSection === 'storage' ? 'Manage Storage' :
+               activeSection === 'privacy' ? 'Privacy Settings' :
+               activeSection === 'chats' ? 'Chats & Appearance' :
+               activeSection === 'notifications' ? 'Notifications' :
+               activeSection === 'account' ? 'Account Profile' : 'Help & About'}
+            </h2>
+            <p className="text-[11px] text-foreground/60 truncate">
+              {activeSection === 'security' ? 'Hardware-backed Curve25519 & AES-256 vault' :
+               activeSection === 'audio' ? 'Kawaii ringtones, camera mirroring & audio gate' :
+               activeSection === 'network' ? 'Live bandwidth counters, call metrics & data saver' :
+               activeSection === 'storage' ? 'Inspect and permanently wipe server media' : 'Preferences, privacy & accounts'}
+            </p>
+          </div>
         </div>
         {activeSection !== 'main' && (
-          <button onClick={() => setActiveSection('main')} className="text-xs text-liquid-accent font-semibold hover:underline">
+          <button onClick={() => setActiveSection('main')} className="text-xs text-liquid-accent font-semibold hover:underline shrink-0 ml-2">
             All Settings
           </button>
         )}
@@ -945,6 +988,7 @@ export default function SettingsPanel() {
                     onClick={() => {
                       setFontSize(opt.id as any);
                       localStorage.setItem('liquid_font_size', opt.id);
+                      useSettingsStore.setState({ chatFontSize: opt.id as any });
                     }}
                     className={`p-2 rounded-xl border text-xs font-medium flex flex-col items-center gap-0.5 transition-all ${
                       fontSize === opt.id
@@ -1000,6 +1044,7 @@ export default function SettingsPanel() {
                   onClick={() => {
                     setSelectedRingtone(tone.id as any);
                     localStorage.setItem('liquid_ringtone', tone.id);
+                    useSettingsStore.setState({ ringtone: tone.id as any });
                     tone.play();
                   }}
                   className={`p-3 rounded-xl border flex items-center justify-between cursor-pointer transition-all ${
@@ -1052,6 +1097,7 @@ export default function SettingsPanel() {
                   const next = !mirroredCameraEnabled;
                   setMirroredCameraEnabled(next);
                   localStorage.setItem('liquid_mirrored_camera', String(next));
+                  useSettingsStore.setState({ mirroredCamera: next });
                 }}
                 className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${mirroredCameraEnabled ? 'bg-liquid-accent' : 'bg-gray-700'}`}
               >
