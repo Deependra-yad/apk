@@ -22,6 +22,7 @@ import NewGroupModal from '@/components/NewGroupModal';
 import StarredVaultPanel from '@/components/StarredVaultPanel';
 import NotificationToast from '@/components/NotificationToast';
 import LandingPage from '@/components/LandingPage';
+import DesktopOnlyGate from '@/components/DesktopOnlyGate';
 import UserQrModal from '@/components/UserQrModal';
 import LiquidLogo from '@/components/LiquidLogo';
 import PinLockModal from '@/components/PinLockModal';
@@ -274,10 +275,29 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     };
 
     window.addEventListener('keydown', handleKeyDown);
+
+    // Register deep link bridge for Android app to open shared contacts immediately
+    if (typeof window !== 'undefined') {
+      (window as any).__liquidOpenChat = async (targetId: string) => {
+        if (!targetId) return;
+        try {
+          const cleanTarget = targetId.trim();
+          const pubRes = await axios.get(`/api/users/public/${encodeURIComponent(cleanTarget)}`);
+          if (pubRes.data) {
+            setActiveContact(pubRes.data);
+            setActiveGroup(null);
+          }
+        } catch (e) {
+          console.error('Failed to open chat via bridge:', e);
+        }
+      };
+    }
+
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       if (typeof window !== 'undefined') {
         delete (window as any).__liquidHandleBack;
+        delete (window as any).__liquidOpenChat;
       }
     };
   }, [
@@ -291,7 +311,9 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     if (!isClient) return;
     if (showLanding === true) return;
     if (!token && !user && showLanding === false) {
-      router.push('/auth');
+      const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const chatQuery = urlParams?.get('chat');
+      router.push(chatQuery ? `/auth?chat=${encodeURIComponent(chatQuery)}` : '/auth');
       return;
     }
     if (user && token && !initialFetchDone.current) {
@@ -774,7 +796,8 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const isChatOpen = !!(activeContact || activeGroup);
 
   return (
-    <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30">
+    <DesktopOnlyGate>
+      <main className="fixed inset-0 w-full h-[100dvh] max-h-[100dvh] flex bg-liquid-dark overflow-hidden selection:bg-liquid-accent/30">
       <AnimatePresence>
         {showUpdateBanner && (
           <motion.div 
@@ -1449,6 +1472,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </main>
+      </main>
+    </DesktopOnlyGate>
   );
 }

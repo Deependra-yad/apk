@@ -44,7 +44,8 @@ function AuthForm() {
     const token = localStorage.getItem('liquid_token');
     const chatParam = searchParams.get('chat');
     if (token) {
-      router.push(chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web');
+      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+      return;
     }
     const urlError = searchParams.get('error');
     if (urlError === 'SessionExpired') {
@@ -91,7 +92,7 @@ function AuthForm() {
       }
 
       const chatParam = searchParams.get('chat');
-      window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
+      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -135,7 +136,7 @@ function AuthForm() {
       }
 
       const chatParam = searchParams.get('chat');
-      window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
+      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -213,7 +214,7 @@ function AuthForm() {
         localStorage.setItem('liquid_user', JSON.stringify(data.user));
         useAuthStore.getState().setAuth(data.user, data.token);
         const chatParam = searchParams.get('chat');
-        window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
+        window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
       }
     } catch (err: any) {
       setError(err.message);
@@ -506,9 +507,17 @@ function AuthForm() {
                 type="button"
                 onClick={() => {
                   const isAndroidApp = typeof window !== 'undefined' && !!(window as any).Android;
-                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://liquidchat.online';
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://web.liquidchat.online';
+                  
+                  // Use verified authorized redirect URIs from Google Cloud Console
+                  let redirectUri = 'https://web.liquidchat.online/auth/callback';
+                  if (typeof window !== 'undefined' && window.location.hostname === 'liquidchat.online') {
+                    redirectUri = 'https://liquidchat.online/auth/callback';
+                  }
+
                   const statePayload = encodeURIComponent(JSON.stringify({ isApp: isAndroidApp, origin }));
-                  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com&redirect_uri=https://apk-flame.vercel.app/auth/callback&response_type=token&scope=email%20profile&state=${statePayload}`;
+                  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${statePayload}`;
+                  
                   if (typeof window !== 'undefined' && (window as any).Android?.openExternalBrowser) {
                     (window as any).Android.openExternalBrowser(googleAuthUrl);
                   } else {

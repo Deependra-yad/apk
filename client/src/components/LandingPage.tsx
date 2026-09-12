@@ -461,7 +461,7 @@ export default function LandingPage() {
     if (action.actionType === 'download') {
       window.location.href = '/LiquidChat.apk';
     } else if (action.actionType === 'web') {
-      window.location.href = '/web';
+      window.location.href = 'https://web.liquidchat.online';
     } else if (action.actionType === 'hash') {
       handleCopyHash();
     } else if (action.actionType === 'console') {
@@ -630,13 +630,13 @@ export default function LandingPage() {
             </button>
 
             {/* Launch Web Client Link */}
-            <Link
-              href="/web"
+            <a
+              href="https://web.liquidchat.online"
               className="hidden sm:flex px-4 py-2 text-xs font-semibold tracking-wider text-white border border-white/15 hover:border-cyan-400/50 rounded-full bg-white/[0.03] hover:bg-cyan-500/10 transition-all items-center gap-2"
             >
               <Monitor size={14} className="text-cyan-400" />
               <span>WEB APP</span>
-            </Link>
+            </a>
 
             {/* Get APK Button */}
             <a
@@ -709,14 +709,14 @@ export default function LandingPage() {
 
             <div className="space-y-3 pt-6 border-t border-white/10">
               <div className="grid grid-cols-2 gap-3">
-                <Link
-                  href="/web"
+                <a
+                  href="https://web.liquidchat.online"
                   onClick={() => setIsMobileMenuOpen(false)}
                   className="py-3 px-4 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 font-bold text-xs tracking-wider flex items-center justify-center gap-2"
                 >
                   <Monitor size={15} />
                   <span>WEB CLIENT</span>
-                </Link>
+                </a>
                 <button
                   onClick={() => {
                     setIsMobileMenuOpen(false);
@@ -801,14 +801,14 @@ export default function LandingPage() {
             <span>DOWNLOAD APK (v2.0.1)</span>
           </a>
 
-          <Link
-            href="/web"
+          <a
+            href="https://web.liquidchat.online"
             className="w-full sm:w-auto px-7 py-4 rounded-full border border-white/20 text-xs font-semibold tracking-widest text-white hover:bg-white/[0.06] hover:border-cyan-400/50 transition-all flex items-center justify-center gap-2"
           >
             <Monitor size={16} className="text-cyan-400" />
             <span>LAUNCH IN BROWSER</span>
             <ArrowRight size={14} className="text-white/40" />
-          </Link>
+          </a>
         </motion.div>
 
         {/* Quick Stat Badges */}
@@ -1164,13 +1164,13 @@ export default function LandingPage() {
               <span>DOWNLOAD APK v2.0.1</span>
             </a>
 
-            <Link
-              href="/web"
+            <a
+              href="https://web.liquidchat.online"
               className="px-6 py-3.5 rounded-full border border-white/20 text-xs font-semibold tracking-wider text-white hover:bg-white/[0.08] transition-all flex items-center gap-2"
             >
               <Monitor size={16} className="text-cyan-400" />
               <span>LAUNCH WEB CLIENT</span>
-            </Link>
+            </a>
 
             <button
               onClick={() => setShowQrModal(true)}
@@ -1250,7 +1250,7 @@ export default function LandingPage() {
             },
             {
               q: "Can I use Liquid Chat on Android and desktop Web simultaneously?",
-              a: "Yes. Install the native APK on Android, or navigate to /web on any desktop browser. Sessions can pair securely via encrypted QR key handshake."
+              a: "Yes. Install the native APK on Android, or navigate to https://web.liquidchat.online on any desktop browser. Sessions can pair securely via encrypted QR key handshake."
             },
             {
               q: "What happens if a relay server is compromised or seized?",
@@ -1322,7 +1322,7 @@ export default function LandingPage() {
               <div className="max-h-64 overflow-y-auto space-y-1 font-mono text-xs">
                 {[
                   { name: 'Download Android APK (v2.0.1)', action: () => { window.location.href = '/LiquidChat.apk'; } },
-                  { name: 'Launch Web Client (/web)', action: () => { window.location.href = '/web'; } },
+                  { name: 'Launch Web Client (web.liquidchat.online)', action: () => { window.location.href = 'https://web.liquidchat.online'; } },
                   { name: 'Jump to Cryptographic Console', action: () => { window.location.href = '#console'; setIsCmdOpen(false); } },
                   { name: 'Jump to Capabilities', action: () => { window.location.href = '#capabilities'; setIsCmdOpen(false); } },
                   { name: 'Jump to Roadmap Timeline', action: () => { window.location.href = '#timeline'; setIsCmdOpen(false); } },
@@ -1611,7 +1611,7 @@ export default function LandingPage() {
         <p className="tracking-wide text-center">Built for sovereign communication. Unconditionally private. Open source.</p>
 
         <div className="flex items-center gap-5 sm:gap-6">
-          <Link href="/web" className="hover:text-cyan-400 transition-colors">Web Client</Link>
+          <a href="https://web.liquidchat.online" className="hover:text-cyan-400 transition-colors">Web Client</a>
           <a href="/LiquidChat.apk" download className="hover:text-cyan-400 transition-colors">Direct APK</a>
           <a href="https://github.com/Deependra-yad/apk" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors flex items-center gap-1">
             <span>GitHub</span>

@@ -5,7 +5,8 @@ import { useParams, useRouter } from 'next/navigation';
 import axios from 'axios';
 import { 
   Shield, Lock, MessageSquare, Download, Smartphone, 
-  Sparkles, CheckCircle, ExternalLink, ArrowRight, UserX, Copy, Check
+  Sparkles, CheckCircle, ExternalLink, ArrowRight, UserX, Copy, Check,
+  Zap, RefreshCw
 } from 'lucide-react';
 import LiquidLogo from '@/components/LiquidLogo';
 import { downloadFile } from '@/utils/apiUrl';
@@ -19,15 +20,59 @@ export default function PublicContactSharePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [appLaunchAttempted, setAppLaunchAttempted] = useState(false);
 
+  // Forcefully open in downloaded Android app when shared ID link is opened
   useEffect(() => {
     if (!id) return;
+
     const fetchContact = async () => {
       try {
         setLoading(true);
         setError(null);
         const res = await axios.get(`/api/users/public/${encodeURIComponent(id)}`);
         setContact(res.data);
+
+        // Pre-save pending contact so that if app opens, chat is instantly available
+        const targetIdentifier = res.data?.liquidNumber || res.data?.username || res.data?.id;
+        try {
+          localStorage.setItem('liquid_pending_chat', JSON.stringify({
+            id: res.data.id,
+            username: res.data.username,
+            liquidNumber: res.data.liquidNumber,
+            avatar: res.data.avatar,
+            about: res.data.about,
+            publicKey: res.data.publicKey
+          }));
+        } catch (e) {}
+
+        // Automatic forceful launch for mobile / Android devices
+        if (typeof window !== 'undefined') {
+          const isAndroid = /Android/i.test(navigator.userAgent);
+          const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+          const cleanId = encodeURIComponent(targetIdentifier || id);
+
+          // If inside the Android app already, navigate right away
+          if ((window as any).Android) {
+            window.location.href = `https://web.liquidchat.online/?chat=${cleanId}`;
+            return;
+          }
+
+          if (isAndroid || isMobile) {
+            setAppLaunchAttempted(true);
+            // 1. Android Intent URI (Forces OS to invoke com.liquidchat.app package if installed)
+            const intentUrl = `intent://chat/${cleanId}#Intent;scheme=liquidchat;package=com.liquidchat.app;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
+            // 2. Custom Scheme
+            const customSchemeUrl = `liquidchat://chat/${cleanId}`;
+
+            // Attempt launch
+            try {
+              window.location.href = intentUrl;
+            } catch (e) {
+              window.location.href = customSchemeUrl;
+            }
+          }
+        }
       } catch (err: any) {
         console.error('Failed to fetch contact:', err);
         setError(err.response?.data?.error || 'User not found or link has expired.');
@@ -35,13 +80,32 @@ export default function PublicContactSharePage() {
         setLoading(false);
       }
     };
+
     fetchContact();
   }, [id]);
 
-  const handleStartChat = () => {
+  const handleOpenInApp = () => {
+    if (!contact) return;
+    const identifier = contact.liquidNumber || contact.username || contact.id;
+    const cleanId = encodeURIComponent(identifier);
+    const intentUrl = `intent://chat/${cleanId}#Intent;scheme=liquidchat;package=com.liquidchat.app;S.browser_fallback_url=${encodeURIComponent(window.location.href)};end`;
+    const customSchemeUrl = `liquidchat://chat/${cleanId}`;
+
+    try {
+      window.location.href = intentUrl;
+    } catch (e) {
+      window.location.href = customSchemeUrl;
+    }
+
+    // Secondary fallback after 2s
+    setTimeout(() => {
+      window.location.href = customSchemeUrl;
+    }, 500);
+  };
+
+  const handleStartChatOnWeb = () => {
     if (!contact) return;
     
-    // Save pending contact so the chat page immediately opens conversation
     const targetIdentifier = contact.liquidNumber || contact.username || contact.id;
     localStorage.setItem('liquid_pending_chat', JSON.stringify({
       id: contact.id,
@@ -52,24 +116,8 @@ export default function PublicContactSharePage() {
       publicKey: contact.publicKey
     }));
 
-    const token = localStorage.getItem('token') || localStorage.getItem('liquid_token');
-    if (token) {
-      // Logged in: navigate directly to chat with ?chat query
-      router.push(`/web?chat=${encodeURIComponent(targetIdentifier)}`);
-    } else {
-      // Not logged in: navigate to auth screen, pending contact will be picked up after login
-      router.push(`/auth?chat=${encodeURIComponent(targetIdentifier)}`);
-    }
-  };
-
-  const handleOpenInApp = () => {
-    if (!contact) return;
-    const identifier = contact.liquidNumber || contact.id;
-    window.location.href = `liquidchat://chat/${identifier}`;
-    // Fallback to web chat after delay
-    setTimeout(() => {
-      handleStartChat();
-    }, 1500);
+    // Redirect to web.liquidchat.online directly
+    window.location.href = `https://web.liquidchat.online/?chat=${encodeURIComponent(targetIdentifier)}`;
   };
 
   const handleCopyLink = () => {
@@ -149,6 +197,19 @@ export default function PublicContactSharePage() {
             <div className="absolute -inset-0.5 bg-gradient-to-r from-pink-500 via-purple-500 to-cyan-500 rounded-3xl blur opacity-30 group-hover:opacity-50 transition duration-1000" />
 
             <div className="relative p-6 sm:p-8 rounded-3xl bg-[#0e0e18]/90 backdrop-blur-2xl border border-white/10 shadow-[0_16px_48px_rgba(0,0,0,0.6)]">
+              {/* App Opening Toast Banner on Mobile */}
+              {appLaunchAttempted && (
+                <div className="mb-4 p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping shrink-0" />
+                    <span>Opening in downloaded Liquid Chat app...</span>
+                  </div>
+                  <button onClick={handleOpenInApp} className="underline font-bold text-[11px] shrink-0 ml-2">
+                    Retry
+                  </button>
+                </div>
+              )}
+
               {/* Top Security Pill */}
               <div className="flex items-center justify-between mb-6">
                 <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-semibold">
@@ -197,7 +258,7 @@ export default function PublicContactSharePage() {
                 </div>
 
                 <p className="text-gray-400 text-sm max-w-xs italic line-clamp-2">
-                  "{contact.about || 'Hey there! I am using Liquid Chat 🌸'}"
+                  &quot;{contact.about || 'Hey there! I am using Liquid Chat 🌸'}&quot;
                 </p>
               </div>
 
@@ -212,38 +273,40 @@ export default function PublicContactSharePage() {
                       End-to-End Encrypted Chat
                     </p>
                     <p className="text-[11px] text-gray-400 leading-snug mt-0.5">
-                      Messages and media are encrypted with Curve25519 & AES-256-GCM. Only you and {contact.username} have the keys.
+                      Messages and media are encrypted with Curve25519 &amp; AES-256-GCM. Only you and {contact.username} have the keys.
                     </p>
                   </div>
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="space-y-2.5">
+              <div className="space-y-3">
+                {/* 1. Forceful Primary Launch Button */}
                 <button
-                  onClick={handleStartChat}
-                  className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-pink-500 via-pink-600 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white font-bold text-sm transition-all shadow-[0_0_25px_rgba(236,72,153,0.4)] hover:shadow-[0_0_35px_rgba(236,72,153,0.6)] active:scale-[0.99] flex items-center justify-center gap-2 cursor-pointer"
+                  onClick={handleOpenInApp}
+                  className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-cyan-500 via-purple-600 to-pink-500 hover:opacity-95 text-white font-bold text-sm transition-all shadow-[0_0_30px_rgba(56,189,248,0.4)] hover:shadow-[0_0_40px_rgba(56,189,248,0.6)] active:scale-[0.98] flex items-center justify-center gap-2.5 cursor-pointer"
                 >
-                  <MessageSquare size={18} />
-                  <span>Start E2EE Chat on Web</span>
+                  <Smartphone size={18} className="animate-bounce" />
+                  <span>OPEN IN LIQUID CHAT APP</span>
                   <ArrowRight size={16} />
                 </button>
 
+                {/* Secondary Actions */}
                 <div className="grid grid-cols-2 gap-2.5">
                   <button
-                    onClick={handleOpenInApp}
-                    className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Smartphone size={14} className="text-cyan-400" />
-                    <span>Open in App</span>
-                  </button>
-
-                  <button
                     onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
-                    className="py-2.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                    className="py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                   >
                     <Download size={14} className="text-pink-400" />
                     <span>Download APK</span>
+                  </button>
+
+                  <button
+                    onClick={handleStartChatOnWeb}
+                    className="py-3 px-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 hover:text-white font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    <ExternalLink size={14} className="text-cyan-400" />
+                    <span>Open on Web</span>
                   </button>
                 </div>
               </div>

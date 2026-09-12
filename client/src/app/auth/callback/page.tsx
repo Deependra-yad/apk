@@ -80,7 +80,7 @@ function CallbackLogic() {
               if (returnOrigin && returnOrigin !== window.location.origin) {
                 window.location.href = `${returnOrigin}/auth/callback?token=${data.token}&user=${userStr}`;
               } else {
-                window.location.href = "/web";
+                window.location.href = "https://web.liquidchat.online";
               }
             }
             return;
@@ -132,7 +132,7 @@ function CallbackLogic() {
             if (returnOrigin && returnOrigin !== window.location.origin) {
               window.location.href = `${returnOrigin}/auth/callback?token=${token}&user=${safeUserJson}`;
             } else {
-              window.location.href = "/web";
+              window.location.href = "https://web.liquidchat.online";
             }
           }
         } catch (err) {
@@ -164,7 +164,7 @@ function CallbackLogic() {
             Open Liquid Chat App
           </a>
           <button
-            onClick={() => { window.location.href = "/web"; }}
+            onClick={() => { window.location.href = "https://web.liquidchat.online"; }}
             className="text-xs text-foreground/50 hover:text-foreground mt-3 underline cursor-pointer"
           >
             Or continue in browser

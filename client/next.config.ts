@@ -19,6 +19,20 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/web',
+        destination: 'https://web.liquidchat.online',
+        permanent: false,
+      },
+      {
+        source: '/web/:path*',
+        destination: 'https://web.liquidchat.online/:path*',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

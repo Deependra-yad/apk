@@ -1,7 +1,6 @@
 {
-  "versionCode": 4,
-  "versionName": "1.3",
-  "url": "https://apk-flame.vercel.app/LiquidChat_v4.apk",
-  "releaseNotes": "In-app updates enabled! Future updates will be downloaded automatically."
+  "versionCode": 5,
+  "versionName": "2.0.1",
+  "url": "https://liquidchat.online/LiquidChat.apk",
+  "releaseNotes": "Liquid Chat v2.0.1 Sovereign Edition - Android mobile optimization, Curve25519 hardware key ratchets, WebRTC direct P2P calls, and automatic app links."
 }
-

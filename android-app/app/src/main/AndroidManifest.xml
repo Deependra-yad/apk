@@ -50,7 +50,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="https" android:host="liquidchat.online" android:pathPrefix="/auth" />
-                <data android:scheme="https" android:host="apk-flame.vercel.app" android:pathPrefix="/auth" />
+                <data android:scheme="https" android:host="web.liquidchat.online" android:pathPrefix="/auth" />
+                <data android:scheme="https" android:host="liquidchat.online" android:pathPrefix="/c" />
+                <data android:scheme="https" android:host="web.liquidchat.online" android:pathPrefix="/c" />
             </intent-filter>
             
             <intent-filter>
@@ -58,6 +60,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
                 <data android:scheme="liquidchat" android:host="auth" />
+                <data android:scheme="liquidchat" android:host="chat" />
+                <data android:scheme="liquidchat" android:host="c" />
+                <data android:scheme="liquidchat" android:host="open" />
             </intent-filter>
         </activity>
 

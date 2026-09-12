@@ -58,7 +58,7 @@ class MainActivity : AppCompatActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var customView: View? = null
 
-    private val WEB_URL = "https://liquidchat.online/web"
+    private val WEB_URL = "https://web.liquidchat.online"
  
     // Permission request launcher
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
@@ -375,8 +375,8 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 // Keep navigation within the app for our domains
-                if (url.contains("apk-flame.vercel.app") ||
-                    url.contains("liquidchat.online") ||
+                if (url.contains("liquidchat.online") ||
+                    url.contains("web.liquidchat.online") ||
                     url.contains("apk-production-740c.up.railway.app")) {
                     return false
                 }
@@ -943,11 +943,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleDeepLink(intent)
+        handleCallAction(intent)
+    }
+
     private fun handleDeepLink(intent: Intent?) {
         val data = intent?.data ?: return
-        val scheme = data.scheme
-        val host = data.host
+        val scheme = data.scheme ?: ""
+        val host = data.host ?: ""
+        val path = data.path ?: ""
 
+        // 1. Google or web auth token return
         if (scheme == "liquidchat" && host == "auth") {
             val token = data.getQueryParameter("token")
             val user = data.getQueryParameter("user")
@@ -966,8 +975,56 @@ class MainActivity : AppCompatActivity() {
                 """.trimIndent()
                 webView.postDelayed({
                     webView.evaluateJavascript(js, null)
-                }, 600)
+                }, 500)
             }
+            return
+        }
+
+        // 2. Shared Contact / Chat ID deep links:
+        // - liquidchat://chat/{id}
+        // - liquidchat://c/{id}
+        // - https://liquidchat.online/c/{id}
+        // - https://web.liquidchat.online/c/{id}
+        var targetChatId: String? = null
+
+        if (scheme == "liquidchat") {
+            if (host == "chat" || host == "c") {
+                targetChatId = path.trimStart('/').ifEmpty { null }
+                    ?: data.getQueryParameter("id")
+                    ?: data.getQueryParameter("chat")
+            }
+        } else if (scheme == "https" || scheme == "http") {
+            if (path.startsWith("/c/")) {
+                targetChatId = path.substring(3).trim().ifEmpty { null }
+            } else if (path.startsWith("/chat/")) {
+                targetChatId = path.substring(6).trim().ifEmpty { null }
+            } else {
+                targetChatId = data.getQueryParameter("chat")
+            }
+        }
+
+        if (!targetChatId.isNullOrEmpty()) {
+            val cleanTarget = targetChatId.trim()
+            val js = """
+                (function() {
+                    try {
+                        localStorage.setItem('liquid_pending_chat', JSON.stringify({ liquidNumber: '$cleanTarget', id: '$cleanTarget' }));
+                        if (typeof window.__liquidOpenChat === 'function') {
+                            window.__liquidOpenChat('$cleanTarget');
+                        } else {
+                            const currentUrl = new URL(window.location.href);
+                            currentUrl.searchParams.set('chat', '$cleanTarget');
+                            window.location.href = currentUrl.toString();
+                        }
+                    } catch(e) {
+                        console.error('Deep link chat error', e);
+                    }
+                })();
+            """.trimIndent()
+
+            webView.postDelayed({
+                webView.evaluateJavascript(js, null)
+            }, 600)
         }
     }
 
