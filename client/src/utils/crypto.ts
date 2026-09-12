@@ -223,21 +223,250 @@ export const clearCryptoDB = async (): Promise<void> => {
   } catch (e) {}
 };
 
-export const ensureUserKeyPair = async (userId: string, token?: string): Promise<CryptoKeyPair | null> => {
+// Dual-layer key persistence (IndexedDB + localStorage fallback)
+export const saveKeyToIDBAndLocalStorage = async (userId: string, keyPair: CryptoKeyPair) => {
+  try {
+    await saveKeyToIDB(userId, keyPair);
+  } catch (e) {
+    console.warn('Could not save key to IDB:', e);
+  }
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const privJwk = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
+      const pubJwk = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+      window.localStorage.setItem(`liquid_crypto_key_${userId}`, JSON.stringify({ privJwk, pubJwk }));
+    }
+  } catch (e) {
+    console.warn('Could not save key to localStorage:', e);
+  }
+};
+
+export const getKeyFromIDBOrLocalStorage = async (userId: string): Promise<CryptoKeyPair | null> => {
+  try {
+    const fromIdb = await getKeyFromIDB(userId);
+    if (fromIdb && fromIdb.privateKey && fromIdb.publicKey) {
+      return fromIdb;
+    }
+  } catch (e) {}
+
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(`liquid_crypto_key_${userId}`);
+      if (raw) {
+        const { privJwk, pubJwk } = JSON.parse(raw);
+        if (privJwk && pubJwk) {
+          const privateKey = await window.crypto.subtle.importKey(
+            'jwk',
+            privJwk,
+            { name: 'ECDH', namedCurve: 'P-256' },
+            true,
+            ['deriveKey', 'deriveBits']
+          );
+          const publicKey = await window.crypto.subtle.importKey(
+            'jwk',
+            pubJwk,
+            { name: 'ECDH', namedCurve: 'P-256' },
+            true,
+            []
+          );
+          const pair: CryptoKeyPair = { privateKey, publicKey };
+          saveKeyToIDB(userId, pair).catch(() => {});
+          return pair;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read key from localStorage:', e);
+  }
+  return null;
+};
+
+// PBKDF2 Key Derivation from User Password
+const deriveKeyFromPassword = async (password: string, salt: Uint8Array): Promise<CryptoKey> => {
+  const encoder = new TextEncoder();
+  const baseKey = await window.crypto.subtle.importKey(
+    'raw',
+    encoder.encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveKey']
+  );
+  return await window.crypto.subtle.deriveKey(
+    {
+      name: 'PBKDF2',
+      salt: salt.buffer as ArrayBuffer,
+      iterations: 100000,
+      hash: 'SHA-256'
+    },
+    baseKey,
+    { name: 'AES-GCM', length: 256 },
+    false,
+    ['encrypt', 'decrypt']
+  );
+};
+
+// Zero-Knowledge Backup: Encrypt user's private key with password-derived AES key and send to server
+export const backupKeyWithPassword = async (
+  userId: string,
+  password: string,
+  keyPair: CryptoKeyPair,
+  token?: string
+): Promise<boolean> => {
+  try {
+    const salt = window.crypto.getRandomValues(new Uint8Array(16));
+    const aesKey = await deriveKeyFromPassword(password, salt);
+
+    const privJwk = await window.crypto.subtle.exportKey('jwk', keyPair.privateKey);
+    const pubJwk = await window.crypto.subtle.exportKey('jwk', keyPair.publicKey);
+    const serialized = JSON.stringify({ privJwk, pubJwk });
+
+    const encoder = new TextEncoder();
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const ciphertext = await window.crypto.subtle.encrypt(
+      { name: 'AES-GCM', iv },
+      aesKey,
+      encoder.encode(serialized)
+    );
+
+    const ciphertextBuffer = new Uint8Array(ciphertext);
+    const encryptedPrivateKey = `${btoa(String.fromCharCode(...iv))}:${btoa(String.fromCharCode(...ciphertextBuffer))}`;
+    const keyBackupSalt = Array.from(salt).map(b => b.toString(16).padStart(2, '0')).join('');
+    const publicKeyBase64 = await exportPublicKey(keyPair.publicKey);
+
+    // Persist locally
+    await saveKeyToIDBAndLocalStorage(userId, keyPair);
+
+    const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null);
+    if (authToken) {
+      const axios = (await import('axios')).default;
+      await axios.put('/api/users/key-backup', {
+        encryptedPrivateKey,
+        keyBackupSalt,
+        publicKey: publicKeyBase64
+      }, {
+        headers: { Authorization: `Bearer ${authToken}` }
+      });
+      console.log('Zero-knowledge private key safely backed up to server');
+    }
+    return true;
+  } catch (err) {
+    console.error('Failed to backup key with password:', err);
+    return false;
+  }
+};
+
+// Zero-Knowledge Restore: Decrypt server-stored private key using password
+export const restoreKeyWithPassword = async (
+  userId: string,
+  password: string,
+  encryptedPrivateKey: string,
+  keyBackupSalt: string
+): Promise<CryptoKeyPair | null> => {
+  try {
+    if (!encryptedPrivateKey || !keyBackupSalt || !encryptedPrivateKey.includes(':')) {
+      return null;
+    }
+    const [ivB64, cipherB64] = encryptedPrivateKey.split(':');
+    const saltBytes = new Uint8Array(keyBackupSalt.match(/.{1,2}/g)!.map(byte => parseInt(byte, 16)));
+    const aesKey = await deriveKeyFromPassword(password, saltBytes);
+
+    const ivStr = atob(ivB64);
+    const iv = new Uint8Array(ivStr.length);
+    for (let i = 0; i < ivStr.length; i++) iv[i] = ivStr.charCodeAt(i);
+
+    const cipherStr = atob(cipherB64);
+    const cipherBytes = new Uint8Array(cipherStr.length);
+    for (let i = 0; i < cipherStr.length; i++) cipherBytes[i] = cipherStr.charCodeAt(i);
+
+    const decrypted = await window.crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv },
+      aesKey,
+      cipherBytes
+    );
+
+    const decoder = new TextDecoder();
+    const parsed = JSON.parse(decoder.decode(decrypted));
+    if (!parsed.privJwk) return null;
+
+    const privateKey = await window.crypto.subtle.importKey(
+      'jwk',
+      parsed.privJwk,
+      { name: 'ECDH', namedCurve: 'P-256' },
+      true,
+      ['deriveKey', 'deriveBits']
+    );
+
+    let publicKey: CryptoKey;
+    if (parsed.pubJwk) {
+      publicKey = await window.crypto.subtle.importKey(
+        'jwk',
+        parsed.pubJwk,
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        []
+      );
+    } else {
+      const { d, key_ops, ...pubJwkOnly } = parsed.privJwk;
+      pubJwkOnly.key_ops = [];
+      publicKey = await window.crypto.subtle.importKey(
+        'jwk',
+        pubJwkOnly,
+        { name: 'ECDH', namedCurve: 'P-256' },
+        true,
+        []
+      );
+    }
+
+    const keyPair: CryptoKeyPair = { privateKey, publicKey };
+    await saveKeyToIDBAndLocalStorage(userId, keyPair);
+    console.log('Zero-knowledge private key successfully restored from server backup');
+    return keyPair;
+  } catch (err) {
+    console.error('Failed to restore key with password:', err);
+    return null;
+  }
+};
+
+export const ensureUserKeyPair = async (userId: string, token?: string, password?: string): Promise<CryptoKeyPair | null> => {
   if (typeof window === 'undefined') return null;
   try {
-    let keyPair = await getKeyFromIDB(userId);
+    let keyPair = await getKeyFromIDBOrLocalStorage(userId);
+    const authToken = token || localStorage.getItem('liquid_token');
+
+    // If key not found locally, try restoring from server backup if password available
+    if (!keyPair && authToken && password) {
+      try {
+        const axios = (await import('axios')).default;
+        const backupRes = await axios.get('/api/users/key-backup', {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        if (backupRes.data?.encryptedPrivateKey && backupRes.data?.keyBackupSalt) {
+          keyPair = await restoreKeyWithPassword(
+            userId,
+            password,
+            backupRes.data.encryptedPrivateKey,
+            backupRes.data.keyBackupSalt
+          );
+        }
+      } catch (e) {
+        console.warn('Key restore attempt failed:', e);
+      }
+    }
+
     if (!keyPair) {
       keyPair = await generateKeyPair();
-      await saveKeyToIDB(userId, keyPair);
+      await saveKeyToIDBAndLocalStorage(userId, keyPair);
       const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
       
-      const authToken = token || localStorage.getItem('liquid_token');
       if (authToken) {
         const axios = (await import('axios')).default;
         await axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
           headers: { Authorization: `Bearer ${authToken}` }
         }).catch(err => console.warn('Failed to sync generated public key to server:', err));
+
+        if (password) {
+          await backupKeyWithPassword(userId, password, keyPair, authToken);
+        }
       }
     } else {
       const authToken = token || localStorage.getItem('liquid_token');
@@ -247,6 +476,18 @@ export const ensureUserKeyPair = async (userId: string, token?: string): Promise
         axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
           headers: { Authorization: `Bearer ${authToken}` }
         }).catch(() => {});
+
+        // If password is known and user has no server backup yet, back it up now
+        if (password) {
+          try {
+            const backupRes = await axios.get('/api/users/key-backup', {
+              headers: { Authorization: `Bearer ${authToken}` }
+            });
+            if (!backupRes.data?.encryptedPrivateKey) {
+              await backupKeyWithPassword(userId, password, keyPair, authToken);
+            }
+          } catch (e) {}
+        }
       }
     }
     return keyPair;
@@ -259,11 +500,10 @@ export const ensureUserKeyPair = async (userId: string, token?: string): Promise
 export const isBase64Ciphertext = (str: string): boolean => {
   if (!str || typeof str !== 'string') return false;
   const trimmed = str.trim();
-  if (trimmed.length < 16) return false;
-  if (/^[A-Za-z0-9+/]+={0,2}$/.test(trimmed)) {
-    return true;
-  }
-  return false;
+  if (trimmed.length < 24) return false;
+  if (/\s/.test(trimmed)) return false;
+  if (trimmed.length % 4 !== 0) return false;
+  return /^[A-Za-z0-9+/]+={0,2}$/.test(trimmed);
 };
 
 

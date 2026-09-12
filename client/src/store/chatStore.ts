@@ -39,6 +39,8 @@ export interface Message {
   };
   createdAt: string;
   updatedAt?: string;
+  rawText?: string;
+  rawFileUrl?: string;
 }
 
 export interface GroupItem {
@@ -231,6 +233,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
           } catch (e) {}
         }
 
+        finalMessage.rawText = finalMessage.text;
+        if (finalMessage.fileUrl) finalMessage.rawFileUrl = finalMessage.fileUrl;
+
         if (senderPubKeyStr) {
           try {
             const { ensureUserKeyPair, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
@@ -240,13 +245,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
               const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
               
               if (finalMessage.text) {
-                finalMessage.text = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
+                const dec = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
+                if (dec && dec !== '[Decryption Failed]') {
+                  finalMessage.text = dec;
+                } else {
+                  finalMessage.text = '[Decryption Failed]';
+                }
               }
               
               if (finalMessage.fileUrl && finalMessage.fileUrl.startsWith('ENC:')) {
                 const parts = finalMessage.fileUrl.substring(4).split(':');
                 if (parts.length === 2) {
-                  finalMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                  const decUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                  if (decUrl && decUrl !== '[Decryption Failed]') {
+                    finalMessage.fileUrl = decUrl;
+                  }
                 }
               }
             }
@@ -344,18 +357,27 @@ export const useChatStore = create<ChatState>((set, get) => ({
         try {
           const contact = get().activeContact;
           if (contact?.publicKey) {
-            const { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
-            const myKey = await getKeyFromIDB(userId);
+            const { getKeyFromIDBOrLocalStorage, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
+            const myKey = await getKeyFromIDBOrLocalStorage(userId);
             if (myKey) {
               const otherPubKey = await importPublicKey(contact.publicKey);
               const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+              confirmedMessage.rawText = confirmedMessage.text;
+              if (confirmedMessage.fileUrl) confirmedMessage.rawFileUrl = confirmedMessage.fileUrl;
+
               if (confirmedMessage.text) {
-                confirmedMessage.text = await decryptMessage(sharedKey, confirmedMessage.text, confirmedMessage.iv);
+                const dec = await decryptMessage(sharedKey, confirmedMessage.text, confirmedMessage.iv);
+                if (dec && dec !== '[Decryption Failed]') {
+                  confirmedMessage.text = dec;
+                }
               }
               if (confirmedMessage.fileUrl && confirmedMessage.fileUrl.startsWith('ENC:')) {
                 const parts = confirmedMessage.fileUrl.substring(4).split(':');
                 if (parts.length === 2) {
-                  confirmedMessage.fileUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                  const decUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+                  if (decUrl && decUrl !== '[Decryption Failed]') {
+                    confirmedMessage.fileUrl = decUrl;
+                  }
                 }
               }
             }

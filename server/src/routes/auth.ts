@@ -289,148 +289,172 @@ router.post('/google-redirect', async (req, res) => {
   });
 
   router.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required' });
-  }
-
-  try {
-    const existingUser = await prisma.user.findUnique({ where: { username } });
-    if (existingUser) return res.status(400).json({ error: 'Username already taken' });
-
-    const passwordHash = await bcrypt.hash(password, 10);
-    const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
-
-    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
-    const userAgent = req.headers['user-agent'] || 'Unknown';
-
-    const { generateLiquidNumber } = await import('../utils/numberGen');
-    const liquidNumber = await generateLiquidNumber();
-
-    const user = await prisma.user.create({
-      data: { 
-        username, 
-        passwordHash, 
-        liquidNumber,
-        avatar,
-        about: "Hey there! I am using Liquid Chat dYOS",
-        lastIpAddress: ip
-      }
-    });
-
-    await prisma.loginLog.create({
-      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
-    });
-
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        liquidNumber: user.liquidNumber,
-        avatar: user.avatar,
-        about: user.about,
-        publicKey: user.publicKey,
-        lastSeen: user.lastSeen,
-        isAdmin: user.isAdmin
-      }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error during registration' });
-  }
-});
-
-router.post('/login', async (req, res) => {
-  const { username, password } = req.body;
-  const identifier = (username || req.body.email || req.body.identifier || '').trim();
-  if (!identifier || !password) {
-    return res.status(400).json({ error: 'Username/Email and password are required' });
-  }
-
-  try {
-    const user = await prisma.user.findFirst({
-      where: {
-        OR: [
-          { username: identifier },
-          { email: identifier }
-        ]
-      }
-    });
-    if (!user) return res.status(400).json({ error: 'Invalid username/email or password' });
-
-    if (!user.passwordHash) {
-      return res.status(400).json({ error: 'This account was registered using Google or OTP. Please sign in with that method.' });
+    const { username, password, email, encryptedPrivateKey, keyBackupSalt, publicKey } = req.body;
+    if (!username || !password) {
+      return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-    if (!isMatch) return res.status(400).json({ error: 'Invalid username/email or password' });
+    const cleanUsername = username.trim();
+    const cleanEmail = (email || '').trim().toLowerCase();
+    if (!cleanEmail) {
+      return res.status(400).json({ error: 'Email address is strictly required to prevent bots' });
+    }
 
-    if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
 
-    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
-    const userAgent = req.headers['user-agent'] || 'Unknown';
+    try {
+      const existingUser = await prisma.user.findUnique({ where: { username: cleanUsername } });
+      if (existingUser) return res.status(400).json({ error: 'Username already taken' });
 
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { lastSeen: new Date(), lastIpAddress: ip }
-    });
+      const existingEmail = await prisma.user.findUnique({ where: { email: cleanEmail } });
+      if (existingEmail) return res.status(400).json({ error: 'Email address already registered' });
 
-    await prisma.loginLog.create({
-      data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
-    });
+      const passwordHash = await bcrypt.hash(password, 10);
+      const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanUsername)}`;
 
-    const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
-    res.json({
-      token,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        liquidNumber: user.liquidNumber,
-        avatar: user.avatar,
-        about: user.about,
-        publicKey: user.publicKey,
-        lastSeen: user.lastSeen,
-        isAdmin: user.isAdmin
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      const { generateLiquidNumber } = await import('../utils/numberGen');
+      const liquidNumber = await generateLiquidNumber();
+
+      const user = await prisma.user.create({
+        data: { 
+          username: cleanUsername, 
+          email: cleanEmail,
+          passwordHash, 
+          liquidNumber,
+          avatar,
+          about: "Hey there! I am using Liquid Chat",
+          lastIpAddress: ip,
+          publicKey: publicKey || null,
+          encryptedPrivateKey: encryptedPrivateKey || null,
+          keyBackupSalt: keyBackupSalt || null
+        }
+      });
+
+      await prisma.loginLog.create({
+        data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+      });
+
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          liquidNumber: user.liquidNumber,
+          avatar: user.avatar,
+          about: user.about,
+          publicKey: user.publicKey,
+          encryptedPrivateKey: user.encryptedPrivateKey,
+          keyBackupSalt: user.keyBackupSalt,
+          lastSeen: user.lastSeen,
+          isAdmin: user.isAdmin
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server error during registration' });
+    }
+  });
+
+  router.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+    const identifier = (username || req.body.email || req.body.identifier || '').trim();
+    if (!identifier || !password) {
+      return res.status(400).json({ error: 'Username/Email and password are required' });
+    }
+
+    try {
+      const user = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { username: identifier },
+            { email: identifier.toLowerCase() }
+          ]
+        }
+      });
+      if (!user) return res.status(400).json({ error: 'Invalid username/email or password' });
+
+      if (!user.passwordHash) {
+        return res.status(400).json({ error: 'This account was registered using Google or OTP. Please sign in with that method.' });
       }
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ error: 'Server error during login' });
-  }
-});
 
-router.get('/me', async (req, res) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+      const isMatch = await bcrypt.compare(password, user.passwordHash);
+      if (!isMatch) return res.status(400).json({ error: 'Invalid username/email or password' });
 
-  const token = authHeader.split(' ')[1];
-  try {
-    const decoded: any = jwt.verify(token, JWT_SECRET);
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
-    
-    res.json({
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        liquidNumber: user.liquidNumber,
-        avatar: user.avatar,
-        about: user.about,
-        publicKey: user.publicKey,
-        lastSeen: user.lastSeen,
-        isAdmin: user.isAdmin
-      }
-    });
-  } catch (err) {
-    res.status(401).json({ error: 'Invalid token' });
-  }
-});
+      if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+
+      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const userAgent = req.headers['user-agent'] || 'Unknown';
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastIpAddress: ip }
+      });
+
+      await prisma.loginLog.create({
+        data: { userId: user.id, ipAddress: ip, userAgent, status: 'success' }
+      });
+
+      const token = jwt.sign({ userId: user.id }, JWT_SECRET, { expiresIn: '7d' });
+      res.json({
+        token,
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          liquidNumber: user.liquidNumber,
+          avatar: user.avatar,
+          about: user.about,
+          publicKey: user.publicKey,
+          encryptedPrivateKey: user.encryptedPrivateKey,
+          keyBackupSalt: user.keyBackupSalt,
+          lastSeen: user.lastSeen,
+          isAdmin: user.isAdmin
+        }
+      });
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: 'Server error during login' });
+    }
+  });
+
+  router.get('/me', async (req, res) => {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) return res.status(401).json({ error: 'No token provided' });
+
+    const token = authHeader.split(' ')[1];
+    try {
+      const decoded: any = jwt.verify(token, JWT_SECRET);
+      const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
+      if (!user) return res.status(404).json({ error: 'User not found' });
+      if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
+      
+      res.json({
+        user: {
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          liquidNumber: user.liquidNumber,
+          avatar: user.avatar,
+          about: user.about,
+          publicKey: user.publicKey,
+          encryptedPrivateKey: user.encryptedPrivateKey,
+          keyBackupSalt: user.keyBackupSalt,
+          lastSeen: user.lastSeen,
+          isAdmin: user.isAdmin
+        }
+      });
+    } catch (err) {
+      res.status(401).json({ error: 'Invalid token' });
+    }
+  });
 
 router.post('/logout', async (req, res) => {
   const authHeader = req.headers.authorization;

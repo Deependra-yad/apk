@@ -21,6 +21,8 @@ model User {
   isBanned     Boolean   @default(false)
   lastIpAddress String?
   publicKey     String?   @db.Text
+  encryptedPrivateKey String? @db.Text
+  keyBackupSalt       String? @db.Text
   lastSeen      DateTime  @default(now())
   createdAt    DateTime  @default(now())
 

@@ -7,6 +7,7 @@ import { GoogleOAuthProvider, GoogleLogin } from '@react-oauth/google';
 import { useAuthStore } from '@/store/authStore';
 import QrLoginPanel from '@/components/QrLoginPanel';
 import LiquidLogo from '@/components/LiquidLogo';
+import { ensureUserKeyPair, restoreKeyWithPassword } from '@/utils/crypto';
 
 const GOOGLE_CLIENT_ID = "543385888390-9gjodv3m7ah41mbtb37p0v7nnbs4iiin.apps.googleusercontent.com";
 
@@ -79,6 +80,16 @@ function AuthForm() {
       localStorage.setItem('liquid_token', data.token);
       localStorage.setItem('liquid_user', JSON.stringify(data.user));
       useAuthStore.getState().setAuth(data.user, data.token);
+
+      try {
+        if (data.user?.encryptedPrivateKey && data.user?.keyBackupSalt) {
+          await restoreKeyWithPassword(data.user.id, password, data.user.encryptedPrivateKey, data.user.keyBackupSalt);
+        }
+        await ensureUserKeyPair(data.user.id, data.token, password);
+      } catch (keyErr) {
+        console.warn('Key setup on login:', keyErr);
+      }
+
       const chatParam = searchParams.get('chat');
       window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
     } catch (err: any) {
@@ -90,8 +101,12 @@ function AuthForm() {
 
   const handleDirectSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    const cleanEmail = email.trim().toLowerCase();
     if (!username.trim() || !password) {
       return setError('Username and password are required');
+    }
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return setError('A valid email address is strictly required to prevent bots');
     }
     setIsLoading(true);
     setError('');
@@ -102,7 +117,7 @@ function AuthForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           username: username.trim(), 
-          email: email.trim() || undefined, 
+          email: cleanEmail, 
           password 
         })
       });
@@ -112,6 +127,13 @@ function AuthForm() {
       localStorage.setItem('liquid_token', data.token);
       localStorage.setItem('liquid_user', JSON.stringify(data.user));
       useAuthStore.getState().setAuth(data.user, data.token);
+
+      try {
+        await ensureUserKeyPair(data.user.id, data.token, password);
+      } catch (keyErr) {
+        console.warn('Key setup on signup:', keyErr);
+      }
+
       const chatParam = searchParams.get('chat');
       window.location.href = chatParam ? `/web?chat=${encodeURIComponent(chatParam)}` : '/web';
     } catch (err: any) {
@@ -385,10 +407,10 @@ function AuthForm() {
                 </div>
               </div>
               <div>
-                <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email Address (Optional)</label>
+                <label className="text-xs font-bold text-foreground/60 uppercase tracking-wider ml-1 mb-1.5 block">Email Address</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-foreground/40" size={18} />
-                  <input type="email" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="john@liquidchat.online" />
+                  <input type="email" required value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-background/50 border border-foreground/10 rounded-xl py-3.5 pl-12 pr-4 text-sm focus:border-liquid-accent/50 outline-none transition-colors text-foreground placeholder:text-foreground/30" placeholder="john@liquidchat.online" />
                 </div>
               </div>
               <div>

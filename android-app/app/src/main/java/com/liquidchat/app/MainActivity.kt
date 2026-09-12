@@ -136,6 +136,7 @@ class MainActivity : AppCompatActivity() {
             webView.loadUrl(WEB_URL)
             handleDeepLink(intent)
         }
+        handleCallAction(intent)
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -537,9 +538,9 @@ class MainActivity : AppCompatActivity() {
                 .build()
 
             val callChannel = NotificationChannel(
-                "liquid_chat_calls",
+                "liquid_chat_calls_v2",
                 "Calls",
-                NotificationManager.IMPORTANCE_HIGH
+                NotificationManager.IMPORTANCE_MAX
             ).apply {
                 description = "Liquid Chat call notifications"
                 enableLights(true)
@@ -714,25 +715,47 @@ class MainActivity : AppCompatActivity() {
                 stopCallRingtoneInternal()
                 val js = """
                     (function() {
-                        var btn = document.querySelector('[data-testid="accept-call-btn"]') || 
-                                  document.querySelector('button[title*="Answer"]') ||
-                                  document.querySelector('button[title*="Pick"]');
-                        if (btn) btn.click();
+                        try {
+                            if (typeof window !== 'undefined' && typeof window.__liquidAnswerCall === 'function') {
+                                window.__liquidAnswerCall();
+                                return;
+                            }
+                            var btn = document.querySelector('#liquid-accept-call-btn') ||
+                                      document.querySelector('[data-testid="accept-call-btn"]') || 
+                                      document.querySelector('button[title*="Answer"]') ||
+                                      document.querySelector('button[title*="Pick"]');
+                            if (btn) btn.click();
+                        } catch(e) {
+                            console.error('Call accept error:', e);
+                        }
                     })();
                 """.trimIndent()
                 webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 800)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1500)
             }
             "DECLINE_CALL" -> {
                 stopCallRingtoneInternal()
                 val js = """
                     (function() {
-                        var btn = document.querySelector('[data-testid="decline-call-btn"]') || 
-                                  document.querySelector('button[title*="Decline"]') ||
-                                  document.querySelector('button[title*="Hang"]');
-                        if (btn) btn.click();
+                        try {
+                            if (typeof window !== 'undefined' && typeof window.__liquidRejectCall === 'function') {
+                                window.__liquidRejectCall();
+                                return;
+                            }
+                            var btn = document.querySelector('#liquid-decline-call-btn') ||
+                                      document.querySelector('[data-testid="decline-call-btn"]') || 
+                                      document.querySelector('button[title*="Decline"]') ||
+                                      document.querySelector('button[title*="Hang"]');
+                            if (btn) btn.click();
+                        } catch(e) {
+                            console.error('Call decline error:', e);
+                        }
                     })();
                 """.trimIndent()
                 webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 800)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1500)
             }
         }
     }
@@ -799,7 +822,7 @@ class MainActivity : AppCompatActivity() {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
 
-            val builder = NotificationCompat.Builder(this, "liquid_chat_calls")
+            val builder = NotificationCompat.Builder(this, "liquid_chat_calls_v2")
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle("Incoming " + (if (isVideo) "Video Call" else "Voice Call"))
                 .setContentText("$callerName is calling...")

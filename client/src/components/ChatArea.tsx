@@ -8,7 +8,7 @@ import {
   Film, BarChart2, Star, Copy, Play, Pause, Volume2, Eye, 
   Code2, Archive, File, Edit2, Forward, CheckSquare, Square, 
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
-  ArrowLeft, Lock, Plus
+  ArrowLeft, Lock, Plus, RefreshCw
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -118,6 +118,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [safetyNotice, setSafetyNotice] = useState<string | null>(null);
   const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
+  const [retryingMsgId, setRetryingMsgId] = useState<string | null>(null);
   const touchTimerRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -427,16 +428,25 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   };
 
   const handleRetryDecryptMessage = async (msg: any) => {
-    if (!token || !user || !activeContact) return;
+    if (!token || !user) return;
+    setRetryingMsgId(msg.id);
     try {
-      let contactPubKey = activeContact.publicKey;
-      if (!contactPubKey) {
-        const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
+      const otherUserId = msg.senderId === user.id ? (msg.receiverId || activeContact?.id) : msg.senderId;
+      if (!otherUserId) return;
+
+      let contactPubKey = activeContact?.publicKey;
+      try {
+        const pkRes = await axios.get(`/api/users/${otherUserId}/public-key`, {
           headers: { Authorization: `Bearer ${token}` }
         });
-        contactPubKey = pkRes.data?.publicKey;
-        if (contactPubKey) activeContact.publicKey = contactPubKey;
-      }
+        if (pkRes.data?.publicKey) {
+          contactPubKey = pkRes.data.publicKey;
+          if (activeContact && activeContact.id === otherUserId) {
+            activeContact.publicKey = contactPubKey;
+          }
+        }
+      } catch (e) {}
+
       if (!contactPubKey) return;
       const myKey = await ensureUserKeyPair(user.id, token);
       if (!myKey) return;
@@ -465,6 +475,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       setMessages(messages.map(m => m.id === msg.id ? { ...m, text: newText, fileUrl: newFileUrl, rawText, rawFileUrl } : m));
     } catch (e) {
       console.error("Retry decryption error:", e);
+    } finally {
+      setRetryingMsgId(null);
     }
   };
 
@@ -1402,11 +1414,20 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                       {/* Text Body with Code Highlighting & Markdown */}
                       {msg.text && (
                         <div className="leading-relaxed text-sm break-words">
-                          {!isMe && msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
-                            <span className="text-foreground/50 italic text-xs flex items-center gap-1.5 py-0.5 select-none">
+                          {msg.isEncrypted && (msg.text === '[Decryption Failed]' || isBase64Ciphertext(msg.text)) ? (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleRetryDecryptMessage(msg); }}
+                              className="text-foreground/50 italic text-xs flex items-center gap-1.5 py-0.5 select-none hover:text-liquid-accent transition-colors cursor-pointer"
+                              disabled={retryingMsgId === msg.id}
+                            >
                               <Lock size={12} className="text-foreground/40 shrink-0" />
                               <span>Waiting for this message. This may take a while.</span>
-                            </span>
+                              {retryingMsgId === msg.id ? (
+                                <RefreshCw size={12} className="animate-spin text-liquid-accent shrink-0" />
+                              ) : (
+                                <RefreshCw size={12} className="text-foreground/40 shrink-0" />
+                              )}
+                            </button>
                           ) : (
                             renderFormattedMessage(msg.text)
                           )}

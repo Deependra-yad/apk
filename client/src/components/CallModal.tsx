@@ -191,6 +191,20 @@ export default function CallModal({
     }
   }, [callState, startOutgoingCall]);
 
+  // Expose window callbacks for Android native call action buttons
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).__liquidAnswerCall = () => answerCall();
+      (window as any).__liquidRejectCall = () => endCall('rejected');
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        delete (window as any).__liquidAnswerCall;
+        delete (window as any).__liquidRejectCall;
+      }
+    };
+  }, [callState, incomingCallData]);
+
   // Answer incoming call
   const answerCall = async () => {
     if (!incomingCallData || !socket || !webrtcRef.current) return;
@@ -416,6 +430,9 @@ export default function CallModal({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={answerCall}
+                    id="liquid-accept-call-btn"
+                    data-testid="accept-call-btn"
+                    title="Answer Call"
                     className="w-16 h-16 rounded-full bg-gradient-to-tr from-green-500 to-emerald-400 text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(34,197,94,0.6)] cursor-pointer"
                   >
                     <Phone size={28} />
@@ -425,6 +442,9 @@ export default function CallModal({
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => endCall('rejected')}
+                    id="liquid-decline-call-btn"
+                    data-testid="decline-call-btn"
+                    title="Decline Call"
                     className="w-16 h-16 rounded-full bg-gradient-to-tr from-red-600 to-rose-500 text-foreground flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.6)] cursor-pointer"
                   >
                     <PhoneOff size={28} />

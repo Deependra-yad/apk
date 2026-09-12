@@ -13,12 +13,26 @@ try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
   } else {
     const path = require('path');
-    serviceAccount = require(path.join(__dirname, '../../firebase-adminsdk.json'));
+    const fs = require('fs');
+    const candidatePaths = [
+      path.join(__dirname, '../firebase-adminsdk.json'),
+      path.join(__dirname, '../../firebase-adminsdk.json'),
+      path.join(process.cwd(), 'firebase-adminsdk.json'),
+      path.join(process.cwd(), 'server/firebase-adminsdk.json')
+    ];
+    const foundPath = candidatePaths.find(p => fs.existsSync(p));
+    if (foundPath) {
+      serviceAccount = require(foundPath);
+    }
   }
-  initializeApp({
-    credential: cert(serviceAccount)
-  });
-  console.log('Firebase Admin initialized');
+  if (serviceAccount) {
+    initializeApp({
+      credential: cert(serviceAccount)
+    });
+    console.log('Firebase Admin initialized successfully');
+  } else {
+    console.warn('Firebase Admin service account JSON file not found in candidate paths.');
+  }
 } catch (err) {
   console.warn('Firebase Admin init failed. Please set FIREBASE_SERVICE_ACCOUNT environment variable in Railway with the contents of the JSON file.', err);
 }
@@ -184,26 +198,44 @@ const sendPushNotification = async (
       if (sub.endpoint.startsWith('fcm://')) {
         const fcmToken = sub.endpoint.replace('fcm://', '');
         try {
-          await getMessaging().send({
-            token: fcmToken,
-            data: {
-              title,
-              body,
-              url,
-              type,
-              callerId: opts.callerId || '',
-              callerName: opts.callerName || '',
-              isVideo: opts.isVideo ? 'true' : 'false'
-            },
-            notification: { title, body },
-            android: {
-              priority: type === 'call' ? 'high' : 'normal',
-              notification: {
-                clickAction: 'OPEN_APP',
-                tag: type === 'call' ? 'incoming-call' : undefined
+          if (type === 'call') {
+            await getMessaging().send({
+              token: fcmToken,
+              data: {
+                title,
+                body,
+                url,
+                type: 'call',
+                callerId: opts.callerId || '',
+                callerName: opts.callerName || '',
+                isVideo: opts.isVideo ? 'true' : 'false'
+              },
+              android: {
+                priority: 'high',
+                ttl: 30000
               }
-            }
-          });
+            });
+          } else {
+            await getMessaging().send({
+              token: fcmToken,
+              data: {
+                title,
+                body,
+                url,
+                type,
+                callerId: opts.callerId || '',
+                callerName: opts.callerName || '',
+                isVideo: opts.isVideo ? 'true' : 'false'
+              },
+              notification: { title, body },
+              android: {
+                priority: 'normal',
+                notification: {
+                  clickAction: 'OPEN_APP'
+                }
+              }
+            });
+          }
         } catch (err: any) {
           if (err.code === 'messaging/registration-token-not-registered' || err.code === 'messaging/invalid-argument') {
             await prisma.pushSubscription.delete({ where: { id: sub.id } });

@@ -35,6 +35,7 @@ class FCMService : FirebaseMessagingService() {
             return
         }
 
+        ensureNotificationChannels()
         val nm = getSystemService(NotificationManager::class.java)
 
         if (type == "call") {
@@ -63,7 +64,7 @@ class FCMService : FirebaseMessagingService() {
                 android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
             )
 
-            val callBuilder = NotificationCompat.Builder(this, "liquid_chat_calls")
+            val callBuilder = NotificationCompat.Builder(this, "liquid_chat_calls_v2")
                 .setSmallIcon(android.R.drawable.sym_action_call)
                 .setContentTitle(title)
                 .setContentText(body)
@@ -117,6 +118,45 @@ class FCMService : FirebaseMessagingService() {
                 .addAction(replyAction)
 
             nm.notify(System.currentTimeMillis().toInt(), builder.build())
+        }
+    }
+
+    private fun ensureNotificationChannels() {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            val nm = getSystemService(NotificationManager::class.java)
+
+            val msgChannel = android.app.NotificationChannel(
+                "liquid_chat_messages",
+                "Messages",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Liquid Chat message notifications"
+                enableLights(true)
+                lightColor = android.graphics.Color.parseColor("#00d2ff")
+                enableVibration(true)
+            }
+
+            val ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+            val audioAttributes = android.media.AudioAttributes.Builder()
+                .setContentType(android.media.AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(android.media.AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                .build()
+
+            val callChannel = android.app.NotificationChannel(
+                "liquid_chat_calls_v2",
+                "Calls",
+                NotificationManager.IMPORTANCE_MAX
+            ).apply {
+                description = "Liquid Chat call notifications"
+                enableLights(true)
+                lightColor = android.graphics.Color.parseColor("#ff7597")
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 1000, 1000, 1000)
+                setSound(ringtoneUri, audioAttributes)
+            }
+
+            nm.createNotificationChannel(msgChannel)
+            nm.createNotificationChannel(callChannel)
         }
     }
 

@@ -323,6 +323,40 @@ router.delete('/me/storage', authenticate, async (req: any, res) => {
   }
 });
 
+// Zero-Knowledge Private Key Backup & Cross-Device Restore
+router.put('/key-backup', authenticate, async (req: any, res) => {
+  const { encryptedPrivateKey, keyBackupSalt, publicKey } = req.body;
+  if (!encryptedPrivateKey || !keyBackupSalt) {
+    return res.status(400).json({ error: 'encryptedPrivateKey and keyBackupSalt are required' });
+  }
+  try {
+    await prisma.user.update({
+      where: { id: req.userId },
+      data: {
+        encryptedPrivateKey,
+        keyBackupSalt,
+        ...(publicKey && { publicKey })
+      }
+    });
+    res.json({ success: true, message: 'Private key safely backed up' });
+  } catch (e) {
+    console.error('Failed to backup key:', e);
+    res.status(500).json({ error: 'Failed to backup key' });
+  }
+});
+
+router.get('/key-backup', authenticate, async (req: any, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { publicKey: true, encryptedPrivateKey: true, keyBackupSalt: true }
+    });
+    res.json(user || {});
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to get key backup' });
+  }
+});
+
 router.put('/public-key', authenticate, async (req: any, res) => {
   const userId = req.userId;
   const { publicKey } = req.body;
