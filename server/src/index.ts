@@ -6,6 +6,7 @@ import cors from 'cors';
 import webpush from 'web-push';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
+import jwt from 'jsonwebtoken';
 
 try {
   let serviceAccount;
@@ -104,6 +105,49 @@ app.get(['/LiquidChat.apk', '/download/apk', '/api/download/apk'], (req, res) =>
 // Express JSON parser for API routes (Increased limit for Base64 image handling)
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
+
+// Map of userId -> Set of socketIds (supports multiple tabs, devices, reconnections)
+const userSockets = new Map<string, Set<string>>();
+// Map of socketId -> userId
+const socketToUser = new Map<string, string>();
+// Legacy alias
+const connectedUsers = {
+  get: (uid: string) => (userSockets.get(uid)?.size ? Array.from(userSockets.get(uid)!)[0] : undefined),
+  has: (uid: string) => (userSockets.get(uid)?.size || 0) > 0,
+  keys: () => userSockets.keys()
+};
+
+interface ActiveCallSession {
+  callId: string;
+  callerId: string;
+  receiverId: string;
+  fromUser: { id: string; username: string; avatar?: string };
+  offer: any;
+  isVideo: boolean;
+  createdAt: number;
+  status: 'ringing' | 'connected' | 'ended';
+  callerSocketId: string;
+  receiverSocketId?: string;
+  timeoutTimer?: NodeJS.Timeout;
+}
+
+// Map of receiverId -> ActiveCallSession
+const activeCalls = new Map<string, ActiveCallSession>();
+
+const server = http.createServer(app);
+const io = new Server(server, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE']
+  },
+  pingTimeout: 60000,
+  pingInterval: 10000,
+  transports: ['polling', 'websocket'],
+  allowUpgrades: true
+});
+app.set('io', io);
+setQrSocketIo(io);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -184,20 +228,6 @@ app.get('/', (req, res) => {
 app.use((req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
-
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: '*',
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
-  },
-  pingTimeout: 60000,
-  pingInterval: 10000,
-  transports: ['polling', 'websocket'],
-  allowUpgrades: true
-});
-app.set('io', io);
-setQrSocketIo(io);
 
 interface PushOptions {
   url?: string;
@@ -312,37 +342,6 @@ const sendPushNotification = async (
     console.error('Push error:', e);
   }
 };
-
-// Map of userId -> Set of socketIds (supports multiple tabs, devices, reconnections)
-const userSockets = new Map<string, Set<string>>();
-// Map of socketId -> userId
-const socketToUser = new Map<string, string>();
-// Legacy alias
-const connectedUsers = {
-  get: (uid: string) => (userSockets.get(uid)?.size ? Array.from(userSockets.get(uid)!)[0] : undefined),
-  has: (uid: string) => (userSockets.get(uid)?.size || 0) > 0,
-  keys: () => userSockets.keys()
-};
-
-interface ActiveCallSession {
-  callId: string;
-  callerId: string;
-  receiverId: string;
-  fromUser: { id: string; username: string; avatar?: string };
-  offer: any;
-  isVideo: boolean;
-  createdAt: number;
-  status: 'ringing' | 'connected' | 'ended';
-  callerSocketId: string;
-  receiverSocketId?: string;
-  timeoutTimer?: NodeJS.Timeout;
-}
-
-// Map of receiverId -> ActiveCallSession
-const activeCalls = new Map<string, ActiveCallSession>();
-
-const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
-import jwt from 'jsonwebtoken';
 
 io.use(async (socket, next) => {
   try {

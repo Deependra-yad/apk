@@ -119,6 +119,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [retryingMsgId, setRetryingMsgId] = useState<string | null>(null);
+  // Live timer tick for real-time relative "last seen" formatting
+  const [, setLiveTimeTicker] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setLiveTimeTicker(t => t + 1), 15000);
+    return () => clearInterval(timer);
+  }, []);
   const touchTimerRef = useRef<any>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -832,13 +838,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const isOnline = activeContact ? onlineUsers.includes(activeContact.id) : false;
   const isDirectTyping = activeContact ? typingUsers.includes(activeContact.id) : false;
   const groupTypers = activeGroup ? (groupTypingUsers[activeGroup.id] || []) : [];
-
-  // Live timer tick for real-time relative "last seen" formatting
-  const [, setLiveTimeTicker] = useState(0);
-  useEffect(() => {
-    const timer = setInterval(() => setLiveTimeTicker(t => t + 1), 15000);
-    return () => clearInterval(timer);
-  }, []);
 
   const formatLastSeenTime = (dateStr?: string | Date | null) => {
     if (!dateStr) return 'Offline';
