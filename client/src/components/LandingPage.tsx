@@ -8,7 +8,7 @@ import {
   MessageSquare, Users, Bot, Zap, Star,
   Shield, Key, RefreshCw, ChevronDown, Check, EyeOff,
   Flame, Heart, Send, Terminal, Play, Cpu, Layers, AlertTriangle,
-  Keyboard, Copy, Radio, Volume2, ShieldAlert
+  Keyboard, Copy, Radio, Volume2, ShieldAlert, Phone
 } from 'lucide-react';
 import Link from 'next/link';
 import LiquidLogo from '@/components/LiquidLogo';
@@ -19,37 +19,77 @@ import ScrollytellingExperience from './ScrollytellingExperience';
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
-  const smoothProgress = useSpring(scrollYProgress, { stiffness: 90, damping: 25, restDelta: 0.001 });
 
-  // Mouse Parallax Physics
+  // Snappy, instant scroll transforms (zero rubber-banding lag)
+  const yHeroText = useTransform(scrollYProgress, [0, 0.25], [0, -50]);
+  const yMockup = useTransform(scrollYProgress, [0, 0.35], [0, -90]);
+  const rotateMockup = useTransform(scrollYProgress, [0, 0.35], [-2, 2]);
+  const scaleMockup = useTransform(scrollYProgress, [0, 0.3], [1, 1.03]);
+
+  // Stereoscopic multi-depth floating badges
+  const yBadge1 = useTransform(scrollYProgress, [0, 0.4], [0, -180]);
+  const yBadge2 = useTransform(scrollYProgress, [0, 0.4], [0, -120]);
+  const yBadge3 = useTransform(scrollYProgress, [0, 0.4], [0, -220]);
+  const yBadge4 = useTransform(scrollYProgress, [0, 0.4], [0, -150]);
+
+  // Ambient parallax background items
+  const yFloatingOrb1 = useTransform(scrollYProgress, [0, 1], [0, -350]);
+  const yFloatingOrb2 = useTransform(scrollYProgress, [0, 1], [0, -280]);
+  const yKanji1 = useTransform(scrollYProgress, [0, 1], [0, -400]);
+  const yKanji2 = useTransform(scrollYProgress, [0, 1], [0, -320]);
+
+  // Responsive mouse parallax for 3D hero tilt
   const mouseX = useMotionValue(0);
   const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 60, damping: 20 });
-  const springY = useSpring(mouseY, { stiffness: 60, damping: 20 });
+  const springX = useSpring(mouseX, { stiffness: 120, damping: 24 });
+  const springY = useSpring(mouseY, { stiffness: 120, damping: 24 });
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const { clientX, clientY } = e;
     const { innerWidth, innerHeight } = window;
-    const x = (clientX / innerWidth - 0.5) * 40;
-    const y = (clientY / innerHeight - 0.5) * 40;
+    const x = (clientX / innerWidth - 0.5) * 30;
+    const y = (clientY / innerHeight - 0.5) * 30;
     mouseX.set(x);
     mouseY.set(y);
   };
 
-  // Parallax transform layers
-  const yHeroText = useTransform(smoothProgress, [0, 0.25], [0, -70]);
-  const yMockup = useTransform(smoothProgress, [0, 0.35], [0, -120]);
-  const rotateMockup = useTransform(smoothProgress, [0, 0.35], [-3, 3]);
-  const scaleMockup = useTransform(smoothProgress, [0, 0.3], [1, 1.04]);
-
-  const yFloatingOrb1 = useTransform(smoothProgress, [0, 1], [0, -500]);
-  const yFloatingOrb2 = useTransform(smoothProgress, [0, 1], [0, -350]);
-  const yKanji1 = useTransform(smoothProgress, [0, 1], [0, -600]);
-  const yKanji2 = useTransform(smoothProgress, [0, 1], [0, -450]);
-
-  const rotateTorus = useTransform(smoothProgress, [0, 1], [0, 360]);
-  const yFloatingCard1 = useTransform(smoothProgress, [0, 0.5], [0, -140]);
-  const yFloatingCard2 = useTransform(smoothProgress, [0, 0.5], [0, -90]);
+  // Interactive 3D Hero Mockup Active Chat Tab
+  const [activeHeroChat, setActiveHeroChat] = useState<number>(0);
+  const heroChats = [
+    {
+      name: 'Raj kumar',
+      avatarLetter: 'R',
+      tag: 'ID: 8343254978',
+      preview: 'Call audio is crystal clear with WebRTC noise gate! ⚡',
+      time: '8:11 PM',
+      messages: [
+        { text: 'Hey! Did you see the new LiquidChat v2.0.1 update? Decryption is instant and back button navigation works like a charm! 🌊', isMe: false },
+        { text: 'Yes! And all messages are preserved in zero-knowledge local storage even across reloads. 100% E2EE verified! ✨', isMe: true }
+      ]
+    },
+    {
+      name: 'NandniJamwal',
+      avatarLetter: 'N',
+      tag: 'Mutual Contact',
+      preview: 'Sent encrypted file: project_architecture.pdf',
+      time: '7:45 PM',
+      messages: [
+        { text: 'Attached the confidential security audit document. Encrypted with your Curve25519 public key.', isMe: false },
+        { text: 'Downloaded and verified in-browser. Zero plaintext left on the server disk! 🌸', isMe: true }
+      ]
+    },
+    {
+      name: 'ujwalsharma',
+      avatarLetter: 'U',
+      tag: 'ID: 4192019482',
+      preview: 'Check out the new Tokyo chime ringtone',
+      time: 'Yesterday',
+      messages: [
+        { text: 'The new Tokyo Neon synthesized ringtone sounds like a futuristic cyberpunk anime arcade!', isMe: false },
+        { text: 'Haha totally! The Sakura Bell and Cyber Pulse chimes are synthesized directly via Web Audio API.', isMe: true }
+      ]
+    }
+  ];
 
   // Real Interactive WebCrypto E2EE Simulator State
   const [simText, setSimText] = useState("Secret rendezvous in Tokyo at 7 PM 🌸");
@@ -58,7 +98,6 @@ export default function LandingPage() {
   const [simIv, setSimIv] = useState("");
   const [simDecrypted, setSimDecrypted] = useState("");
   const [activeSound, setActiveSound] = useState<string | null>(null);
-  const [copiedChecksum, setCopiedChecksum] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -114,41 +153,24 @@ export default function LandingPage() {
     setTimeout(() => setActiveSound(null), 1200);
   };
 
-  // Interactive AI simulator state
-  const [activePrompt, setActivePrompt] = useState<number>(0);
-  const aiPrompts = [
-    {
-      prompt: "Can anyone read my private Liquid messages?",
-      answer: "🌸 Absolute Zero. All messages are encrypted directly in your browser using Curve25519 & AES-256-GCM before transmission. Even our servers only see unreadable ciphertext."
-    },
-    {
-      prompt: "How does the desktop QR login work?",
-      answer: "⚡ Just like WhatsApp Web! Open web.liquidchat.online on your desktop, scan the dynamic QR code with your phone camera in Settings -> Linked Devices, and your session unlocks instantly."
-    },
-    {
-      prompt: "Why are video calls mirrored by default?",
-      answer: "🎥 Natural optics! In LiquidChat, your front camera feed is mirrored on both sides so you look natural and relaxed, eliminating awkward inverted camera angles."
-    }
-  ];
-
   // Interactive FAQ State
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const faqs = [
     {
       q: "Do I need a phone number or email to use LiquidChat?",
-      a: "No! LiquidChat generates a unique, anonymous 10-digit Liquid ID (e.g. LQ-2130-8255). You can start chatting instantly with anyone using their Liquid ID without exposing your phone number or email."
+      a: "No! LiquidChat generates an anonymous 10-digit Liquid ID (e.g. LQ-2130-8255). You can start chatting instantly with anyone using their Liquid ID without ever exposing your phone number or email address."
     },
     {
-      q: "What is new in the v2.0.0 PRO Android Release?",
-      a: "The v2.0.0 release introduces persistent zero-knowledge local key healing (eliminates message waiting placeholders), full Android hardware back gesture interception, universal keyboard shortcuts (Esc, Ctrl+K, Ctrl+N), and hardware-accelerated WebRTC DSP noise gate audio."
+      q: "What is new in the v2.0.1 PRO Android Release?",
+      a: "The v2.0.1 PRO release introduces persistent zero-knowledge local key healing, hardware back gesture interception, universal keyboard shortcuts (Esc, Ctrl+K, Ctrl+N), WebRTC DSP noise gate audio, and synthesized Tokyo chimes."
     },
     {
       q: "How does the desktop site login with QR code work?",
-      a: "Visit web.liquidchat.online on your PC or Mac. A secure 90-second encrypted QR code will appear. Open LiquidChat on your phone, go to Settings -> Linked Devices -> 'Link a Device', and scan the screen. Your desktop will immediately authorize and sync your end-to-end encrypted session."
+      a: "Visit web.liquidchat.online on your PC or Mac. A 90-second encrypted QR code will appear. Open LiquidChat on your phone, go to Settings -> Linked Devices -> 'Link a Device', and scan the screen. Your desktop will authorize and sync your end-to-end encrypted session in real time."
     },
     {
       q: "How do I verify the 60-digit cryptographic safety fingerprint?",
-      a: "Open any chat, click 'Safety Number / Encryption Info' in the top header. You can scan your peer's QR code using your camera or read the 60 digits out loud to mathematically verify that no man-in-the-middle exists."
+      a: "Open any chat, click 'Safety Number / Encryption Info' in the top header. You can scan your peer's QR code using your phone camera or compare the 60 digits to mathematically verify that no man-in-the-middle exists."
     },
     {
       q: "Can I manage and revoke my linked desktop sessions?",
@@ -167,76 +189,50 @@ export default function LandingPage() {
   return (
     <div 
       onMouseMove={handleMouseMove}
-      className="min-h-screen w-full bg-[#07050e] text-[#fbfaff] relative overflow-x-hidden font-sans selection:bg-[#ff7597] selection:text-black"
+      className="min-h-screen w-full bg-[#05030a] text-[#fbfaff] relative overflow-x-hidden font-sans selection:bg-[#ff7597] selection:text-black"
     >
       
       {/* Top Scroll Reading Progress Bar */}
       <motion.div 
-        style={{ scaleX: smoothProgress }}
-        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_20px_rgba(255,75,130,0.9)]"
+        style={{ scaleX: scrollYProgress }}
+        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_25px_rgba(255,75,130,0.9)]"
       />
 
-      {/* 3D WebGL Three.js Particle & Quantum Torus Kinetic Scene */}
+      {/* 3D WebGL Three.js Particle & Quantum Torus Kinetic Scene (Strict Fixed Viewport) */}
       <ThreeHeroScene />
 
       {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) */}
-      <motion.div style={{ y: yKanji1 }} className="hidden md:block absolute top-40 -left-12 text-8xl font-black text-white/[0.025] select-none pointer-events-none rotate-90 z-0">
+      <motion.div 
+        style={{ y: yKanji1 }} 
+        className="hidden xl:block fixed top-32 -left-10 text-8xl font-black text-white/[0.04] select-none pointer-events-none rotate-90 -z-10 font-mono tracking-widest"
+      >
         完全秘密暗号化
       </motion.div>
-      <motion.div style={{ y: yKanji2 }} className="hidden md:block absolute top-[1300px] -right-12 text-9xl font-black text-white/[0.025] select-none pointer-events-none -rotate-90 z-0">
+      <motion.div 
+        style={{ y: yKanji2 }} 
+        className="hidden xl:block fixed top-[500px] -right-10 text-9xl font-black text-white/[0.04] select-none pointer-events-none -rotate-90 -z-10 font-mono tracking-widest"
+      >
         液体通信装置
       </motion.div>
 
       {/* Kinetic Ambient Neon Nebula Blobs */}
       <motion.div 
         style={{ y: yFloatingOrb1, x: springX }} 
-        className="absolute top-[180px] left-[10%] w-[400px] sm:w-[700px] h-[400px] sm:h-[700px] bg-gradient-to-tr from-[#ff4b82]/18 via-[#a855f7]/15 to-transparent rounded-full blur-[140px] sm:blur-[190px] pointer-events-none -z-10" 
+        className="fixed top-[150px] left-[5%] w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] bg-gradient-to-tr from-[#ff4b82]/15 via-[#a855f7]/12 to-transparent rounded-full blur-[160px] pointer-events-none -z-10" 
       />
       <motion.div 
         style={{ y: yFloatingOrb2, x: springY }} 
-        className="absolute top-[1100px] right-[5%] w-[350px] sm:w-[650px] h-[350px] sm:h-[650px] bg-gradient-to-br from-[#00f2fe]/15 via-[#a855f7]/12 to-transparent rounded-full blur-[140px] sm:blur-[190px] pointer-events-none -z-10" 
+        className="fixed top-[600px] right-[5%] w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-gradient-to-br from-[#00f2fe]/14 via-[#a855f7]/10 to-transparent rounded-full blur-[160px] pointer-events-none -z-10" 
       />
 
-      {/* Floating Rotating 3D Torus Object (CSS 3D / SVG Wireframe) */}
-      <motion.div
-        style={{ rotate: rotateTorus, x: springX, y: springY }}
-        className="hidden lg:block absolute top-[280px] right-[8%] w-48 h-48 pointer-events-none z-10 opacity-70"
-      >
-        <svg viewBox="0 0 200 200" className="w-full h-full animate-pulse">
-          <defs>
-            <linearGradient id="torusGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#ff7597" stopOpacity="0.8" />
-              <stop offset="50%" stopColor="#a855f7" stopOpacity="0.6" />
-              <stop offset="100%" stopColor="#00f2fe" stopOpacity="0.9" />
-            </linearGradient>
-          </defs>
-          <ellipse cx="100" cy="100" rx="80" ry="35" fill="none" stroke="url(#torusGrad)" strokeWidth="2" strokeDasharray="6 4" transform="rotate(-30 100 100)" />
-          <ellipse cx="100" cy="100" rx="80" ry="35" fill="none" stroke="url(#torusGrad)" strokeWidth="2" strokeDasharray="6 4" transform="rotate(30 100 100)" />
-          <ellipse cx="100" cy="100" rx="80" ry="35" fill="none" stroke="url(#torusGrad)" strokeWidth="2" strokeDasharray="6 4" transform="rotate(90 100 100)" />
-          <circle cx="100" cy="100" r="16" fill="none" stroke="#ff7597" strokeWidth="2" />
-        </svg>
-      </motion.div>
-
-      {/* Floating Rotating Geometric Crystal Shield */}
-      <motion.div
-        style={{ rotate: rotateTorus, x: springY }}
-        className="hidden lg:block absolute top-[950px] left-[5%] w-40 h-40 pointer-events-none z-10 opacity-60"
-      >
-        <svg viewBox="0 0 100 100" className="w-full h-full">
-          <polygon points="50,5 95,28 95,72 50,95 5,72 5,28" fill="none" stroke="#00f2fe" strokeWidth="1.5" strokeDasharray="4 4" />
-          <polygon points="50,20 80,35 80,65 50,80 20,65 20,35" fill="none" stroke="#ff7597" strokeWidth="1" />
-          <line x1="50" y1="5" x2="50" y2="95" stroke="#a855f7" strokeWidth="1" strokeDasharray="2 3" />
-        </svg>
-      </motion.div>
-
       {/* Navigation Header */}
-      <header className="sticky top-0 w-full z-40 backdrop-blur-2xl bg-[#07050e]/80 border-b border-white/5 transition-all">
+      <header className="sticky top-0 w-full z-40 backdrop-blur-2xl bg-[#05030a]/80 border-b border-white/5 transition-all">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <LiquidLogo size={44} glow={true} />
+            <LiquidLogo size={42} glow={true} />
             <div>
               <span className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                LiquidChat <span className="text-[#ff7597] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30">🌸 v2.0.0 PRO</span>
+                LiquidChat <span className="text-[#ff7597] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30">🌸 v2.0.1 PRO</span>
               </span>
               <p className="text-[10px] text-foreground/50 tracking-wider uppercase font-mono hidden sm:block">
                 Zero-Knowledge • Japanese Cyber-Glass • E2EE
@@ -245,34 +241,19 @@ export default function LandingPage() {
           </div>
 
           <div className="flex items-center gap-3">
-            <a
-              href="#features"
-              className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2"
-            >
+            <a href="#features" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               Features
             </a>
-            <a
-              href="#security"
-              className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2"
-            >
+            <a href="#security" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               Security
             </a>
-            <a
-              href="#download"
-              className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2"
-            >
+            <a href="#download" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               APK Download
             </a>
-            <a
-              href="#comparison"
-              className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2"
-            >
+            <a href="#comparison" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
               Compare
             </a>
-            <a
-              href="/auth"
-              className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:text-white transition-colors"
-            >
+            <a href="/auth" className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:text-white transition-colors">
               Sign In
             </a>
 
@@ -294,21 +275,21 @@ export default function LandingPage() {
         <motion.div 
           initial={{ opacity: 0, y: -15 }}
           animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#18112e]/90 border border-[#ff7597]/30 shadow-[0_0_30px_rgba(255,117,151,0.2)] mb-8"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#18112e]/90 border border-[#ff7597]/30 shadow-[0_0_30px_rgba(255,117,151,0.25)] mb-8 backdrop-blur-xl"
         >
           <span className="w-2 h-2 rounded-full bg-[#00f2fe] animate-pulse" />
-          <span className="text-xs font-semibold tracking-wide text-foreground/90">
+          <span className="text-xs font-semibold tracking-wide text-foreground/90 font-mono">
             🌸 次世代 暗号化 メッセンジャー • Next-Gen Fluid Encrypted Messenger
           </span>
         </motion.div>
 
         {/* Hero Title with Kinetic Physics */}
         <motion.h1 
-          style={{ y: yHeroText, x: springX }}
+          style={{ y: yHeroText }}
           className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.08] max-w-5xl mx-auto mb-6"
         >
           Privacy, Reimagined in <br className="hidden sm:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#f43f5e] to-[#a855f7] drop-shadow-[0_0_40px_rgba(255,117,151,0.4)]">
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#f43f5e] to-[#00f2fe] drop-shadow-[0_0_40px_rgba(255,117,151,0.45)]">
             Liquid Cyber Glass.
           </span>
         </motion.h1>
@@ -316,7 +297,7 @@ export default function LandingPage() {
         {/* Hero Subtitle */}
         <motion.p 
           style={{ y: yHeroText }}
-          className="text-base sm:text-xl text-foreground/70 max-w-3xl mx-auto mb-10 leading-relaxed font-normal"
+          className="text-base sm:text-xl text-foreground/75 max-w-3xl mx-auto mb-10 leading-relaxed font-normal"
         >
           Military-grade Curve25519 & AES-256 end-to-end encryption wrapped in an award-winning Japanese Kawaii cyber-glass aesthetic. Mirrored HD video calls, instant WhatsApp Web-style QR sync, and intelligent AI assistance — with zero phone number required.
         </motion.p>
@@ -324,7 +305,7 @@ export default function LandingPage() {
         {/* CTA Buttons */}
         <motion.div 
           style={{ y: yHeroText }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-14"
+          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-16"
         >
           <a
             href={webUrl}
@@ -340,15 +321,17 @@ export default function LandingPage() {
             className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#17122b]/90 hover:bg-[#231a44] text-foreground font-bold text-sm border border-[#a855f7]/30 shadow-lg hover:border-[#ff7597]/50 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
           >
             <Download size={20} className="text-[#00f2fe]" />
-            <span>Download Android APK (v2.0.0)</span>
+            <span>Download Android APK (v2.0.1)</span>
           </a>
         </motion.div>
 
-        {/* Floating Kinetic Chat Previews beside Hero */}
-        <div className="relative w-full max-w-4xl mx-auto mb-12">
+        {/* STEREOSCOPIC 3D PARALLAX SHOWCASE CONTAINER */}
+        <div className="relative w-full max-w-5xl mx-auto mb-12">
+          
+          {/* Floating Stereoscopic Depth Badge 1: Top-Left */}
           <motion.div
-            style={{ y: yFloatingCard1, x: springX }}
-            className="hidden md:flex absolute -left-12 top-0 z-20 p-3.5 rounded-2xl bg-[#1a1233]/90 backdrop-blur-xl border border-[#ff7597]/30 shadow-[0_10px_30px_rgba(0,0,0,0.5)] items-center gap-3 text-left"
+            style={{ y: yBadge1, x: springX }}
+            className="hidden lg:flex absolute -left-12 top-6 z-30 p-3.5 rounded-2xl bg-[#1a1233]/90 backdrop-blur-2xl border border-[#ff7597]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-3 text-left"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5">
               <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=TokyoGirl" alt="Avatar" className="w-full h-full rounded-full bg-black" />
@@ -356,15 +339,16 @@ export default function LandingPage() {
             <div>
               <div className="flex items-center gap-1.5">
                 <span className="text-xs font-bold text-white">Sakura</span>
-                <span className="text-[9px] font-mono px-1 rounded bg-[#ff7597]/20 text-[#ff7597]">E2EE</span>
+                <span className="text-[9px] font-mono px-1 rounded bg-[#ff7597]/20 text-[#ff7597] font-bold">E2EE</span>
               </div>
               <p className="text-[11px] text-foreground/70">Tokyo Neon call is connected 🌸</p>
             </div>
           </motion.div>
 
+          {/* Floating Stereoscopic Depth Badge 2: Top-Right */}
           <motion.div
-            style={{ y: yFloatingCard2, x: springY }}
-            className="hidden md:flex absolute -right-10 bottom-6 z-20 p-3.5 rounded-2xl bg-[#121a30]/90 backdrop-blur-xl border border-[#00f2fe]/30 shadow-[0_10px_30px_rgba(0,0,0,0.5)] items-center gap-3 text-left"
+            style={{ y: yBadge2, x: springY }}
+            className="hidden lg:flex absolute -right-12 top-14 z-30 p-3.5 rounded-2xl bg-[#0e192c]/90 backdrop-blur-2xl border border-[#00f2fe]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-3 text-left"
           >
             <div className="w-9 h-9 rounded-full bg-[#00f2fe]/20 text-[#00f2fe] flex items-center justify-center">
               <ShieldCheck size={20} />
@@ -373,16 +357,51 @@ export default function LandingPage() {
               <span className="text-xs font-bold text-white flex items-center gap-1">
                 Zero-Knowledge Vault
               </span>
-              <p className="text-[11px] text-emerald-400 font-mono">Curve25519 Verified</p>
+              <p className="text-[11px] text-emerald-400 font-mono font-bold">Curve25519 Verified</p>
+            </div>
+          </motion.div>
+
+          {/* Floating Stereoscopic Depth Badge 3: Bottom-Left */}
+          <motion.div
+            style={{ y: yBadge3, x: springY }}
+            className="hidden lg:flex absolute -left-8 bottom-12 z-30 p-3 rounded-2xl bg-[#160f29]/90 backdrop-blur-2xl border border-[#a855f7]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-2.5 text-left"
+          >
+            <div className="w-8 h-8 rounded-full bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center">
+              <Zap size={16} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white">1.2ms Ratchet Speed</span>
+              <p className="text-[10px] text-foreground/50 font-mono">Zero-Latency Hardware</p>
+            </div>
+          </motion.div>
+
+          {/* Floating Stereoscopic Depth Badge 4: Bottom-Right */}
+          <motion.div
+            style={{ y: yBadge4, x: springX }}
+            className="hidden lg:flex absolute -right-8 bottom-8 z-30 p-3 rounded-2xl bg-[#121c21]/90 backdrop-blur-2xl border border-[#10b981]/40 shadow-[0_15px_40px_rgba(0,0,0,0.6)] items-center gap-2.5 text-left"
+          >
+            <div className="w-8 h-8 rounded-full bg-[#10b981]/20 text-[#10b981] flex items-center justify-center">
+              <Smartphone size={16} />
+            </div>
+            <div>
+              <span className="text-xs font-bold text-white">Anonymous Liquid ID</span>
+              <p className="text-[10px] text-emerald-400 font-mono">0 Phone Number</p>
             </div>
           </motion.div>
 
           {/* Interactive 3D Perspective Device Showcase */}
           <motion.div 
-            style={{ y: yMockup, rotateX: rotateMockup, scale: scaleMockup }}
-            className="w-full rounded-[2.5rem] bg-gradient-to-b from-[#1c1438] to-[#0c0919] p-3 sm:p-5 border border-[#ff7597]/25 shadow-[0_0_80px_rgba(168,85,247,0.3)] perspective-1000 overflow-hidden"
+            style={{ 
+              y: yMockup, 
+              rotateX: rotateMockup, 
+              scale: scaleMockup,
+              rotateY: springX,
+              perspective: 1200 
+            }}
+            className="w-full rounded-[2.5rem] bg-gradient-to-b from-[#1c1438] to-[#0c0919] p-3 sm:p-5 border border-[#ff7597]/30 shadow-[0_0_90px_rgba(168,85,247,0.35)] overflow-hidden"
           >
             <div className="w-full h-auto rounded-[2rem] bg-[#0c0919] border border-white/10 overflow-hidden shadow-2xl relative">
+              
               {/* Window Controls Bar */}
               <div className="h-10 px-5 bg-[#140e29] border-b border-white/5 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -390,33 +409,34 @@ export default function LandingPage() {
                   <div className="w-3 h-3 rounded-full bg-[#ffbd2e]" />
                   <div className="w-3 h-3 rounded-full bg-[#27c93f]" />
                 </div>
-                <div className="text-[11px] font-mono text-foreground/40 flex items-center gap-1.5">
+                <div className="text-[11px] font-mono text-foreground/50 flex items-center gap-1.5">
                   <Lock size={11} className="text-[#ff7597]" />
                   <span>https://web.liquidchat.online • 256-bit AES-GCM</span>
                 </div>
-                <span className="text-[10px] font-mono text-[#00f2fe]">E2EE ACTIVE</span>
+                <span className="text-[10px] font-mono text-[#00f2fe] font-bold">E2EE ACTIVE</span>
               </div>
 
               {/* Real UI Screen Capture Layout */}
               <div className="grid grid-cols-1 md:grid-cols-12 h-[380px] sm:h-[460px] bg-[#0c0919] text-left">
                 {/* Left Sidebar Mockup */}
-                <div className="hidden md:flex md:col-span-4 border-r border-white/5 flex-col p-4 space-y-3 bg-[#110d24]/60">
+                <div className="hidden md:flex md:col-span-4 border-r border-white/5 flex-col p-4 space-y-2 bg-[#110d24]/70">
                   <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                    <span className="text-xs font-bold text-white">Chats</span>
-                    <span className="text-[10px] font-mono text-[#ff7597]">ONLINE (4)</span>
+                    <span className="text-xs font-bold text-white">Active Chats</span>
+                    <span className="text-[10px] font-mono text-[#ff7597] font-bold">ONLINE (3)</span>
                   </div>
-                  {[
-                    { name: 'Raj kumar', msg: 'The call audio is crystal clear now! ⚡', time: '8:11 PM', active: true },
-                    { name: 'NandniJamwal', msg: 'Sent encrypted file: notes.pdf', time: '7:45 PM', active: false },
-                    { name: 'ujwalsharma', msg: 'Check out the new Tokyo chime', time: 'Yesterday', active: false }
-                  ].map((chat, idx) => (
-                    <div 
+                  {heroChats.map((chat, idx) => (
+                    <button 
                       key={idx} 
-                      className={`p-3 rounded-2xl flex items-center gap-3 transition-colors ${chat.active ? 'bg-[#ff7597]/15 border border-[#ff7597]/30' : 'bg-white/[0.02]'}`}
+                      onClick={() => setActiveHeroChat(idx)}
+                      className={`w-full p-3 rounded-2xl flex items-center gap-3 transition-all text-left cursor-pointer ${
+                        activeHeroChat === idx 
+                          ? 'bg-[#ff7597]/15 border border-[#ff7597]/40 shadow-md' 
+                          : 'bg-white/[0.02] hover:bg-white/[0.05] border border-transparent'
+                      }`}
                     >
                       <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5 shrink-0">
-                        <div className="w-full h-full rounded-full bg-black flex items-center justify-center font-bold text-xs">
-                          {chat.name.charAt(0)}
+                        <div className="w-full h-full rounded-full bg-black flex items-center justify-center font-bold text-xs text-white">
+                          {chat.avatarLetter}
                         </div>
                       </div>
                       <div className="min-w-0 flex-1">
@@ -424,45 +444,55 @@ export default function LandingPage() {
                           <h4 className="text-xs font-bold text-white truncate">{chat.name}</h4>
                           <span className="text-[10px] text-foreground/40">{chat.time}</span>
                         </div>
-                        <p className="text-[11px] text-foreground/60 truncate mt-0.5">{chat.msg}</p>
+                        <p className="text-[11px] text-foreground/60 truncate mt-0.5">{chat.preview}</p>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
 
                 {/* Right Chat Mockup */}
-                <div className="col-span-12 md:col-span-8 flex flex-col justify-between p-5 bg-[#0c0919]/90 relative">
+                <div className="col-span-12 md:col-span-8 flex flex-col justify-between p-5 bg-[#0c0919]/95 relative">
                   {/* Chat header */}
                   <div className="flex items-center justify-between pb-3 border-b border-white/5">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-[#ff7597]/20 flex items-center justify-center font-bold text-xs text-[#ff7597]">
-                        R
+                      <div className="w-9 h-9 rounded-full bg-[#ff7597]/20 flex items-center justify-center font-bold text-xs text-[#ff7597]">
+                        {heroChats[activeHeroChat].avatarLetter}
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-white">Raj kumar</h4>
-                        <span className="text-[10px] text-emerald-400 font-mono">End-to-End Encrypted</span>
+                        <h4 className="text-xs font-bold text-white">{heroChats[activeHeroChat].name}</h4>
+                        <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                          End-to-End Encrypted • {heroChats[activeHeroChat].tag}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="p-2 rounded-xl bg-white/5 text-[#ff7597]"><Video size={14} /></div>
-                      <div className="p-2 rounded-xl bg-white/5 text-[#00f2fe]"><ShieldCheck size={14} /></div>
+                      <div className="p-2 rounded-xl bg-white/5 text-[#ff7597] hover:bg-white/10 transition-colors cursor-pointer"><Video size={14} /></div>
+                      <div className="p-2 rounded-xl bg-white/5 text-[#00f2fe] hover:bg-white/10 transition-colors cursor-pointer"><Phone size={14} /></div>
+                      <div className="p-2 rounded-xl bg-white/5 text-emerald-400 hover:bg-white/10 transition-colors cursor-pointer"><ShieldCheck size={14} /></div>
                     </div>
                   </div>
 
                   {/* Message Bubbles */}
-                  <div className="space-y-3 py-4">
-                    <div className="max-w-[75%] p-3 rounded-2xl bg-white/5 text-xs text-foreground/80 leading-relaxed border border-white/5">
-                      Hey! Did you see the new LiquidChat v2.0.0 update? Decryption is instant and back button navigation works like a charm! 🌊
-                    </div>
-                    <div className="max-w-[75%] ml-auto p-3 rounded-2xl bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white text-xs leading-relaxed shadow-lg">
-                      Yes! And all messages are preserved in zero-knowledge local storage even across reloads. 100% E2EE verified! ✨
-                    </div>
+                  <div className="space-y-3 py-4 flex-1 overflow-y-auto">
+                    {heroChats[activeHeroChat].messages.map((m, mIdx) => (
+                      <div 
+                        key={mIdx}
+                        className={`max-w-[78%] p-3.5 rounded-2xl text-xs leading-relaxed ${
+                          m.isMe
+                            ? 'ml-auto bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white shadow-lg'
+                            : 'bg-white/5 text-foreground/85 border border-white/5'
+                        }`}
+                      >
+                        {m.text}
+                      </div>
+                    ))}
                   </div>
 
                   {/* Input Mockup */}
                   <div className="p-2 rounded-2xl bg-[#140e29] border border-[#ff7597]/30 flex items-center justify-between gap-2">
-                    <span className="text-xs text-foreground/40 px-3">Message or /ai...</span>
-                    <div className="w-8 h-8 rounded-full bg-[#ff7597] text-white flex items-center justify-center">
+                    <span className="text-xs text-foreground/40 px-3">Type message or /ai...</span>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white flex items-center justify-center shadow-md">
                       <Send size={14} />
                     </div>
                   </div>
@@ -476,24 +506,24 @@ export default function LandingPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl w-full mx-auto pt-6 pb-10 border-y border-white/5 text-center">
           <div>
             <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] to-[#a855f7]">100%</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Zero Knowledge</p>
+            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Zero Knowledge</p>
           </div>
           <div>
             <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#00f2fe]">0 Phone</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Number Required</p>
+            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Number Required</p>
           </div>
           <div>
             <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00f2fe] to-[#10b981]">60-Digit</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Safety Verification</p>
+            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Safety Verification</p>
           </div>
           <div>
             <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#ff7597]">v2.0.1 PRO</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono">Official Build 6</p>
+            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Official Build 6</p>
           </div>
         </div>
 
         {/* Interactive Kawaii Soundscapes Experience Bar */}
-        <div className="w-full max-w-3xl mx-auto my-8 p-5 rounded-3xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-xl text-center">
+        <div className="w-full max-w-3xl mx-auto my-8 p-5 rounded-3xl bg-gradient-to-r from-pink-500/10 via-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-2xl text-center">
           <div className="flex items-center justify-center gap-2 mb-3">
             <Sparkles size={16} className="text-pink-400" />
             <span className="text-sm font-bold text-white tracking-wide">Japanese Kawaii Synthesized Soundscapes</span>
@@ -531,8 +561,14 @@ export default function LandingPage() {
       <ScrollytellingExperience />
 
       {/* NEW PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
-      <section id="download" className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20">
-        <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.2)] relative overflow-hidden">
+      <motion.section 
+        id="download" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20"
+      >
+        <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.25)] relative overflow-hidden">
           {/* Radial ambient glow */}
           <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#00f2fe]/15 rounded-full blur-3xl pointer-events-none" />
           <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[#ff7597]/15 rounded-full blur-3xl pointer-events-none" />
@@ -551,7 +587,7 @@ export default function LandingPage() {
                 </span>
               </h2>
 
-              <p className="text-sm sm:text-base text-foreground/70 leading-relaxed font-normal">
+              <p className="text-sm sm:text-base text-foreground/75 leading-relaxed font-normal">
                 Direct installation with zero Google Play tracking or background telemetry. Includes hardware back button navigation, offline E2EE key synchronization, and Tokyo sound synthesis engine.
               </p>
 
@@ -582,7 +618,7 @@ export default function LandingPage() {
                   className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_35px_rgba(255,75,130,0.6)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
                 >
                   <Download size={20} />
-                  <span>Download APK Directly (6.5 MB)</span>
+                  <span>Download APK Directly (6.6 MB)</span>
                 </button>
 
                 <div className="text-xs font-mono text-foreground/50">
@@ -612,10 +648,16 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* SECTION: DESKTOP QR CODE LOGIN */}
-      <section id="features" className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10">
+      <motion.section 
+        id="features" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
+      >
         <div className="flex flex-col lg:flex-row items-center gap-14">
           
           <div className="flex-1 space-y-6 text-left">
@@ -631,7 +673,7 @@ export default function LandingPage() {
               </span>
             </h2>
 
-            <p className="text-base text-foreground/70 leading-relaxed font-normal">
+            <p className="text-base text-foreground/75 leading-relaxed font-normal">
               No passwords to remember. Open <strong className="text-white">web.liquidchat.online</strong> on your browser. A 90-second encrypted QR code appears. Point your phone’s camera via <span className="text-[#ff7597] font-semibold">Settings → Linked Devices</span>, and your desktop unlocks in real time.
             </p>
 
@@ -693,10 +735,16 @@ export default function LandingPage() {
           </div>
 
         </div>
-      </section>
+      </motion.section>
 
       {/* SECTION: 60-DIGIT E2EE VERIFICATION & SOVEREIGN CRYPTO */}
-      <section id="security" className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10">
+      <motion.section 
+        id="security" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
+      >
         <div className="flex flex-col lg:flex-row-reverse items-center gap-14">
           
           <div className="flex-1 space-y-6 text-left">
@@ -712,7 +760,7 @@ export default function LandingPage() {
               </span>
             </h2>
 
-            <p className="text-base text-foreground/70 leading-relaxed font-normal">
+            <p className="text-base text-foreground/75 leading-relaxed font-normal">
               Just like WhatsApp and Signal, LiquidChat generates a verifiable 60-digit safety fingerprint for every 1-on-1 contact. You can compare the number or scan each other’s code using the camera viewfinder to be 100% sure your chat has never been intercepted.
             </p>
 
@@ -766,10 +814,15 @@ export default function LandingPage() {
           </div>
 
         </div>
-      </section>
+      </motion.section>
 
       {/* INTERACTIVE SECTION: LIVE ZERO-KNOWLEDGE E2EE SIMULATOR */}
-      <section className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10">
+      <motion.section 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
+      >
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-mono font-bold">
             <Lock size={13} />
@@ -811,7 +864,7 @@ export default function LandingPage() {
               </span>
               <button
                 onClick={() => setSimTamper(!simTamper)}
-                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${simTamper ? 'bg-amber-500' : 'bg-gray-700'}`}
+                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${simTamper ? 'bg-amber-500' : 'bg-gray-700'}`}
               >
                 <div className={`w-5 h-5 rounded-full bg-white transition-transform ${simTamper ? 'translate-x-5' : 'translate-x-0'}`} />
               </button>
@@ -844,13 +897,19 @@ export default function LandingPage() {
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* SECTION: COMPARISON MATRIX (LIQUIDCHAT VS OTHERS) */}
-      <section id="comparison" className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10">
+      <motion.section 
+        id="comparison" 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
+      >
         <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
           <h2 className="text-3xl sm:text-5xl font-black text-white">How LiquidChat Compares</h2>
-          <p className="text-sm sm:text-base text-foreground/70">
+          <p className="text-sm sm:text-base text-foreground/75">
             See why privacy enthusiasts and cyber aesthetics lovers choose LiquidChat over legacy platforms.
           </p>
         </div>
@@ -912,10 +971,15 @@ export default function LandingPage() {
             </tbody>
           </table>
         </div>
-      </section>
+      </motion.section>
 
       {/* SECTION: INTERACTIVE FAQ ACCORDION */}
-      <section className="py-24 max-w-4xl mx-auto px-6 border-t border-white/5 relative z-10 text-left">
+      <motion.section 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-24 max-w-4xl mx-auto px-6 border-t border-white/5 relative z-10 text-left"
+      >
         <div className="text-center mb-14 space-y-3">
           <h2 className="text-3xl sm:text-5xl font-black text-white">Frequently Asked Questions</h2>
           <p className="text-sm text-foreground/60">Everything you need to know about LiquidChat and web client routing.</p>
@@ -943,7 +1007,7 @@ export default function LandingPage() {
                       initial={{ height: 0, opacity: 0 }}
                       animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.25 }}
+                      transition={{ duration: 0.22 }}
                       className="px-5 pb-5 text-xs text-foreground/70 leading-relaxed border-t border-white/5 pt-3"
                     >
                       {faq.a}
@@ -954,10 +1018,15 @@ export default function LandingPage() {
             );
           })}
         </div>
-      </section>
+      </motion.section>
 
       {/* FINAL CALL TO ACTION BANNER */}
-      <section className="py-20 max-w-7xl mx-auto px-6 relative z-20">
+      <motion.section 
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        className="py-20 max-w-7xl mx-auto px-6 relative z-20"
+      >
         <div className="rounded-[3rem] bg-gradient-to-r from-[#21123b] via-[#1a0f30] to-[#261042] border border-[#ff7597]/40 p-10 sm:p-16 text-center relative overflow-hidden shadow-[0_0_100px_rgba(255,117,151,0.25)]">
           <div className="absolute -top-20 left-1/3 w-80 h-40 bg-[#ff7597]/25 rounded-full blur-3xl pointer-events-none" />
           
@@ -983,17 +1052,17 @@ export default function LandingPage() {
               className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition-all flex items-center justify-center gap-3 cursor-pointer"
             >
               <Download size={18} className="text-[#00f2fe]" />
-              <span>Download Android APK (v2.0.0 PRO)</span>
+              <span>Download Android APK (v2.0.1 PRO)</span>
             </button>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {/* FOOTER */}
       <footer className="w-full max-w-7xl mx-auto px-6 py-12 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-foreground/50 z-20 relative">
         <div className="flex items-center gap-2.5">
           <LiquidLogo size={24} glow={false} />
-          <span>🌸 LiquidChat PRO v2.0.0 • Tokyo Cyber-Glass</span>
+          <span>🌸 LiquidChat PRO v2.0.1 • Tokyo Cyber-Glass</span>
           <span>•</span>
           <span>© 2026 LiquidChat.online</span>
         </div>
