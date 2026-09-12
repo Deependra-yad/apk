@@ -8,53 +8,30 @@ import {
   MessageSquare, Users, Bot, Zap, Star,
   Shield, Key, RefreshCw, ChevronDown, Check, EyeOff,
   Flame, Heart, Send, Terminal, Play, Cpu, Layers, AlertTriangle,
-  Keyboard, Copy, Radio, Volume2, ShieldAlert, Phone
+  Keyboard, Copy, Radio, Volume2, ShieldAlert, Phone, ExternalLink,
+  CheckCircle, ArrowUpRight
 } from 'lucide-react';
 import Link from 'next/link';
 import LiquidLogo from '@/components/LiquidLogo';
 import { downloadFile } from '@/utils/apiUrl';
 import { soundEffects } from '@/utils/audioSynth';
-import ThreeHeroScene from './ThreeHeroScene';
-import ExplodedViewSection from './ExplodedViewSection';
-import ScrollytellingExperience from './ScrollytellingExperience';
+import ThreeLandingScene from './ThreeLandingScene';
 
 export default function LandingPage() {
   const { scrollYProgress } = useScroll();
 
-  // Instant scroll transforms (zero rubber-banding lag)
-  const yHeroText = useTransform(scrollYProgress, [0, 0.25], [0, -50]);
-  const yPhone = useTransform(scrollYProgress, [0, 0.3], [0, -80]);
-  const rotatePhone = useTransform(scrollYProgress, [0, 0.3], [-2, 2]);
-  const scalePhone = useTransform(scrollYProgress, [0, 0.25], [1, 1.04]);
+  // Instant scroll transforms for stereoscopic depth
+  const yHeroText = useTransform(scrollYProgress, [0, 0.2], [0, -60]);
+  const yBadge1 = useTransform(scrollYProgress, [0, 0.3], [0, -140]);
+  const yBadge2 = useTransform(scrollYProgress, [0, 0.3], [0, -220]);
+  const yBadge3 = useTransform(scrollYProgress, [0, 0.3], [0, -100]);
+  const yBadge4 = useTransform(scrollYProgress, [0, 0.3], [0, -180]);
 
-  // Stereoscopic multi-depth floating badges
-  const yBadge1 = useTransform(scrollYProgress, [0, 0.4], [0, -180]);
-  const yBadge2 = useTransform(scrollYProgress, [0, 0.4], [0, -120]);
-  const yBadge3 = useTransform(scrollYProgress, [0, 0.4], [0, -220]);
-  const yBadge4 = useTransform(scrollYProgress, [0, 0.4], [0, -150]);
+  // Ambient Japanese Neo-Tokyo Kanji floating parallax
+  const yKanji1 = useTransform(scrollYProgress, [0, 1], [0, -350]);
+  const yKanji2 = useTransform(scrollYProgress, [0, 1], [0, -280]);
 
-  // Ambient parallax background items
-  const yFloatingOrb1 = useTransform(scrollYProgress, [0, 1], [0, -350]);
-  const yFloatingOrb2 = useTransform(scrollYProgress, [0, 1], [0, -280]);
-  const yKanji1 = useTransform(scrollYProgress, [0, 1], [0, -400]);
-  const yKanji2 = useTransform(scrollYProgress, [0, 1], [0, -320]);
-
-  // Responsive mouse parallax for 3D hero tilt
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const springX = useSpring(mouseX, { stiffness: 140, damping: 24 });
-  const springY = useSpring(mouseY, { stiffness: 140, damping: 24 });
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    const { clientX, clientY } = e;
-    const { innerWidth, innerHeight } = window;
-    const x = (clientX / innerWidth - 0.5) * 24;
-    const y = (clientY / innerHeight - 0.5) * 24;
-    mouseX.set(x);
-    mouseY.set(y);
-  };
-
-  // Interactive 3D Hero Mockup Active Chat Tab
+  // Interactive 3D Phone Chat Switcher
   const [activeHeroChat, setActiveHeroChat] = useState<number>(0);
   const heroChats = [
     {
@@ -62,44 +39,44 @@ export default function LandingPage() {
       avatar: '🌸',
       tag: 'ID: 8343254978',
       preview: 'Secret rendezvous in Tokyo at 7 PM 🌸',
-      time: '8:11 PM',
-      messages: [
-        { text: 'Secret rendezvous in Tokyo at 7 PM 🌸', isMe: false, time: '8:11 PM' },
-        { text: 'Ratchet keys verified. 0 bytes left on disk! ✨', isMe: true, time: '8:12 PM' }
-      ]
+      audioLabel: 'Tokyo Chime 432Hz'
     },
     {
       name: 'NandniJamwal',
       avatar: '💎',
       tag: 'Mutual Contact',
       preview: 'Confidential project audit attached.',
-      time: '7:45 PM',
-      messages: [
-        { text: 'Attached the confidential security audit report. Sealed with Curve25519.', isMe: false, time: '7:45 PM' },
-        { text: 'Downloaded and verified in-browser. Zero plaintext on server! 🌊', isMe: true, time: '7:46 PM' }
-      ]
+      audioLabel: 'Cyber Pulse Bell'
     },
     {
       name: 'ujwalsharma',
       avatar: '⚡',
       tag: 'ID: 4192019482',
       preview: 'Check out the new Tokyo chime ringtone',
-      time: 'Yesterday',
-      messages: [
-        { text: 'The new Tokyo Neon synthesized ringtone sounds like cyberpunk anime!', isMe: false, time: 'Yesterday' },
-        { text: 'Web Audio API synthesizer chimes are live in settings. 🎵', isMe: true, time: 'Yesterday' }
-      ]
+      audioLabel: 'Sakura Harmonic Wave'
     }
   ];
 
-  // Real Interactive WebCrypto E2EE Simulator State
+  // Exploded View Active Layer Focus
+  const [activeExplodedLayer, setActiveExplodedLayer] = useState<number>(0);
+  const explodedRef = useRef<HTMLDivElement>(null);
+
+  // Scrollytelling Cryptographic Journey State
+  const [scrollyAct, setScrollyAct] = useState<1 | 2 | 3>(1);
+  const [mitmAttackActive, setMitmAttackActive] = useState<boolean>(false);
+  const [copiedHash, setCopiedHash] = useState(false);
+
+  // Real In-Browser WebCrypto AES-GCM Simulator
   const [simText, setSimText] = useState("Secret rendezvous in Tokyo at 7 PM 🌸");
-  const [simTamper, setSimTamper] = useState(false);
   const [simCiphertext, setSimCiphertext] = useState("");
   const [simIv, setSimIv] = useState("");
   const [simDecrypted, setSimDecrypted] = useState("");
   const [activeSound, setActiveSound] = useState<string | null>(null);
 
+  // FAQ Accordion State
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  // Sync WebCrypto simulator
   useEffect(() => {
     let active = true;
     const runSimulator = async () => {
@@ -123,7 +100,7 @@ export default function LandingPage() {
         if (!active) return;
         setSimIv(ivBase64);
 
-        if (simTamper) {
+        if (mitmAttackActive) {
           const tampered = cipherBase64.slice(0, -4) + 'AAAA';
           setSimCiphertext(tampered);
           setSimDecrypted("⚠️ AES-GCM AUTH TAG MISMATCH: Decryption rejected! Ciphertext was intercepted or modified in transit.");
@@ -143,937 +120,875 @@ export default function LandingPage() {
     };
     runSimulator();
     return () => { active = false; };
-  }, [simText, simTamper]);
+  }, [simText, mitmAttackActive]);
 
   const handlePlaySound = (type: 'sakura' | 'cyber' | 'tokyo' | 'chime') => {
     setActiveSound(type);
     if (type === 'sakura') soundEffects.playSakuraBell();
-    else if (type === 'cyber') soundEffects.playCyberPulse();
-    else if (type === 'tokyo') soundEffects.playTokyoNeon();
-    else if (type === 'chime') soundEffects.playKawaiiChime();
-    setTimeout(() => setActiveSound(null), 1200);
+    else if (type === 'cyber') soundEffects.playCyberChime();
+    else if (type === 'tokyo') soundEffects.playCallRing();
+    else soundEffects.playNotification();
+    setTimeout(() => setActiveSound(null), 800);
   };
 
-  // Interactive FAQ State
-  const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const faqs = [
-    {
-      q: "Do I need a phone number or email to use LiquidChat?",
-      a: "No! LiquidChat generates an anonymous 10-digit Liquid ID (e.g. LQ-2130-8255). You can start chatting instantly with anyone using their Liquid ID without ever exposing your phone number or email address."
-    },
-    {
-      q: "What is new in the v2.0.1 PRO Android Release?",
-      a: "The v2.0.1 PRO release introduces persistent zero-knowledge local key healing, hardware back gesture interception, universal keyboard shortcuts (Esc, Ctrl+K, Ctrl+N), WebRTC DSP noise gate audio, and synthesized Tokyo chimes."
-    },
-    {
-      q: "How does the desktop site login with QR code work?",
-      a: "Visit web.liquidchat.online on your PC or Mac. A 90-second encrypted QR code will appear. Open LiquidChat on your phone, go to Settings -> Linked Devices -> 'Link a Device', and scan the screen. Your desktop will authorize and sync your end-to-end encrypted session in real time."
-    },
-    {
-      q: "How do I verify the 60-digit cryptographic safety fingerprint?",
-      a: "Open any chat, click 'Safety Number / Encryption Info' in the top header. You can scan your peer's QR code using your phone camera or compare the 60 digits to mathematically verify that no man-in-the-middle exists."
-    },
-    {
-      q: "Can I manage and revoke my linked desktop sessions?",
-      a: "Yes! In your mobile app's 'Linked Devices' menu, you can see all computers currently logged in (browser, OS, IP address, and active status), and disconnect any device with a single tap."
-    },
-    {
-      q: "Is the Android APK really mod-proof and anti-tamper protected?",
-      a: "Yes. The LiquidChat APK has remote WebView inspection disabled, strict network security domain pinning, cryptographic signature verification, and local IndexedDB zero-knowledge keystores."
-    }
-  ];
-
-  const webUrl = typeof window !== 'undefined' && window.location.hostname.includes('liquidchat.online') 
-    ? 'https://web.liquidchat.online' 
-    : '/web';
+  const handleCopyHash = () => {
+    navigator.clipboard.writeText("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    setCopiedHash(true);
+    soundEffects.playNotification();
+    setTimeout(() => setCopiedHash(false), 2000);
+  };
 
   return (
-    <div 
-      onMouseMove={handleMouseMove}
-      className="min-h-screen w-full bg-[#05030a] text-[#fbfaff] relative overflow-x-hidden font-sans selection:bg-[#ff7597] selection:text-black"
-    >
-      
-      {/* Top Scroll Reading Progress Bar */}
-      <motion.div 
-        style={{ scaleX: scrollYProgress }}
-        className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#ff4b82] via-[#a855f7] to-[#00f2fe] origin-left z-50 shadow-[0_0_25px_rgba(255,75,130,0.9)]"
+    <div className="relative min-h-screen bg-[#04060d] text-foreground font-sans selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden">
+      {/* 1. FIXED 3D WEBGL THREE.JS CANVAS */}
+      <ThreeLandingScene
+        activeContactName={heroChats[activeHeroChat].name}
+        activeContactAvatar={heroChats[activeHeroChat].avatar}
+        activeMessage={heroChats[activeHeroChat].preview}
+        isTampered={mitmAttackActive}
       />
 
-      {/* 3D WebGL Kinetic Scene (Strict Fixed Viewport) */}
-      <ThreeHeroScene />
+      {/* 2. AMBIENT BACKGROUND GLOWS & KANJI PARALLAX */}
+      <div className="fixed inset-0 pointer-events-none -z-5 overflow-hidden">
+        <motion.div 
+          style={{ y: yKanji1 }}
+          className="absolute top-24 left-8 text-white/[0.03] text-8xl font-black select-none tracking-widest hidden lg:block"
+        >
+          完全秘密暗号化
+        </motion.div>
+        <motion.div 
+          style={{ y: yKanji2 }}
+          className="absolute top-1/2 right-10 text-white/[0.03] text-8xl font-black select-none tracking-widest hidden lg:block"
+        >
+          液体通信装置
+        </motion.div>
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[700px] bg-cyan-500/10 rounded-full blur-[140px]" />
+        <div className="absolute top-3/4 left-1/3 w-[600px] h-[600px] bg-pink-500/10 rounded-full blur-[140px]" />
+      </div>
 
-      {/* Floating Animated Japanese Neo-Tokyo Glyphs (Parallax Background) */}
-      <motion.div 
-        style={{ y: yKanji1 }} 
-        className="hidden xl:block fixed top-32 -left-10 text-8xl font-black text-white/[0.04] select-none pointer-events-none rotate-90 -z-10 font-mono tracking-widest"
-      >
-        完全秘密暗号化
-      </motion.div>
-      <motion.div 
-        style={{ y: yKanji2 }} 
-        className="hidden xl:block fixed top-[500px] -right-10 text-9xl font-black text-white/[0.04] select-none pointer-events-none -rotate-90 -z-10 font-mono tracking-widest"
-      >
-        液体通信装置
-      </motion.div>
-
-      {/* Kinetic Ambient Neon Nebula Blobs */}
-      <motion.div 
-        style={{ y: yFloatingOrb1, x: springX }} 
-        className="fixed top-[150px] left-[5%] w-[450px] sm:w-[650px] h-[450px] sm:h-[650px] bg-gradient-to-tr from-[#ff4b82]/15 via-[#a855f7]/12 to-transparent rounded-full blur-[160px] pointer-events-none -z-10" 
-      />
-      <motion.div 
-        style={{ y: yFloatingOrb2, x: springY }} 
-        className="fixed top-[600px] right-[5%] w-[400px] sm:w-[600px] h-[400px] sm:h-[600px] bg-gradient-to-br from-[#00f2fe]/14 via-[#a855f7]/10 to-transparent rounded-full blur-[160px] pointer-events-none -z-10" 
-      />
-
-      {/* Navigation Header */}
-      <header className="sticky top-0 w-full z-40 backdrop-blur-2xl bg-[#05030a]/80 border-b border-white/5 transition-all">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <LiquidLogo size={42} glow={true} />
-            <div>
-              <span className="text-xl font-black tracking-tight text-white flex items-center gap-2">
-                LiquidChat <span className="text-[#ff7597] text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30">🌸 v2.0.1 PRO</span>
-              </span>
-              <p className="text-[10px] text-foreground/50 tracking-wider uppercase font-mono hidden sm:block">
-                Zero-Knowledge • Japanese Cyber-Glass • E2EE
-              </p>
+      {/* 3. CYBER STICKY NAVIGATION BAR */}
+      <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-xl bg-[#04060d]/70 border-b border-white/10 transition-all">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-20 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3.5 group">
+            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-pink-500 p-[2px] shadow-[0_0_25px_rgba(0,210,255,0.4)] group-hover:scale-105 transition-transform">
+              <div className="w-full h-full bg-[#04060d] rounded-2xl flex items-center justify-center">
+                <LiquidLogo size={24} />
+              </div>
             </div>
-          </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-extrabold text-lg tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">
+                  LIQUID CHAT
+                </span>
+                <span className="px-2 py-0.5 text-[10px] font-mono font-bold bg-cyan-500/15 text-cyan-400 border border-cyan-500/30 rounded-full">
+                  v2.0.1 PRO
+                </span>
+              </div>
+              <p className="text-[10px] font-mono text-white/40 tracking-wider">SOVEREIGN CRYPTOGRAPHIC CLIENT</p>
+            </div>
+          </Link>
 
+          {/* Nav Links */}
+          <nav className="hidden md:flex items-center gap-1.5 p-1.5 bg-white/5 border border-white/10 rounded-full backdrop-blur-md">
+            {[
+              { label: '3D Hardware', href: '#exploded-view' },
+              { label: 'Scrollytelling', href: '#scrollytelling' },
+              { label: 'Global Mesh', href: '#mesh-network' },
+              { label: 'Security Lab', href: '#security-lab' },
+              { label: 'Download APK', href: '#download-hub' }
+            ].map((link, idx) => (
+              <a
+                key={idx}
+                href={link.href}
+                className="px-4 py-1.5 text-xs font-medium text-white/70 hover:text-cyan-400 hover:bg-white/5 rounded-full transition-all"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Action CTAs */}
           <div className="flex items-center gap-3">
-            <a href="#parallax-depth" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              3D Architecture
-            </a>
-            <a href="#scrollytelling" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              Scrollytelling
-            </a>
-            <a href="#security" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              Security
-            </a>
-            <a href="#download" className="hidden md:inline-flex text-xs font-semibold text-foreground/70 hover:text-white transition-colors px-3 py-2">
-              APK Download
-            </a>
-            <a href="/auth" className="hidden sm:inline-flex px-4 py-2 rounded-xl text-xs font-semibold text-foreground/80 hover:text-white transition-colors">
-              Sign In
-            </a>
-
-            <a
-              href={webUrl}
-              className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white text-xs font-bold shadow-[0_0_25px_rgba(255,75,130,0.4)] hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 cursor-pointer"
+            <Link
+              href="/web"
+              className="px-4 py-2 text-xs font-semibold text-white/90 hover:text-white border border-white/15 hover:border-white/30 rounded-xl bg-white/5 hover:bg-white/10 transition-all flex items-center gap-1.5"
             >
-              <span>Launch Liquid Web</span>
-              <ArrowRight size={14} />
+              <Monitor size={14} className="text-cyan-400" />
+              <span>Launch Web</span>
+            </Link>
+            <a
+              href="/LiquidChat.apk"
+              download="LiquidChat.apk"
+              className="px-5 py-2 text-xs font-bold bg-gradient-to-r from-cyan-500 to-pink-500 text-white rounded-xl shadow-[0_0_25px_rgba(0,210,255,0.4)] hover:shadow-[0_0_35px_rgba(255,75,130,0.6)] hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center gap-2"
+            >
+              <Download size={14} />
+              <span>Get APK v2.0.1</span>
             </a>
           </div>
         </div>
       </header>
 
-      {/* HERO SECTION WITH 3D CYBER-GLASS SMARTPHONE & PARALLAX PHYSICS */}
-      <section className="relative w-full max-w-7xl mx-auto px-6 pt-16 pb-24 flex flex-col items-center text-center z-10">
-        
-        {/* Glow pill badge */}
-        <motion.div 
-          initial={{ opacity: 0, y: -15 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#18112e]/90 border border-[#ff7597]/30 shadow-[0_0_30px_rgba(255,117,151,0.25)] mb-8 backdrop-blur-xl"
-        >
-          <span className="w-2 h-2 rounded-full bg-[#00f2fe] animate-pulse" />
-          <span className="text-xs font-semibold tracking-wide text-foreground/90 font-mono">
-            🌸 次世代 暗号化 メッセンジャー • Next-Gen Fluid Encrypted Messenger
-          </span>
-        </motion.div>
+      {/* ========================================================================= */}
+      {/* SECTION 1: HERO VIEWPORT (0.0 to 0.20 SCROLL) */}
+      {/* ========================================================================= */}
+      <section className="relative min-h-screen pt-32 pb-20 flex flex-col justify-center max-w-7xl mx-auto px-4 sm:px-6">
+        <motion.div style={{ y: yHeroText }} className="max-w-3xl space-y-6 z-20">
+          <div className="inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono tracking-wide shadow-[0_0_20px_rgba(0,210,255,0.2)]">
+            <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
+            <span>EXTREME-LEVEL 3D CRYPTOGRAPHIC ARCHITECTURE</span>
+          </div>
 
-        {/* Hero Title */}
-        <motion.h1 
-          style={{ y: yHeroText }}
-          className="text-4xl sm:text-6xl md:text-7xl lg:text-8xl font-black tracking-tight leading-[1.08] max-w-5xl mx-auto mb-6"
-        >
-          Privacy, Reimagined in <br className="hidden sm:block" />
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#f43f5e] to-[#00f2fe] drop-shadow-[0_0_40px_rgba(255,117,151,0.45)]">
-            Liquid Cyber Glass.
-          </span>
-        </motion.h1>
+          <h1 className="text-4xl sm:text-6xl lg:text-7xl font-black tracking-tight leading-[1.08]">
+            SOVEREIGN PRIVACY.{' '}
+            <span className="block bg-gradient-to-r from-cyan-400 via-pink-400 to-purple-400 bg-clip-text text-transparent drop-shadow-[0_0_40px_rgba(0,210,255,0.4)]">
+              UNCOMPROMISED 3D E2EE.
+            </span>
+          </h1>
 
-        {/* Hero Subtitle */}
-        <motion.p 
-          style={{ y: yHeroText }}
-          className="text-base sm:text-xl text-foreground/75 max-w-3xl mx-auto mb-10 leading-relaxed font-normal"
-        >
-          Military-grade Curve25519 & AES-256 end-to-end encryption wrapped in an award-winning Japanese Kawaii cyber-glass aesthetic. Mirrored HD video calls, instant WhatsApp Web-style QR sync, and intelligent AI assistance — with zero phone number required.
-        </motion.p>
+          <p className="text-base sm:text-lg text-white/70 max-w-2xl leading-relaxed">
+            Engineered with hardware-isolated <span className="text-cyan-300 font-semibold">Curve25519</span> key ratchets, 
+            instant <span className="text-pink-300 font-semibold">AES-256-GCM</span> encryption, and zero cloud plaintext. 
+            Scroll to deconstruct the hardware architecture in full 3D space.
+          </p>
 
-        {/* CTA Buttons */}
-        <motion.div 
-          style={{ y: yHeroText }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-4 w-full sm:w-auto mb-16"
-        >
-          <a
-            href={webUrl}
-            className="w-full sm:w-auto px-9 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_40px_rgba(255,75,130,0.5)] hover:shadow-[0_0_50px_rgba(255,75,130,0.8)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
-          >
-            <Monitor size={20} />
-            <span>Open Liquid Web (web.liquidchat.online)</span>
-            <ArrowRight size={16} />
-          </a>
-
-          <a
-            href="#download"
-            className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-[#17122b]/90 hover:bg-[#231a44] text-foreground font-bold text-sm border border-[#a855f7]/30 shadow-lg hover:border-[#ff7597]/50 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
-          >
-            <Download size={20} className="text-[#00f2fe]" />
-            <span>Download Android APK (v2.0.1)</span>
-          </a>
-        </motion.div>
-
-        {/* ========================================================================= */}
-        {/* CENTERPIECE: 3D CYBER-GLASS SMARTPHONE WITH STEREOSCOPIC PARALLAX BADGES */}
-        {/* ========================================================================= */}
-        <div className="relative w-full max-w-4xl mx-auto mb-14">
-          
-          {/* Floating Stereoscopic Depth Badge 1: Top-Left (0.3x Parallax) */}
-          <motion.div
-            style={{ y: yBadge1, x: springX }}
-            className="hidden lg:flex absolute -left-14 top-10 z-30 p-4 rounded-3xl bg-[#18102e]/90 backdrop-blur-3xl border border-[#ff7597]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
-          >
-            <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5 shadow-md">
-              <div className="w-full h-full rounded-[14px] bg-black flex items-center justify-center text-lg">
-                🌸
-              </div>
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold text-white">Zero-Knowledge Vault</span>
-                <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-[#ff7597]/20 text-[#ff7597] font-bold">E2EE</span>
-              </div>
-              <p className="text-[11px] text-foreground/70">Curve25519 Verified • 0 Plaintext</p>
-            </div>
-          </motion.div>
-
-          {/* Floating Stereoscopic Depth Badge 2: Top-Right (0.6x Parallax) */}
-          <motion.div
-            style={{ y: yBadge2, x: springY }}
-            className="hidden lg:flex absolute -right-14 top-16 z-30 p-4 rounded-3xl bg-[#0b1626]/90 backdrop-blur-3xl border border-[#00f2fe]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
-          >
-            <div className="w-10 h-10 rounded-2xl bg-[#00f2fe]/20 text-[#00f2fe] flex items-center justify-center border border-[#00f2fe]/30">
-              <ShieldCheck size={22} />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-white flex items-center gap-1">
-                1.2ms Ratchet Speed
+          {/* Interactive 3D Phone Chat Switcher Bar */}
+          <div className="p-3 rounded-2xl bg-[#0b1222]/80 border border-white/10 backdrop-blur-xl space-y-2.5 max-w-xl shadow-2xl">
+            <div className="flex items-center justify-between text-xs text-white/60 px-1">
+              <span className="flex items-center gap-1.5 font-mono text-cyan-400">
+                <Smartphone size={13} />
+                <span>3D Device Display Controller:</span>
               </span>
-              <p className="text-[11px] text-emerald-400 font-mono font-bold">Sub-Millisecond Hardware Decryption</p>
+              <span className="text-[11px] text-white/40">Click to live-render on 3D phone screen</span>
             </div>
-          </motion.div>
-
-          {/* Floating Stereoscopic Depth Badge 3: Bottom-Left (0.9x Parallax) */}
-          <motion.div
-            style={{ y: yBadge3, x: springY }}
-            className="hidden lg:flex absolute -left-10 bottom-14 z-30 p-3.5 rounded-2xl bg-[#170e2b]/90 backdrop-blur-3xl border border-[#a855f7]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
-          >
-            <div className="w-9 h-9 rounded-xl bg-[#a855f7]/20 text-[#a855f7] flex items-center justify-center border border-[#a855f7]/30">
-              <Lock size={18} />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-white">0 Phone Number Required</span>
-              <p className="text-[10px] text-foreground/50 font-mono">Anonymous 10-Digit Liquid ID</p>
-            </div>
-          </motion.div>
-
-          {/* Floating Stereoscopic Depth Badge 4: Bottom-Right (1.3x Parallax) */}
-          <motion.div
-            style={{ y: yBadge4, x: springX }}
-            className="hidden lg:flex absolute -right-10 bottom-10 z-30 p-3.5 rounded-2xl bg-[#101a1c]/90 backdrop-blur-3xl border border-[#10b981]/40 shadow-[0_15px_45px_rgba(0,0,0,0.7)] items-center gap-3 text-left"
-          >
-            <div className="w-9 h-9 rounded-xl bg-[#10b981]/20 text-[#10b981] flex items-center justify-center border border-[#10b981]/30">
-              <Video size={18} />
-            </div>
-            <div>
-              <span className="text-xs font-bold text-white">Mirrored HD Optics</span>
-              <p className="text-[10px] text-emerald-400 font-mono">Acoustic DSP Noise Gate</p>
-            </div>
-          </motion.div>
-
-          {/* ICONIC 3D CYBER SMARTPHONE MOCKUP */}
-          <motion.div 
-            style={{ 
-              y: yPhone, 
-              rotateX: rotatePhone, 
-              scale: scalePhone,
-              rotateY: springX,
-              perspective: 1200 
-            }}
-            className="w-[320px] sm:w-[380px] mx-auto rounded-[3.2rem] bg-gradient-to-b from-[#241a42] via-[#150f28] to-[#0a0614] p-3 sm:p-4 border-[5px] border-[#2c1e4d] shadow-[0_25px_80px_rgba(0,0,0,0.85),0_0_60px_rgba(255,117,151,0.25)] relative overflow-hidden"
-          >
-            {/* Glossy screen highlight reflection */}
-            <div className="absolute -top-24 -left-24 w-80 h-80 bg-gradient-to-br from-white/12 to-transparent rounded-full blur-2xl pointer-events-none" />
-
-            {/* Inner Cyber Screen */}
-            <div className="w-full rounded-[2.6rem] bg-[#0c0818] border border-white/10 overflow-hidden text-left flex flex-col justify-between h-[580px] shadow-2xl relative">
-              
-              {/* Top Dynamic Island / Status Bar */}
-              <div className="pt-3 px-5 pb-2 bg-[#120a24]/90 border-b border-white/5 flex items-center justify-between z-10">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-bold text-white">9:41</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                </div>
-                {/* Dynamic Island Capsule */}
-                <div className="px-3 py-1 rounded-full bg-black/80 border border-[#ff7597]/40 flex items-center gap-1.5 text-[9px] font-mono text-[#00f2fe]">
-                  <Lock size={9} className="text-[#ff7597]" />
-                  <span>LQ-2130-8255 • 256-BIT</span>
-                </div>
-                <span className="text-[10px] font-mono text-emerald-400 font-bold">100%</span>
-              </div>
-
-              {/* Chat Contact Header */}
-              <div className="px-4 py-3 bg-[#160d2e]/70 border-b border-white/5 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#ff7597] to-[#a855f7] p-0.5">
-                    <div className="w-full h-full rounded-full bg-black flex items-center justify-center text-base">
-                      {heroChats[activeHeroChat].avatar}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold text-white">{heroChats[activeHeroChat].name}</h4>
-                    <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Curve25519 • 1.2ms
-                    </span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5 text-foreground/70">
-                  <div className="p-2 rounded-xl bg-white/5 text-[#ff7597]"><Video size={13} /></div>
-                  <div className="p-2 rounded-xl bg-white/5 text-[#00f2fe]"><Phone size={13} /></div>
-                </div>
-              </div>
-
-              {/* Chat Message Stream */}
-              <div className="flex-1 p-4 space-y-3 overflow-y-auto">
-                {/* E2EE Info Pill */}
-                <div className="mx-auto text-center">
-                  <span className="px-3 py-1 rounded-full bg-[#00f2fe]/10 border border-[#00f2fe]/25 text-[9px] font-mono text-[#00f2fe] inline-block">
-                    🔒 100% Zero-Knowledge • 0 Bytes Plaintext on Server
-                  </span>
-                </div>
-
-                {heroChats[activeHeroChat].messages.map((m, mIdx) => (
-                  <div 
-                    key={mIdx}
-                    className={`max-w-[85%] p-3 rounded-2xl text-xs leading-relaxed ${
-                      m.isMe
-                        ? 'ml-auto bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white shadow-lg'
-                        : 'bg-white/5 text-foreground/85 border border-white/10'
-                    }`}
-                  >
-                    <div>{m.text}</div>
-                    <div className={`text-[9px] mt-1 font-mono text-right ${m.isMe ? 'text-white/60' : 'text-foreground/40'}`}>
-                      {m.time} {m.isMe && '✓✓'}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Simulated Audio Chime Bubble */}
-                <div className="p-3 rounded-2xl bg-black/50 border border-white/10 flex items-center justify-between gap-2">
+            <div className="grid grid-cols-3 gap-2">
+              {heroChats.map((chat, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => {
+                    setActiveHeroChat(idx);
+                    soundEffects.playClick();
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all relative overflow-hidden ${
+                    activeHeroChat === idx
+                      ? 'bg-cyan-500/20 border-cyan-400 shadow-[0_0_20px_rgba(0,210,255,0.3)] text-white'
+                      : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
                   <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => handlePlaySound('sakura')} 
-                      className="w-7 h-7 rounded-full bg-[#ff7597] text-white flex items-center justify-center cursor-pointer shadow-md"
-                    >
-                      <Play size={11} fill="currentColor" />
-                    </button>
-                    <div>
-                      <div className="text-[10px] font-bold text-white">Sakura Bell 🌸 (Preview)</div>
-                      <div className="text-[8px] font-mono text-foreground/40">Pentatonic Blossom Synthesizer</div>
+                    <span className="text-lg">{chat.avatar}</span>
+                    <div className="truncate">
+                      <p className="text-xs font-bold truncate">{chat.name}</p>
+                      <p className="text-[10px] text-white/40 truncate">{chat.audioLabel}</p>
                     </div>
                   </div>
-                  <span className="text-[9px] font-mono text-[#00f2fe]">0:02</span>
-                </div>
-              </div>
-
-              {/* Interactive Tab Switchers */}
-              <div className="p-2.5 bg-[#120a24]/90 border-t border-white/5 flex items-center justify-between gap-1.5">
-                {heroChats.map((c, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setActiveHeroChat(idx)}
-                    className={`flex-1 py-1.5 px-2 rounded-xl text-[10px] font-mono transition-all truncate cursor-pointer ${
-                      activeHeroChat === idx 
-                        ? 'bg-[#ff7597]/20 border border-[#ff7597]/50 text-white font-bold' 
-                        : 'bg-white/5 text-foreground/50 border border-transparent'
-                    }`}
-                  >
-                    {c.name.split(' ')[0]}
-                  </button>
-                ))}
-              </div>
-
-              {/* Bottom Input Pill */}
-              <div className="p-3 bg-[#0d071b] border-t border-white/5 flex items-center justify-between gap-2">
-                <span className="text-[11px] text-foreground/40 px-2">Message or /ai...</span>
-                <div className="w-7 h-7 rounded-full bg-gradient-to-r from-[#ff4b82] to-[#a855f7] text-white flex items-center justify-center shadow-md">
-                  <Send size={11} />
-                </div>
-              </div>
-
+                  {activeHeroChat === idx && (
+                    <motion.div
+                      layoutId="activeHeroChatGlow"
+                      className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-pink-400"
+                    />
+                  )}
+                </button>
+              ))}
             </div>
+          </div>
+
+          {/* CTA Buttons */}
+          <div className="flex flex-wrap items-center gap-4 pt-2">
+            <a
+              href="/LiquidChat.apk"
+              download="LiquidChat.apk"
+              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-pink-500 text-white font-bold text-sm shadow-[0_0_35px_rgba(0,210,255,0.4)] hover:shadow-[0_0_50px_rgba(255,75,130,0.6)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3 group"
+            >
+              <Download size={18} className="group-hover:-translate-y-0.5 transition-transform" />
+              <span>Download Liquid Chat APK</span>
+              <span className="text-xs font-mono px-2 py-0.5 bg-black/30 rounded-full">v2.0.1</span>
+            </a>
+
+            <Link
+              href="/web"
+              className="px-7 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 hover:border-white/30 text-white font-semibold text-sm backdrop-blur-md transition-all flex items-center gap-2.5"
+            >
+              <Monitor size={17} className="text-cyan-400" />
+              <span>Open Web App</span>
+              <ArrowRight size={15} className="text-white/40" />
+            </Link>
+          </div>
+
+          {/* Live Metrics Row */}
+          <div className="grid grid-cols-3 gap-4 pt-6 max-w-lg border-t border-white/10">
+            <div>
+              <p className="text-2xl font-black text-cyan-400 font-mono">256-bit</p>
+              <p className="text-xs text-white/50">AES-GCM Key Stream</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-pink-400 font-mono">1.2 ms</p>
+              <p className="text-xs text-white/50">Hardware Ratchet</p>
+            </div>
+            <div>
+              <p className="text-2xl font-black text-emerald-400 font-mono">0 Bytes</p>
+              <p className="text-xs text-white/50">Plaintext Cloud Footprint</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {/* Stereoscopic Floating Parallax Badges */}
+        <motion.div
+          style={{ y: yBadge1 }}
+          className="absolute top-48 right-12 hidden lg:flex items-center gap-3 p-3.5 rounded-2xl bg-[#091122]/80 border border-cyan-500/30 backdrop-blur-xl shadow-[0_0_30px_rgba(0,210,255,0.2)] z-10"
+        >
+          <div className="p-2 rounded-xl bg-cyan-500/20 text-cyan-400">
+            <Lock size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-white font-mono">Curve25519 Ratchet</p>
+            <p className="text-[11px] text-white/50">100% Client-Side Ephemeral</p>
+          </div>
+        </motion.div>
+
+        <motion.div
+          style={{ y: yBadge2 }}
+          className="absolute bottom-40 right-1/4 hidden lg:flex items-center gap-3 p-3.5 rounded-2xl bg-[#160c20]/80 border border-pink-500/30 backdrop-blur-xl shadow-[0_0_30px_rgba(255,75,130,0.2)] z-10"
+        >
+          <div className="p-2 rounded-xl bg-pink-500/20 text-pink-400">
+            <ShieldCheck size={18} />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-white font-mono">Poly1305 Tag</p>
+            <p className="text-[11px] text-white/50">MITM Proof Tamper Wall</p>
+          </div>
+        </motion.div>
+
+        {/* Scroll Indicator Prompt */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-white/40 font-mono text-xs z-20">
+          <span>SCROLL TO DECONSTRUCT 3D HARDWARE</span>
+          <motion.div
+            animate={{ y: [0, 8, 0] }}
+            transition={{ repeat: Infinity, duration: 1.6, ease: "easeInOut" }}
+            className="w-5 h-8 rounded-full border-2 border-white/20 flex items-start justify-center p-1"
+          >
+            <div className="w-1.5 h-2.5 bg-cyan-400 rounded-full" />
           </motion.div>
         </div>
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 max-w-4xl w-full mx-auto pt-6 pb-10 border-y border-white/5 text-center">
-          <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] to-[#a855f7]">100%</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Zero Knowledge</p>
-          </div>
-          <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#a855f7] to-[#00f2fe]">0 Phone</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Number Required</p>
-          </div>
-          <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#00f2fe] to-[#10b981]">60-Digit</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Safety Verification</p>
-          </div>
-          <div>
-            <span className="text-2xl sm:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] to-[#ff7597]">v2.0.1 PRO</span>
-            <p className="text-xs text-foreground/50 uppercase tracking-wider mt-1 font-mono font-bold">Official Build 6</p>
-          </div>
-        </div>
-
       </section>
 
       {/* ========================================================================= */}
-      {/* TECHNIQUE 1: SCROLL-DRIVEN 3D HARDWARE EXPLODED VIEW                      */}
+      {/* SECTION 2: 3D HARDWARE EXPLODED ARCHITECTURE (0.20 to 0.45 SCROLL) */}
       {/* ========================================================================= */}
-      <div id="parallax-depth">
-        <ExplodedViewSection />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TECHNIQUE 2: CRYPTOGRAPHIC SCROLLYTELLING (PACKET TRANSIT & DEFENSE)      */}
-      {/* ========================================================================= */}
-      <div id="scrollytelling">
-        <ScrollytellingExperience />
-      </div>
-
-      {/* ========================================================================= */}
-      {/* TECHNIQUE 3: SCROLL-TRIGGERED FEATURE SUITE & INTERACTIVE LABS            */}
-      {/* ========================================================================= */}
-
-      {/* SECTION: DESKTOP QR CODE LOGIN */}
-      <motion.section 
-        id="features" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
-      >
-        <div className="flex flex-col lg:flex-row items-center gap-14">
-          
-          <div className="flex-1 space-y-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#00f2fe]/10 border border-[#00f2fe]/30 text-[#00f2fe] text-xs font-mono font-bold">
-              <Smartphone size={14} />
-              <span>DESKTOP QR AUTHENTICATION</span>
+      <section id="exploded-view" className="relative h-[250vh]" ref={explodedRef}>
+        <div className="sticky top-0 h-screen flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 pointer-events-none">
+          {/* Left Exploded HUD Cards */}
+          <div className="w-full max-w-md pointer-events-auto space-y-4 z-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
+              <Layers size={13} />
+              <span>STAGE 02 • HARDWARE DECONSTRUCTION</span>
             </div>
 
-            <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-              WhatsApp Web-Style <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#00f2fe] via-[#ff7597] to-[#a855f7]">
-                Zero-Password Sync.
+            <h2 className="text-3xl sm:text-4xl font-black text-white leading-tight">
+              3D SOVEREIGN <br />
+              <span className="bg-gradient-to-r from-cyan-400 to-pink-400 bg-clip-text text-transparent">
+                EXPLODED ARCHITECTURE
               </span>
             </h2>
 
-            <p className="text-base text-foreground/75 leading-relaxed font-normal">
-              No passwords to remember. Open <strong className="text-white">web.liquidchat.online</strong> on your browser. A 90-second encrypted QR code appears. Point your phone’s camera via <span className="text-[#ff7597] font-semibold">Settings → Linked Devices</span>, and your desktop unlocks in real time.
+            <p className="text-sm text-white/70">
+              The 3D model separates into 4 sovereign isolation layers in real-time space as you scroll:
             </p>
 
-            <ul className="space-y-3 text-xs text-foreground/80 font-medium">
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                <span>Real-time WebSocket token exchange with zero password transmission</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                <span>See all active desktop sessions with browser, OS, and IP address</span>
-              </li>
-              <li className="flex items-center gap-2.5">
-                <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                <span>Remotely log out of individual or all desktop devices from your phone</span>
-              </li>
-            </ul>
-
-            <div className="pt-2">
-              <a
-                href={webUrl}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[#00f2fe] to-[#a855f7] text-white font-bold text-xs shadow-lg hover:brightness-110 transition-all cursor-pointer"
-              >
-                <span>Try Desktop QR Login</span>
-                <ArrowRight size={14} />
-              </a>
-            </div>
-          </div>
-
-          {/* Interactive QR Simulation Card */}
-          <div className="flex-1 w-full max-w-md">
-            <div className="p-8 rounded-3xl bg-gradient-to-b from-[#191136] to-[#0f0a21] border border-[#a855f7]/30 shadow-[0_0_80px_rgba(168,85,247,0.2)] flex flex-col items-center text-center relative overflow-hidden">
-              <div className="w-12 h-12 rounded-2xl bg-[#00f2fe]/20 text-[#00f2fe] flex items-center justify-center mb-4">
-                <QrCode size={26} />
-              </div>
-
-              <h3 className="text-lg font-bold text-white mb-1">Scan from Liquid App</h3>
-              <p className="text-xs text-foreground/60 mb-6">Open Settings → Linked Devices → Link a Device</p>
-
-              {/* Glowing QR Box with Laser Scan Animation */}
-              <div className="relative p-4 rounded-2xl bg-white shadow-2xl overflow-hidden">
-                <img 
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=liquidchat-desktop-auth-demo" 
-                  alt="QR Login Demo" 
-                  className="w-44 h-44"
-                />
-                <motion.div 
-                  animate={{ y: [0, 160, 0] }}
-                  transition={{ repeat: Infinity, duration: 2.2, ease: "easeInOut" }}
-                  className="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#ff4b82] to-transparent shadow-[0_0_15px_#ff4b82]"
-                />
-              </div>
-
-              <div className="mt-6 flex items-center gap-2 text-xs font-mono text-[#00f2fe]">
-                <RefreshCw size={12} className="animate-spin" />
-                <span>Session Active • 90s Refresh</span>
-              </div>
-            </div>
-          </div>
-
-        </div>
-      </motion.section>
-
-      {/* SECTION: 60-DIGIT E2EE VERIFICATION & SOVEREIGN CRYPTO */}
-      <motion.section 
-        id="security" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
-      >
-        <div className="flex flex-col lg:flex-row-reverse items-center gap-14">
-          
-          <div className="flex-1 space-y-6 text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#10b981]/10 border border-[#10b981]/30 text-[#10b981] text-xs font-mono font-bold">
-              <ShieldCheck size={14} />
-              <span>CRYPTOGRAPHIC PROOF OF SAFETY</span>
-            </div>
-
-            <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-              Verify Security Codes <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#10b981] via-[#00f2fe] to-[#ff7597]">
-                Fingerprint by Fingerprint.
-              </span>
-            </h2>
-
-            <p className="text-base text-foreground/75 leading-relaxed font-normal">
-              Just like WhatsApp and Signal, LiquidChat generates a verifiable 60-digit safety fingerprint for every 1-on-1 contact. You can compare the number or scan each other’s code using the camera viewfinder to be 100% sure your chat has never been intercepted.
-            </p>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                <div className="text-[#10b981] mb-2"><Key size={20} /></div>
-                <h4 className="text-sm font-bold text-white mb-1">Curve25519 & AES-GCM</h4>
-                <p className="text-xs text-foreground/60 leading-relaxed">High-performance asymmetric cryptography calculated directly on your device CPU.</p>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                <div className="text-[#00f2fe] mb-2"><EyeOff size={20} /></div>
-                <h4 className="text-sm font-bold text-white mb-1">Zero Plaintext on Disk</h4>
-                <p className="text-xs text-foreground/60 leading-relaxed">No chat database stored on server disks. Messages vanish as soon as delivered.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Safety Code Visual Card */}
-          <div className="flex-1 w-full max-w-md">
-            <div className="p-6 rounded-3xl bg-gradient-to-b from-[#141d26] to-[#0d131a] border border-[#10b981]/30 shadow-[0_0_60px_rgba(16,185,129,0.2)] text-left space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-white/10">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={18} className="text-[#10b981]" />
-                  <span className="text-xs font-bold text-white uppercase tracking-wide">Safety Number</span>
+            {/* Layer Cards */}
+            <div className="space-y-2.5">
+              {[
+                {
+                  layer: '01',
+                  title: 'Zero-Plaintext Cyber Glass',
+                  desc: 'Scratch-resistant front crystal with zero screen telemetry or memory scraping.',
+                  tag: 'Display Subsystem (Z: +2.5)'
+                },
+                {
+                  layer: '02',
+                  title: 'Ultra-Retina AMOLED Matrix',
+                  desc: '120Hz dynamic refresh display buffer flushed instantly upon window minimize.',
+                  tag: 'Visual Buffer (Z: +1.0)'
+                },
+                {
+                  layer: '03',
+                  title: 'Sovereign Logic Board & X25519 Enclave',
+                  desc: 'Silicon cryptographic co-processor executing ephemeral ECDH ratchets.',
+                  tag: 'Crypto Enclave (Z: 0.0)'
+                },
+                {
+                  layer: '04',
+                  title: 'Titanium Chassis & SQLite Vault',
+                  desc: 'Cold storage SQLite keystore with hardware AES-256 anti-tamper zeroization.',
+                  tag: 'Local Keystore (Z: -2.0)'
+                }
+              ].map((item, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => setActiveExplodedLayer(idx)}
+                  className={`p-3.5 rounded-2xl border transition-all cursor-pointer ${
+                    activeExplodedLayer === idx
+                      ? 'bg-gradient-to-r from-cyan-950/60 to-purple-950/60 border-cyan-400 shadow-[0_0_25px_rgba(0,210,255,0.25)]'
+                      : 'bg-[#090e1c]/60 border-white/10 hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-xs font-bold text-cyan-400">LAYER {item.layer}</span>
+                    <span className="text-[10px] font-mono text-white/40">{item.tag}</span>
+                  </div>
+                  <h3 className="text-sm font-bold text-white">{item.title}</h3>
+                  <p className="text-xs text-white/60 mt-1">{item.desc}</p>
                 </div>
-                <span className="px-2 py-0.5 rounded-full bg-[#10b981]/20 text-[#10b981] text-[10px] font-mono font-bold">VERIFIED</span>
-              </div>
+              ))}
+            </div>
+          </div>
 
-              <p className="text-xs text-foreground/60">
-                Compare these 60 numbers with your contact or tap below to scan their QR code with your camera:
+          {/* Right Floating Specs Callout */}
+          <div className="hidden lg:block w-72 pointer-events-auto space-y-3 z-20">
+            <div className="p-4 rounded-2xl bg-[#091122]/80 border border-cyan-500/20 backdrop-blur-xl shadow-xl">
+              <p className="text-xs font-mono text-cyan-400 font-bold mb-1">HARDWARE GUARANTEE</p>
+              <p className="text-xs text-white/80 leading-relaxed">
+                Private ratchet seed keys are generated exclusively on the physical device chip. No key leaves local hardware unencrypted.
               </p>
-
-              {/* 60 Digit Block Display */}
-              <div className="p-4 rounded-2xl bg-black/60 border border-white/5 font-mono text-xs text-[#00f2fe] tracking-wider leading-relaxed select-all">
-                <div className="grid grid-cols-2 gap-2 text-center">
-                  <span>92841 00294</span>
-                  <span>78192 48921</span>
-                  <span>19382 74829</span>
-                  <span>88421 94029</span>
-                  <span>48201 84920</span>
-                  <span>77481 02948</span>
-                </div>
-              </div>
-
-              <div className="p-3 rounded-xl bg-[#10b981]/15 border border-[#10b981]/30 text-xs text-emerald-300 flex items-center gap-2">
-                <CheckCircle2 size={16} className="shrink-0 text-emerald-400" />
-                <span>Peer Public Key Cryptographically Verified</span>
-              </div>
+            </div>
+            <div className="p-4 rounded-2xl bg-[#160c20]/80 border border-pink-500/20 backdrop-blur-xl shadow-xl">
+              <p className="text-xs font-mono text-pink-400 font-bold mb-1">ZERO TELEMETRY</p>
+              <p className="text-xs text-white/80 leading-relaxed">
+                Zero crashlytics, zero trackers, zero cloud database. If our servers are seized, attackers obtain only ciphertext noise.
+              </p>
             </div>
           </div>
-
         </div>
-      </motion.section>
+      </section>
 
-      {/* INTERACTIVE SECTION: LIVE ZERO-KNOWLEDGE E2EE SIMULATOR */}
-      <motion.section 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
-      >
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-3">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-mono font-bold">
-            <Lock size={13} />
-            <span>REAL-TIME WEBCRYPTO DEMONSTRATION</span>
+      {/* ========================================================================= */}
+      {/* SECTION 3: CRYPTOGRAPHIC QUANTUM SCROLLYTELLING (0.45 to 0.70 SCROLL) */}
+      {/* ========================================================================= */}
+      <section id="scrollytelling" className="relative h-[300vh]">
+        <div className="sticky top-0 h-screen flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 pointer-events-none">
+          {/* Left Storyboard HUD */}
+          <div className="w-full max-w-lg pointer-events-auto space-y-5 z-20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 border border-pink-500/30 text-pink-400 text-xs font-mono">
+              <ShieldAlert size={13} />
+              <span>STAGE 03 • CRYPTOGRAPHIC PACKET JOURNEY</span>
+            </div>
+
+            <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
+              SCROLLYTELLING <br />
+              <span className="bg-gradient-to-r from-pink-400 via-purple-400 to-cyan-400 bg-clip-text text-transparent">
+                PACKET TRANSIT & DEFENSE
+              </span>
+            </h2>
+
+            {/* Act Switcher Tabs */}
+            <div className="flex items-center gap-2 p-1.5 bg-[#090e1c]/80 border border-white/10 rounded-2xl backdrop-blur-md">
+              {[
+                { act: 1, label: 'Act 01: Synthesis' },
+                { act: 2, label: 'Act 02: Transit Defense' },
+                { act: 3, label: 'Act 03: 1.2ms Decrypt' }
+              ].map((tab) => (
+                <button
+                  key={tab.act}
+                  onClick={() => {
+                    setScrollyAct(tab.act as 1 | 2 | 3);
+                    soundEffects.playClick();
+                  }}
+                  className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all ${
+                    scrollyAct === tab.act
+                      ? 'bg-gradient-to-r from-cyan-500 to-pink-500 text-white shadow-lg'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Narrative Box */}
+            <div className="p-5 rounded-3xl bg-[#091122]/90 border border-white/15 backdrop-blur-xl shadow-2xl space-y-3">
+              {scrollyAct === 1 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-cyan-400 font-bold">EPHEMERAL SYNTHESIS</span>
+                    <span className="text-white/40">Browser Crypto API</span>
+                  </div>
+                  <p className="text-sm text-white/80 leading-relaxed">
+                    A unique 32-byte ephemeral keypair is generated via Curve25519. Plaintext payload transforms into 256-bit ciphertext before touching network sockets.
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-black/50 border border-cyan-500/30 font-mono text-xs text-cyan-300 break-all">
+                    ENC: 9f8a4b2c7e1d5a8f6b3c9e2a4d7f1b...
+                  </div>
+                </div>
+              )}
+
+              {scrollyAct === 2 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-pink-400 font-bold">HOSTILE AIRSPACE INTERCEPTION</span>
+                    <span className="text-white/40">3D MITM Simulation</span>
+                  </div>
+                  <p className="text-sm text-white/80 leading-relaxed">
+                    Adversary laser interceptors strike the 3D quantum packet forcefield. The 128-bit authentication tag guarantees tampering causes immediate rejection.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setMitmAttackActive(!mitmAttackActive);
+                      soundEffects.playAlert();
+                    }}
+                    className={`w-full py-2.5 rounded-xl border font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                      mitmAttackActive
+                        ? 'bg-red-500/20 border-red-500 text-red-400 shadow-[0_0_20px_rgba(255,75,75,0.4)]'
+                        : 'bg-white/5 border-white/15 text-white hover:bg-white/10'
+                    }`}
+                  >
+                    <AlertTriangle size={15} />
+                    <span>{mitmAttackActive ? 'MITM ATTACK INJECTED (FAIL)' : 'INJECT MITM ATTACK TO TEST SHIELD'}</span>
+                  </button>
+                </div>
+              )}
+
+              {scrollyAct === 3 && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-mono">
+                    <span className="text-emerald-400 font-bold">ZERO-LATENCY RESOLUTION</span>
+                    <span className="text-white/40">1.2ms Verification</span>
+                  </div>
+                  <p className="text-sm text-white/80 leading-relaxed">
+                    Recipient node receives the authenticated packet. Silicon ratchets verify the Poly1305 MAC tag and dissolve ciphertext into verified plaintext.
+                  </p>
+                  <div className="p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 font-mono text-xs text-emerald-300 flex items-center justify-between">
+                    <span>STATUS: RECIPIENT VERIFIED ✓</span>
+                    <span>LATENCY: 1.2ms</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
-          <h2 className="text-3xl sm:text-5xl font-black text-white">
-            Experience 100% E2EE in Action.
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 4: SOVEREIGN GLOBAL MESH NETWORK & FEATURES (0.70 to 0.88 SCROLL) */}
+      {/* ========================================================================= */}
+      <section id="mesh-network" className="relative min-h-screen py-28 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-3xl mx-auto space-y-4 mb-16">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-xs font-mono">
+            <Globe size={13} />
+            <span>STAGE 04 • GLOBAL PEER-TO-PEER MESH</span>
+          </div>
+          <h2 className="text-4xl sm:text-5xl font-black text-white">
+            DECENTRALIZED HIGHWAY. <br />
+            <span className="bg-gradient-to-r from-cyan-400 via-emerald-400 to-pink-400 bg-clip-text text-transparent">
+              ZERO CENTRAL BOTTLENECKS.
+            </span>
           </h2>
-          <p className="text-sm sm:text-base text-gray-400 max-w-2xl mx-auto">
-            Type anything below. Watch your browser execute real-time Curve25519 key negotiation, AES-256-GCM encryption with random 96-bit IV, and zero-knowledge transmission.
+          <p className="text-base text-white/70">
+            Messages, voice, and video calls establish direct WebRTC encrypted channels across global nodes (Tokyo, Zurich, New York, Singapore, London).
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 text-left">
-          {/* Plaintext sender input card */}
-          <div className="p-6 rounded-3xl bg-[#110d24]/80 border border-white/10 shadow-xl space-y-4">
+        {/* 4 Cyber Feature Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[
+            {
+              icon: <Video className="text-cyan-400" size={24} />,
+              title: "WebRTC Audio & Video",
+              desc: "Direct peer-to-peer WebRTC calls with DTLS-SRTP encryption. No voice or video data passes through relay servers."
+            },
+            {
+              icon: <Flame className="text-pink-400" size={24} />,
+              title: "Ephemeral Self-Destruct",
+              desc: "Granular burn-timers from 5 seconds to 24 hours. Messages zeroize from memory and local storage automatically."
+            },
+            {
+              icon: <Lock className="text-emerald-400" size={24} />,
+              title: "PIN & Biometric Lock",
+              desc: "Hardware-level PIN security locks individual chats or the entire client with automatic session timeout."
+            },
+            {
+              icon: <Volume2 className="text-purple-400" size={24} />,
+              title: "Tokyo Synth Soundboard",
+              desc: "Procedural Web Audio API sound synthesizer with custom Tokyo chime frequencies and haptic soundscapes."
+            }
+          ].map((feat, idx) => (
+            <motion.div
+              key={idx}
+              whileHover={{ y: -6, scale: 1.02 }}
+              className="p-6 rounded-3xl bg-[#090e1c]/80 border border-white/10 hover:border-cyan-500/40 backdrop-blur-xl shadow-xl space-y-3 group transition-all"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                {feat.icon}
+              </div>
+              <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors">
+                {feat.title}
+              </h3>
+              <p className="text-xs text-white/60 leading-relaxed">{feat.desc}</p>
+            </motion.div>
+          ))}
+        </div>
+      </section>
+
+      {/* ========================================================================= */}
+      {/* SECTION 5: INTERACTIVE WEBCRYPTO & AUDIO LABS */}
+      {/* ========================================================================= */}
+      <section id="security-lab" className="relative min-h-screen py-28 max-w-7xl mx-auto px-4 sm:px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+          {/* Lab 1: Interactive WebCrypto Simulator */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#091122]/90 border border-cyan-500/30 backdrop-blur-2xl shadow-2xl space-y-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#ff7597] font-mono">1. CLIENT-SIDE SENDER (ALICE)</span>
-              <span className="text-[10px] text-gray-500 font-mono">Ephemeral Key</span>
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-cyan-500/20 text-cyan-400">
+                  <Terminal size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Live WebCrypto AES-GCM Lab</h3>
+                  <p className="text-xs text-white/50 font-mono">Run authentic 256-bit encryption in your browser</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-[10px] font-mono font-bold">
+                STANDALONE API
+              </span>
             </div>
-            <div>
-              <label className="text-xs text-gray-400 block mb-1.5">Plaintext Message:</label>
-              <textarea 
+
+            {/* Input message */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-mono text-white/70">INPUT PLAINTEXT:</label>
+              <input
+                type="text"
                 value={simText}
                 onChange={(e) => setSimText(e.target.value)}
-                rows={3}
-                className="w-full bg-black/50 border border-white/10 rounded-2xl p-3 text-sm text-white focus:border-[#ff7597] outline-none resize-none font-sans"
+                className="w-full px-4 py-3 rounded-xl bg-black/40 border border-white/15 focus:border-cyan-400 text-sm text-white font-sans outline-none transition-colors"
+                placeholder="Enter secret message to encrypt..."
               />
             </div>
-            <div className="text-[11px] text-gray-400 leading-relaxed font-mono">
-              Cipher IV: <span className="text-[#00f2fe]">{simIv || 'Calculating...'}</span>
-            </div>
 
-            {/* Man-in-the-middle tamper switch */}
-            <div className="pt-2 border-t border-white/5 flex items-center justify-between">
-              <span className="text-xs text-amber-400 font-semibold flex items-center gap-1.5">
-                <AlertTriangle size={14} />
-                <span>Simulate Man-In-The-Middle Tampering</span>
-              </span>
-              <button
-                onClick={() => setSimTamper(!simTamper)}
-                className={`w-11 h-6 rounded-full transition-colors relative p-0.5 cursor-pointer ${simTamper ? 'bg-amber-500' : 'bg-gray-700'}`}
-              >
-                <div className={`w-5 h-5 rounded-full bg-white transition-transform ${simTamper ? 'translate-x-5' : 'translate-x-0'}`} />
-              </button>
-            </div>
-          </div>
-
-          {/* Ciphertext & Receiver card */}
-          <div className="p-6 rounded-3xl bg-[#0c1424]/80 border border-white/10 shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#00f2fe] font-mono">2. WHAT THE SERVER SEES & RECEIVER</span>
-              <span className="text-[10px] text-gray-500 font-mono">AES-256 Ciphertext</span>
-            </div>
-
-            <div>
-              <label className="text-xs text-gray-400 block mb-1.5">Encrypted Ciphertext (Over the wire):</label>
-              <div className="p-3 bg-black/60 rounded-2xl border border-white/5 font-mono text-xs text-emerald-400 break-all select-all min-h-[70px]">
-                {simCiphertext || 'Encrypting...'}
+            {/* Ciphertext Output */}
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs font-mono">
+                <span className="text-cyan-400">AES-256-GCM CIPHERTEXT (BASE64):</span>
+                <span className="text-white/40">IV: {simIv.slice(0, 8)}...</span>
+              </div>
+              <div className="p-3.5 rounded-xl bg-black/60 border border-cyan-500/20 font-mono text-xs text-cyan-300 break-all shadow-inner">
+                {simCiphertext || "Computing AES-GCM keys..."}
               </div>
             </div>
 
-            <div>
-              <label className="text-xs text-gray-400 block mb-1.5">Recipient Decrypted Result (Bob):</label>
-              <div className={`p-3 rounded-2xl border text-xs font-mono leading-relaxed ${
-                simTamper 
-                  ? 'bg-rose-500/15 border-rose-500/30 text-rose-300' 
-                  : 'bg-[#00f2fe]/10 border-[#00f2fe]/20 text-[#00f2fe]'
+            {/* Decrypted Output */}
+            <div className="space-y-1.5">
+              <span className="text-xs font-mono text-emerald-400">HARDWARE VERIFIED DECRYPTION:</span>
+              <div className={`p-3.5 rounded-xl border font-mono text-xs break-all ${
+                mitmAttackActive
+                  ? 'bg-red-950/40 border-red-500/40 text-red-300'
+                  : 'bg-emerald-950/40 border-emerald-500/30 text-emerald-300'
               }`}>
                 {simDecrypted}
               </div>
             </div>
+
+            {/* Tamper Switch */}
+            <div className="pt-2 flex items-center justify-between">
+              <span className="text-xs text-white/70">Simulate Network Wiretap Tampering:</span>
+              <button
+                onClick={() => setMitmAttackActive(!mitmAttackActive)}
+                className={`px-4 py-2 rounded-xl text-xs font-mono font-bold border transition-all ${
+                  mitmAttackActive
+                    ? 'bg-red-500 text-white border-red-400 shadow-[0_0_20px_rgba(255,75,75,0.4)]'
+                    : 'bg-white/5 text-white/70 border-white/15 hover:bg-white/10'
+                }`}
+              >
+                {mitmAttackActive ? 'TAMPER ACTIVE' : 'INJECT TAMPER'}
+              </button>
+            </div>
+          </div>
+
+          {/* Lab 2: Synthesized Web Audio Soundboard */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-[#160c20]/90 border border-pink-500/30 backdrop-blur-2xl shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-pink-500/20 text-pink-400">
+                  <Volume2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white">Synthesizer Soundboard</h3>
+                  <p className="text-xs text-white/50 font-mono">Custom oscillator ringtones & chimes</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full bg-pink-500/20 text-pink-400 text-[10px] font-mono font-bold">
+                WEB AUDIO API
+              </span>
+            </div>
+
+            <p className="text-xs text-white/70 leading-relaxed">
+              Experience the customized Tokyo cyberpunk auditory signals built directly into Liquid Chat settings. Zero MP3 downloads; generated mathematically in real-time.
+            </p>
+
+            {/* Soundboard Buttons */}
+            <div className="grid grid-cols-2 gap-3 pt-2">
+              {[
+                { id: 'sakura', name: 'Sakura Bell', desc: '432Hz Harmonic Sine' },
+                { id: 'cyber', name: 'Cyber Chime', desc: 'Neo-Tokyo Square Wave' },
+                { id: 'tokyo', name: 'Call Ringtone', desc: 'Anime Arpeggiator Loop' },
+                { id: 'chime', name: 'Haptic Click', desc: 'Ratchet Key Engagement' }
+              ].map((sound) => (
+                <button
+                  key={sound.id}
+                  onClick={() => handlePlaySound(sound.id as any)}
+                  className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden group ${
+                    activeSound === sound.id
+                      ? 'bg-pink-500/30 border-pink-400 text-white shadow-[0_0_25px_rgba(255,75,130,0.4)]'
+                      : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-white">{sound.name}</p>
+                    <Play size={13} className="text-pink-400 group-hover:scale-125 transition-transform" />
+                  </div>
+                  <p className="text-[10px] text-white/40 font-mono">{sound.desc}</p>
+                </button>
+              ))}
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-black/40 border border-white/10 flex items-center justify-between text-xs font-mono text-white/60">
+              <span>ACTIVE AUDIO ENGINE:</span>
+              <span className="text-pink-400 font-bold">AudioContext (48,000Hz)</span>
+            </div>
           </div>
         </div>
-      </motion.section>
+      </section>
 
-      {/* SECTION: COMPARISON MATRIX (LIQUIDCHAT VS OTHERS) */}
-      <motion.section 
-        id="comparison" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-10"
-      >
-        <div className="text-center max-w-3xl mx-auto mb-14 space-y-4">
-          <h2 className="text-3xl sm:text-5xl font-black text-white">How LiquidChat Compares</h2>
-          <p className="text-sm sm:text-base text-foreground/75">
-            See why privacy enthusiasts and cyber aesthetics lovers choose LiquidChat over legacy platforms.
-          </p>
-        </div>
+      {/* ========================================================================= */}
+      {/* SECTION 6: DOWNLOAD HUB & MONOLITH LAUNCHPAD (0.88 to 1.0 SCROLL) */}
+      {/* ========================================================================= */}
+      <section id="download-hub" className="relative min-h-screen py-32 max-w-7xl mx-auto px-4 sm:px-6 flex flex-col justify-center">
+        <div className="relative p-8 sm:p-14 rounded-3xl bg-gradient-to-b from-[#0b1329]/90 to-[#050811]/95 border border-cyan-500/40 backdrop-blur-2xl shadow-[0_0_80px_rgba(0,210,255,0.2)] overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-cyan-500/20 rounded-full blur-[120px] pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-pink-500/20 rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse text-xs sm:text-sm">
-            <thead>
-              <tr className="border-b border-white/10 text-foreground/50 font-mono uppercase tracking-wider">
-                <th className="py-4 px-4">Feature</th>
-                <th className="py-4 px-4 text-[#ff7597] font-bold">LiquidChat 🌸</th>
-                <th className="py-4 px-4">WhatsApp</th>
-                <th className="py-4 px-4">Telegram</th>
-                <th className="py-4 px-4">Signal</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/5 font-medium">
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">No Phone Number Required</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ (Liquid ID)</td>
-                <td className="py-4 px-4 text-rose-400">✗ (Required)</td>
-                <td className="py-4 px-4 text-rose-400">✗ (Required)</td>
-                <td className="py-4 px-4 text-rose-400">✗ (Required)</td>
-              </tr>
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">WhatsApp-Style QR Desktop Login</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ (100% Realtime)</td>
-                <td className="py-4 px-4 text-emerald-400">✓ Yes</td>
-                <td className="py-4 px-4 text-foreground/60">Partial</td>
-                <td className="py-4 px-4 text-foreground/60">Desktop Only</td>
-              </tr>
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">Mirrored HD Calls by Default</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ Both Parties</td>
-                <td className="py-4 px-4 text-rose-400">✗ Inverted</td>
-                <td className="py-4 px-4 text-rose-400">✗ Inverted</td>
-                <td className="py-4 px-4 text-rose-400">✗ Inverted</td>
-              </tr>
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">60-Digit Camera QR Code Scanner</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ Realtime Match</td>
-                <td className="py-4 px-4 text-emerald-400">✓ Yes</td>
-                <td className="py-4 px-4 text-rose-400">✗ No</td>
-                <td className="py-4 px-4 text-emerald-400">✓ Yes</td>
-              </tr>
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">Award-Winning Kawaii Cyber Glass UI</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ Tokyo Aesthetic</td>
-                <td className="py-4 px-4 text-rose-400">✗ Standard</td>
-                <td className="py-4 px-4 text-rose-400">✗ Standard</td>
-                <td className="py-4 px-4 text-rose-400">✗ Minimalist</td>
-              </tr>
-              <tr className="hover:bg-white/[0.02]">
-                <td className="py-4 px-4 text-white font-bold">Built-in AI Assistant</td>
-                <td className="py-4 px-4 text-emerald-400 font-bold">✓ Integrated</td>
-                <td className="py-4 px-4 text-foreground/60">Meta AI (Tracked)</td>
-                <td className="py-4 px-4 text-rose-400">✗ Bot API only</td>
-                <td className="py-4 px-4 text-rose-400">✗ None</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </motion.section>
-
-      {/* SECTION: PROMINENT APK DOWNLOAD HUB (v2.0.1 PRO) */}
-      <motion.section 
-        id="download" 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-20 max-w-7xl mx-auto px-6 border-t border-white/5 relative z-20"
-      >
-        <div className="rounded-[3rem] bg-gradient-to-br from-[#1b1236] via-[#120a24] to-[#0c0717] border border-[#ff7597]/40 p-8 sm:p-14 shadow-[0_0_90px_rgba(255,117,151,0.25)] relative overflow-hidden">
-          {/* Radial ambient glow */}
-          <div className="absolute -right-20 -top-20 w-96 h-96 bg-[#00f2fe]/15 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute -left-20 -bottom-20 w-96 h-96 bg-[#ff7597]/15 rounded-full blur-3xl pointer-events-none" />
-
-          <div className="flex flex-col lg:flex-row items-center justify-between gap-12 text-left relative z-10">
-            <div className="flex-1 space-y-6">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#ff7597]/15 border border-[#ff7597]/30 text-[#ff7597] text-xs font-mono font-bold">
-                <Flame size={14} />
-                <span>OFFICIAL ANDROID RELEASE • v2.0.1 (BUILD 6)</span>
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left APK Details */}
+            <div className="lg:col-span-7 space-y-6">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/15 border border-cyan-500/40 text-cyan-300 text-xs font-mono">
+                <Download size={13} />
+                <span>OFFICIAL PRODUCTION RELEASE • v2.0.1</span>
               </div>
 
-              <h2 className="text-3xl sm:text-5xl font-black text-white leading-tight">
-                Download the Native <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#ff7597] via-[#00f2fe] to-[#a855f7]">
-                  LiquidChat Android APK.
+              <h2 className="text-4xl sm:text-6xl font-black text-white tracking-tight leading-none">
+                DEPLOY LIQUID CHAT <br />
+                <span className="bg-gradient-to-r from-cyan-400 via-pink-400 to-purple-400 bg-clip-text text-transparent">
+                  TO YOUR DEVICE.
                 </span>
               </h2>
 
-              <p className="text-sm sm:text-base text-foreground/75 leading-relaxed font-normal">
-                Direct installation with zero Google Play tracking or background telemetry. Includes hardware back button navigation, offline E2EE key synchronization, and Tokyo sound synthesis engine.
+              <p className="text-sm sm:text-base text-white/70 max-w-xl leading-relaxed">
+                Download the verified sovereign Android APK with zero Google Play Services dependency, 
+                or launch the full-featured Web App directly in any modern Chromium/WebKit browser.
               </p>
 
-              {/* Release Feature Bullet Points */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Zero-Knowledge Key Healing</span>
+              {/* Specs Grid */}
+              <div className="grid grid-cols-3 gap-3 p-4 rounded-2xl bg-black/40 border border-white/10 font-mono text-xs">
+                <div>
+                  <span className="text-white/40 block text-[10px]">PACKAGE SIZE</span>
+                  <span className="text-white font-bold">6.3 MB</span>
                 </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Hardware Back Gesture Integrated</span>
+                <div>
+                  <span className="text-white/40 block text-[10px]">MIN ANDROID</span>
+                  <span className="text-cyan-400 font-bold">Android 8.0+</span>
                 </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Universal Keyboard Shortcuts</span>
-                </div>
-                <div className="flex items-center gap-2 text-foreground/90">
-                  <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
-                  <span>Mirrored HD Front Camera Feed</span>
+                <div>
+                  <span className="text-white/40 block text-[10px]">SECURITY SEAL</span>
+                  <span className="text-emerald-400 font-bold">SHA-256 Valid</span>
                 </div>
               </div>
 
-              {/* Download Action Bar */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 pt-2">
-                <button
-                  onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
-                  className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_35px_rgba(255,75,130,0.6)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
+              {/* Download Buttons */}
+              <div className="flex flex-wrap items-center gap-4 pt-2">
+                <a
+                  href="/LiquidChat.apk"
+                  download="LiquidChat.apk"
+                  className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-pink-500 text-white font-bold text-base shadow-[0_0_35px_rgba(0,210,255,0.4)] hover:shadow-[0_0_50px_rgba(255,75,130,0.6)] hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
                 >
                   <Download size={20} />
-                  <span>Download APK Directly (6.6 MB)</span>
-                </button>
+                  <span>Download LiquidChat.apk</span>
+                </a>
 
-                <div className="text-xs font-mono text-foreground/50">
-                  SHA-256 Verified • Universal APK
+                <Link
+                  href="/web"
+                  className="px-6 py-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/15 text-white font-semibold text-sm transition-all flex items-center gap-2"
+                >
+                  <Monitor size={17} className="text-cyan-400" />
+                  <span>Open Web Client</span>
+                </Link>
+              </div>
+
+              {/* Checksum Hash Verification Box */}
+              <div className="p-3.5 rounded-xl bg-black/50 border border-white/10 flex items-center justify-between text-xs font-mono">
+                <div className="truncate mr-3">
+                  <span className="text-white/40 block text-[10px]">SHA-256 CHECKSUM</span>
+                  <span className="text-cyan-300 select-all truncate">e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855</span>
                 </div>
+                <button
+                  onClick={handleCopyHash}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold transition-colors flex items-center gap-1.5 shrink-0"
+                >
+                  {copiedHash ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                  <span>{copiedHash ? 'Copied' : 'Copy'}</span>
+                </button>
               </div>
             </div>
 
-            {/* Live QR Scan to Download Card */}
-            <div className="p-6 rounded-3xl bg-[#0c0819]/90 border border-white/10 backdrop-blur-2xl text-center space-y-3 shrink-0 shadow-2xl">
-              <span className="text-xs font-bold text-white flex items-center justify-center gap-1.5">
-                <Smartphone size={14} className="text-[#00f2fe]" />
-                <span>Scan from Phone to Install</span>
-              </span>
-
-              <div className="p-3 bg-white rounded-2xl shadow-xl inline-block">
-                <img 
-                  src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=https://liquidchat.online/LiquidChat.apk" 
-                  alt="Scan to download APK" 
-                  className="w-36 h-36"
+            {/* Right QR Code Pairing Card */}
+            <div className="lg:col-span-5 p-6 rounded-3xl bg-black/60 border border-white/15 text-center space-y-4">
+              <p className="text-xs font-mono text-cyan-400 font-bold">SCAN TO INSTALL ON MOBILE</p>
+              
+              {/* QR Code Container */}
+              <div className="w-48 h-48 mx-auto p-3 rounded-2xl bg-white flex items-center justify-center shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                <img
+                  src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=https://liquidchat.online/LiquidChat.apk"
+                  alt="Liquid Chat APK QR Code"
+                  className="w-full h-full object-contain"
                 />
               </div>
 
-              <div className="text-[10px] font-mono text-foreground/40">
-                Direct Link: liquidchat.online/LiquidChat.apk
+              <div className="space-y-1">
+                <p className="text-xs font-bold text-white">Direct HTTPS APK Stream</p>
+                <p className="text-[11px] text-white/50 font-mono">https://liquidchat.online/LiquidChat.apk</p>
               </div>
             </div>
           </div>
         </div>
-      </motion.section>
+      </section>
 
-      {/* SECTION: INTERACTIVE FAQ ACCORDION */}
-      <motion.section 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-24 max-w-4xl mx-auto px-6 border-t border-white/5 relative z-10 text-left"
-      >
-        <div className="text-center mb-14 space-y-3">
-          <h2 className="text-3xl sm:text-5xl font-black text-white">Frequently Asked Questions</h2>
-          <p className="text-sm text-foreground/60">Everything you need to know about LiquidChat and web client routing.</p>
-        </div>
-
-        <div className="space-y-3">
-          {faqs.map((faq, idx) => {
-            const isOpen = openFaq === idx;
-            return (
-              <div
-                key={idx}
-                className="rounded-2xl bg-white/[0.03] border border-white/5 overflow-hidden transition-all"
-              >
-                <button
-                  onClick={() => setOpenFaq(isOpen ? null : idx)}
-                  className="w-full p-5 text-left flex items-center justify-between text-sm font-bold text-white hover:text-[#ff7597] transition-colors cursor-pointer"
-                >
-                  <span>{faq.q}</span>
-                  <ChevronDown size={18} className={`transition-transform duration-300 ${isOpen ? 'rotate-180 text-[#ff7597]' : 'text-foreground/40'}`} />
-                </button>
-
-                <AnimatePresence>
-                  {isOpen && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.22 }}
-                      className="px-5 pb-5 text-xs text-foreground/70 leading-relaxed border-t border-white/5 pt-3"
-                    >
-                      {faq.a}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            );
-          })}
-        </div>
-      </motion.section>
-
-      {/* FINAL CALL TO ACTION BANNER */}
-      <motion.section 
-        initial={{ opacity: 0, y: 30 }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: "-80px" }}
-        className="py-20 max-w-7xl mx-auto px-6 relative z-20"
-      >
-        <div className="rounded-[3rem] bg-gradient-to-r from-[#21123b] via-[#1a0f30] to-[#261042] border border-[#ff7597]/40 p-10 sm:p-16 text-center relative overflow-hidden shadow-[0_0_100px_rgba(255,117,151,0.25)]">
-          <div className="absolute -top-20 left-1/3 w-80 h-40 bg-[#ff7597]/25 rounded-full blur-3xl pointer-events-none" />
-          
-          <h2 className="text-3xl sm:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight">
-            Claim Your Liquid ID Today.
+      {/* ========================================================================= */}
+      {/* SECTION 7: COMPARISON MATRIX & SECURITY FAQ */}
+      {/* ========================================================================= */}
+      <section className="relative py-24 max-w-5xl mx-auto px-4 sm:px-6">
+        <div className="text-center max-w-2xl mx-auto mb-14 space-y-3">
+          <h2 className="text-3xl sm:text-4xl font-black text-white">
+            COMPARE PROTOCOLS
           </h2>
-          <p className="text-sm sm:text-lg text-foreground/70 max-w-2xl mx-auto mb-10 leading-relaxed font-normal">
-            No phone number. No tracking. Step into the future of confidential, aesthetically breathtaking communication.
+          <p className="text-sm text-white/60">
+            Why sovereign cryptographic hardware outclasses legacy centralized messaging platforms.
           </p>
+        </div>
 
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
-              href={webUrl}
-              className="w-full sm:w-auto px-10 py-4 rounded-2xl bg-gradient-to-r from-[#ff4b82] via-[#f43f5e] to-[#a855f7] text-white font-bold text-sm shadow-[0_0_30px_rgba(255,75,130,0.6)] hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-3 cursor-pointer"
-            >
-              <Monitor size={18} />
-              <span>Launch Liquid Web</span>
-              <ArrowRight size={16} />
-            </a>
-
-            <button
-              onClick={() => downloadFile('/LiquidChat.apk', 'LiquidChat.apk')}
-              className="w-full sm:w-auto px-8 py-4 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-bold text-sm border border-white/15 transition-all flex items-center justify-center gap-3 cursor-pointer"
-            >
-              <Download size={18} className="text-[#00f2fe]" />
-              <span>Download Android APK (v2.0.1 PRO)</span>
-            </button>
+        {/* Comparison Matrix Table */}
+        <div className="rounded-3xl bg-[#090e1c]/80 border border-white/10 backdrop-blur-xl overflow-hidden shadow-2xl mb-20">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs font-sans">
+              <thead>
+                <tr className="border-b border-white/10 bg-white/5 font-mono text-white/60">
+                  <th className="p-4">CAPABILITY</th>
+                  <th className="p-4 text-cyan-400 font-bold">LIQUID CHAT PRO</th>
+                  <th className="p-4">TELEGRAM</th>
+                  <th className="p-4">SIGNAL</th>
+                  <th className="p-4">WHATSAPP</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/5 text-white/80">
+                <tr>
+                  <td className="p-4 font-bold">Default E2EE Chat</td>
+                  <td className="p-4 text-emerald-400 font-bold">YES (Curve25519)</td>
+                  <td className="p-4 text-red-400">NO (Cloud Chats)</td>
+                  <td className="p-4 text-emerald-400">YES</td>
+                  <td className="p-4 text-emerald-400">YES</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-bold">Zero Phone Number Requirement</td>
+                  <td className="p-4 text-emerald-400 font-bold">YES (10-Digit ID)</td>
+                  <td className="p-4 text-amber-400">PARTIAL</td>
+                  <td className="p-4 text-amber-400">PARTIAL</td>
+                  <td className="p-4 text-red-400">NO</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-bold">3D WebGL Hardware Exploded UI</td>
+                  <td className="p-4 text-cyan-400 font-bold">YES (Active 3D)</td>
+                  <td className="p-4 text-white/40">NO</td>
+                  <td className="p-4 text-white/40">NO</td>
+                  <td className="p-4 text-white/40">NO</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-bold">Procedural Web Audio Synthesizer</td>
+                  <td className="p-4 text-pink-400 font-bold">YES (Tokyo Synth)</td>
+                  <td className="p-4 text-white/40">NO</td>
+                  <td className="p-4 text-white/40">NO</td>
+                  <td className="p-4 text-white/40">NO</td>
+                </tr>
+                <tr>
+                  <td className="p-4 font-bold">Zero Cloud Database Plaintext</td>
+                  <td className="p-4 text-emerald-400 font-bold">100% Client SQLite</td>
+                  <td className="p-4 text-red-400">NO</td>
+                  <td className="p-4 text-emerald-400">YES</td>
+                  <td className="p-4 text-amber-400">METADATA LOGGED</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
         </div>
-      </motion.section>
 
-      {/* FOOTER */}
-      <footer className="w-full max-w-7xl mx-auto px-6 py-12 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-6 text-xs text-foreground/50 z-20 relative">
-        <div className="flex items-center gap-2.5">
-          <LiquidLogo size={24} glow={false} />
-          <span>🌸 LiquidChat PRO v2.0.1 • Tokyo Cyber-Glass</span>
-          <span>•</span>
-          <span>© 2026 LiquidChat.online</span>
+        {/* Security FAQ Accordion */}
+        <div className="space-y-4">
+          <h3 className="text-2xl font-black text-white text-center mb-8">FREQUENTLY ASKED QUESTIONS</h3>
+          {[
+            {
+              q: "How does Curve25519 Diffie-Hellman prevent server surveillance?",
+              a: "When two contacts communicate, their devices compute shared AES-256 symmetric keys directly on local client silicon using ephemeral elliptic curve points. The server only ever receives randomized ciphertext."
+            },
+            {
+              q: "Can I use Liquid Chat on both Android and Desktop simultaneously?",
+              a: "Yes. Install the native APK on Android, or visit liquidchat.online/web in any modern browser. You can link sessions securely via QR code cryptographic key handshake."
+            },
+            {
+              q: "What happens if someone steals my phone?",
+              a: "Liquid Chat features hardware-level PIN locking and folder encryption. After failed attempts or user-configured lockouts, the local database is zeroized and unreachable without your master PIN."
+            }
+          ].map((faq, idx) => (
+            <div
+              key={idx}
+              className="p-5 rounded-2xl bg-[#090e1c]/80 border border-white/10 backdrop-blur-md cursor-pointer transition-all hover:border-cyan-500/30"
+              onClick={() => setOpenFaq(openFaq === idx ? null : idx)}
+            >
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-sm text-white">{faq.q}</span>
+                <ChevronDown
+                  size={18}
+                  className={`text-white/40 transition-transform ${openFaq === idx ? 'rotate-180 text-cyan-400' : ''}`}
+                />
+              </div>
+              {openFaq === idx && (
+                <motion.p
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  className="mt-3 text-xs text-white/70 leading-relaxed pt-2 border-t border-white/10"
+                >
+                  {faq.a}
+                </motion.p>
+              )}
+            </div>
+          ))}
         </div>
+      </section>
 
-        <div className="flex items-center gap-6 font-medium">
-          <a href={webUrl} className="hover:text-white transition-colors">Liquid Web</a>
-          <a href="/LiquidChat.apk" download className="hover:text-white transition-colors">Android APK</a>
-          <Link href="/auth" className="hover:text-white transition-colors">Sign In</Link>
-          <a href="https://github.com/Deependra-yad/apk" target="_blank" rel="noreferrer" className="hover:text-white transition-colors">GitHub</a>
+      {/* ========================================================================= */}
+      {/* FOOTER */}
+      {/* ========================================================================= */}
+      <footer className="border-t border-white/10 bg-[#020408] py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="flex items-center gap-3">
+            <LiquidLogo size={22} />
+            <span className="font-mono text-xs text-white/50">
+              LIQUID CHAT PROTOCOL • PROUDLY OPEN SOURCE & SECURE
+            </span>
+          </div>
+
+          <div className="flex items-center gap-6 text-xs font-mono text-white/40">
+            <Link href="/web" className="hover:text-cyan-400 transition-colors">Web App</Link>
+            <a href="/LiquidChat.apk" download className="hover:text-cyan-400 transition-colors">Direct APK</a>
+            <a href="https://github.com/Deependra-yad/apk" target="_blank" rel="noreferrer" className="hover:text-cyan-400 transition-colors flex items-center gap-1">
+              <span>GitHub</span>
+              <ExternalLink size={12} />
+            </a>
+          </div>
         </div>
       </footer>
-
     </div>
   );
 }

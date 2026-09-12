@@ -213,6 +213,45 @@ class SoundEffects {
       });
     } catch (e) {}
   }
+
+  // UI Sound: Notification Chime
+  playNotification() {
+    this.playKawaiiChime();
+  }
+
+  // UI Sound: Click / Tap Haptic
+  playClick() {
+    this.playMessageSent();
+  }
+
+  // UI Sound: Security Alert / MITM Detection
+  playAlert() {
+    try {
+      const ctx = this.getContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(320, now);
+      osc.frequency.linearRampToValueAtTime(180, now + 0.2);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.2);
+    } catch (e) {}
+  }
+
+  // UI Sound: Cyber Chime
+  playCyberChime() {
+    this.playCyberPulse();
+  }
+
+  // UI Sound: Call Ring Tone Sample
+  playCallRing() {
+    this.playTokyoNeon();
+  }
 }
 
 export const soundEffects = new SoundEffects();
