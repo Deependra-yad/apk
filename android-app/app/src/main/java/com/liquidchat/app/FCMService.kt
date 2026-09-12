@@ -40,12 +40,27 @@ class FCMService : FirebaseMessagingService() {
 
         if (type == "call") {
             val ringtoneUri = android.media.RingtoneManager.getDefaultUri(android.media.RingtoneManager.TYPE_RINGTONE)
+            val callId = remoteMessage.data["callId"] ?: ""
+
+            // Intent when user taps notification body: open the incoming call window
+            val openIntent = android.content.Intent(this, MainActivity::class.java).apply {
+                action = "OPEN_CALL"
+                putExtra("callerId", callerId)
+                putExtra("isVideo", isVideo)
+                putExtra("callId", callId)
+                flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+            }
+            val openPendingIntent = android.app.PendingIntent.getActivity(
+                this, 100, openIntent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
 
             // Intent to accept call
             val acceptIntent = android.content.Intent(this, MainActivity::class.java).apply {
                 action = "ACCEPT_CALL"
                 putExtra("callerId", callerId)
                 putExtra("isVideo", isVideo)
+                putExtra("callId", callId)
                 flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val acceptPendingIntent = android.app.PendingIntent.getActivity(
@@ -57,6 +72,7 @@ class FCMService : FirebaseMessagingService() {
             val declineIntent = android.content.Intent(this, MainActivity::class.java).apply {
                 action = "DECLINE_CALL"
                 putExtra("callerId", callerId)
+                putExtra("callId", callId)
                 flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK or android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
             val declinePendingIntent = android.app.PendingIntent.getActivity(
@@ -74,8 +90,8 @@ class FCMService : FirebaseMessagingService() {
                 .setOngoing(true)
                 .setSound(ringtoneUri)
                 .setVibrate(longArrayOf(0, 1000, 1000, 1000, 1000))
-                .setContentIntent(acceptPendingIntent)
-                .setFullScreenIntent(acceptPendingIntent, true)
+                .setContentIntent(openPendingIntent)
+                .setFullScreenIntent(openPendingIntent, true)
                 .addAction(android.R.drawable.sym_action_call, "Pick Up", acceptPendingIntent)
                 .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Hang Up", declinePendingIntent)
 

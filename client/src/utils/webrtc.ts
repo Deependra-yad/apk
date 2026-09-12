@@ -65,6 +65,7 @@ export class WebRTCManager {
   public peer: RTCPeerConnection | null = null;
   public localStream: MediaStream | null = null;
   public remoteStream: MediaStream | null = null;
+  public currentFacingMode: 'user' | 'environment' = 'user';
   private pendingCandidates: RTCIceCandidateInit[] = [];
   
   public onRemoteStream?: (stream: MediaStream) => void;
@@ -77,26 +78,107 @@ export class WebRTCManager {
         throw new Error("getUserMedia not supported");
       }
 
+      this.currentFacingMode = 'user';
       this.localStream = await navigator.mediaDevices.getUserMedia({
-        video: video ? { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } : false,
-        audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }
+        video: video ? {
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          facingMode: 'user',
+          frameRate: { ideal: 30, max: 30 }
+        } : false,
+        audio: audio ? { echoCancellation: true, noiseSuppression: true, autoGainControl: true } : false
       });
+
+      // Synchronize to active peer if it exists
+      this.syncTracksToPeer();
+
       return { stream: this.localStream, isPermissionDenied: false };
     } catch (err: any) {
-      console.warn("Camera/Mic hardware not accessible, trying audio only fallback:", err);
+      console.warn("Camera/Mic hardware not accessible with primary constraints, trying fallback:", err);
       try {
+        // Fallback with minimal video constraints
+        if (video) {
+          this.localStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'user' },
+            audio: audio ? { echoCancellation: true } : false
+          });
+          this.syncTracksToPeer();
+          return { stream: this.localStream, isPermissionDenied: false };
+        }
+      } catch (e) {}
+
+      try {
+        // Fallback to audio only
         this.localStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+        this.syncTracksToPeer();
         return { stream: this.localStream, isPermissionDenied: false };
       } catch (err2) {
         console.warn("Using synthetic fallback stream:", err2);
         this.localStream = createSyntheticStream(video);
+        this.syncTracksToPeer();
         return { stream: this.localStream, isPermissionDenied: true };
       }
     }
   }
 
+  syncTracksToPeer() {
+    if (!this.peer || !this.localStream) return;
+    try {
+      const senders = this.peer.getSenders();
+      this.localStream.getTracks().forEach(track => {
+        const existing = senders.find(s => s.track?.kind === track.kind);
+        if (existing) {
+          existing.replaceTrack(track).catch(() => {});
+        } else {
+          try {
+            this.peer?.addTrack(track, this.localStream!);
+          } catch (e) {}
+        }
+      });
+    } catch (e) {
+      console.warn("Track sync error:", e);
+    }
+  }
+
+  async switchCamera(): Promise<{ success: boolean; facingMode: 'user' | 'environment' }> {
+    if (!this.localStream) return { success: false, facingMode: this.currentFacingMode };
+    try {
+      const targetFacing = this.currentFacingMode === 'user' ? 'environment' : 'user';
+      const newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: targetFacing },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+      const newVideoTrack = newStream.getVideoTracks()[0];
+      if (!newVideoTrack) return { success: false, facingMode: this.currentFacingMode };
+
+      const oldVideoTrack = this.localStream.getVideoTracks()[0];
+      if (oldVideoTrack) {
+        this.localStream.removeTrack(oldVideoTrack);
+        oldVideoTrack.stop();
+      }
+      this.localStream.addTrack(newVideoTrack);
+      this.currentFacingMode = targetFacing;
+
+      if (this.peer) {
+        const sender = this.peer.getSenders().find(s => s.track?.kind === 'video');
+        if (sender) {
+          await sender.replaceTrack(newVideoTrack);
+        }
+      }
+      return { success: true, facingMode: targetFacing };
+    } catch (err) {
+      console.warn("Camera flip note:", err);
+      return { success: false, facingMode: this.currentFacingMode };
+    }
+  }
+
   createPeerConnection(): RTCPeerConnection {
     if (this.peer && this.peer.signalingState !== 'closed') {
+      this.syncTracksToPeer();
       return this.peer;
     }
 
@@ -141,6 +223,7 @@ export class WebRTCManager {
 
   async createOffer(): Promise<RTCSessionDescriptionInit> {
     const pc = this.createPeerConnection();
+    this.syncTracksToPeer();
     const offer = await pc.createOffer({
       offerToReceiveAudio: true,
       offerToReceiveVideo: true
@@ -151,6 +234,7 @@ export class WebRTCManager {
 
   async handleOffer(offer: RTCSessionDescriptionInit): Promise<RTCSessionDescriptionInit> {
     const pc = this.createPeerConnection();
+    this.syncTracksToPeer();
     await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
     // Drain queued ICE candidates

@@ -317,7 +317,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   useEffect(() => {
     if (!socket) return;
 
-    const handleIncomingCall = (data: { from: any; offer: any; isVideo: boolean }) => {
+    const handleIncomingCall = (data: { from: any; offer: any; isVideo: boolean; callId?: string }) => {
       soundEffects.startIncomingRing();
       if (typeof window !== 'undefined' && (window as any).Android?.startIncomingCallRingtone) {
         try {
@@ -327,6 +327,25 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       setIncomingCallData(data);
       setIsVideoCall(data.isVideo);
       setCallState('receiving');
+
+      // Native Android notification auto-answer trigger
+      if (typeof window !== 'undefined' && (window as any).__liquidAutoAnswer) {
+        (window as any).__liquidAutoAnswer = false;
+        setTimeout(() => {
+          if (typeof (window as any).__liquidAnswerCall === 'function') {
+            (window as any).__liquidAnswerCall();
+          }
+        }, 150);
+      }
+    };
+
+    const handleCallEndedGlobal = () => {
+      soundEffects.stopRinging();
+      if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
+        try { (window as any).Android.stopCallRingtone(); } catch (e) {}
+      }
+      setCallState('idle');
+      setIncomingCallData(null);
     };
 
     const handleProfileUpdated = (updatedUser: any) => {
@@ -334,10 +353,16 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     };
 
     socket.on('incoming_call', handleIncomingCall);
+    socket.on('call_ended', handleCallEndedGlobal);
+    socket.on('call_rejected', handleCallEndedGlobal);
+    socket.on('call_missed', handleCallEndedGlobal);
     socket.on('user_profile_updated', handleProfileUpdated);
 
     return () => {
       socket.off('incoming_call', handleIncomingCall);
+      socket.off('call_ended', handleCallEndedGlobal);
+      socket.off('call_rejected', handleCallEndedGlobal);
+      socket.off('call_missed', handleCallEndedGlobal);
       socket.off('user_profile_updated', handleProfileUpdated);
       if (typeof window !== 'undefined' && (window as any).Android?.stopCallRingtone) {
         try { (window as any).Android.stopCallRingtone(); } catch (e) {}

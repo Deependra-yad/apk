@@ -33,6 +33,7 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
 import android.os.Vibrator
@@ -46,7 +47,9 @@ class MainActivity : AppCompatActivity() {
     private lateinit var webView: WebView
 
     private var activeRingtone: Ringtone? = null
+    private var callMediaPlayer: MediaPlayer? = null
     private var callVibrator: Vibrator? = null
+    private var pendingPermissionRequest: PermissionRequest? = null
 
     private var fileUploadCallback: ValueCallback<Array<Uri>>? = null
     private var cameraImageUri: Uri? = null
@@ -84,8 +87,25 @@ class MainActivity : AppCompatActivity() {
         // Setup permission launcher
         permissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
-        ) { permissions ->
-            // Permissions handled, WebView will re-request via onPermissionRequest
+        ) { _ ->
+            pendingPermissionRequest?.let { req ->
+                val granted = mutableListOf<String>()
+                for (res in req.resources) {
+                    if (res == PermissionRequest.RESOURCE_VIDEO_CAPTURE && hasCameraPermission()) {
+                        granted.add(res)
+                    } else if (res == PermissionRequest.RESOURCE_AUDIO_CAPTURE && hasMicPermission()) {
+                        granted.add(res)
+                    } else if (res != PermissionRequest.RESOURCE_VIDEO_CAPTURE && res != PermissionRequest.RESOURCE_AUDIO_CAPTURE) {
+                        granted.add(res)
+                    }
+                }
+                if (granted.isNotEmpty()) {
+                    runOnUiThread { req.grant(granted.toTypedArray()) }
+                } else {
+                    runOnUiThread { req.deny() }
+                }
+                pendingPermissionRequest = null
+            }
         }
 
         // Setup file chooser launcher
@@ -374,38 +394,21 @@ class MainActivity : AppCompatActivity() {
         webView.webChromeClient = object : WebChromeClient() {
             // Handle camera and microphone permissions for WebRTC calls
             override fun onPermissionRequest(request: PermissionRequest?) {
-                request?.let {
-                    val requestedResources = it.resources
-                    val grantedResources = mutableListOf<String>()
+                request?.let { req ->
+                    val requestedResources = req.resources
+                    val needCamera = requestedResources.contains(PermissionRequest.RESOURCE_VIDEO_CAPTURE) && !hasCameraPermission()
+                    val needMic = requestedResources.contains(PermissionRequest.RESOURCE_AUDIO_CAPTURE) && !hasMicPermission()
 
-                    for (resource in requestedResources) {
-                        when (resource) {
-                            PermissionRequest.RESOURCE_VIDEO_CAPTURE -> {
-                                if (hasCameraPermission()) {
-                                    grantedResources.add(resource)
-                                } else {
-                                    requestCameraPermission()
-                                    grantedResources.add(resource) // Grant anyway, system will prompt
-                                }
-                            }
-                            PermissionRequest.RESOURCE_AUDIO_CAPTURE -> {
-                                if (hasMicPermission()) {
-                                    grantedResources.add(resource)
-                                } else {
-                                    requestMicPermission()
-                                    grantedResources.add(resource)
-                                }
-                            }
-                            else -> grantedResources.add(resource)
-                        }
-                    }
-
-                    if (grantedResources.isNotEmpty()) {
-                        runOnUiThread {
-                            it.grant(grantedResources.toTypedArray())
-                        }
+                    if (needCamera || needMic) {
+                        pendingPermissionRequest = req
+                        val perms = mutableListOf<String>()
+                        if (needCamera) perms.add(Manifest.permission.CAMERA)
+                        if (needMic) perms.add(Manifest.permission.RECORD_AUDIO)
+                        permissionLauncher.launch(perms.toTypedArray())
                     } else {
-                        runOnUiThread { it.deny() }
+                        runOnUiThread {
+                            req.grant(req.resources)
+                        }
                     }
                 }
             }
@@ -710,12 +713,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleCallAction(intent: Intent?) {
-        when (intent?.action) {
+        val action = intent?.action ?: return
+        when (action) {
             "ACCEPT_CALL" -> {
                 stopCallRingtoneInternal()
                 val js = """
                     (function() {
                         try {
+                            window.__liquidAutoAnswer = true;
                             if (typeof window !== 'undefined' && typeof window.__liquidAnswerCall === 'function') {
                                 window.__liquidAnswerCall();
                                 return;
@@ -730,12 +735,33 @@ class MainActivity : AppCompatActivity() {
                         }
                     })();
                 """.trimIndent()
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 800)
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1500)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 100)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 500)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1200)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 2500)
             }
             "DECLINE_CALL" -> {
                 stopCallRingtoneInternal()
+                val callerId = intent.getStringExtra("callerId") ?: ""
+                val callId = intent.getStringExtra("callId") ?: ""
+                Thread {
+                    try {
+                        val backendBase = WEB_URL.replace("/web", "")
+                        val url = java.net.URL("$backendBase/api/calls/action")
+                        val conn = url.openConnection() as java.net.HttpURLConnection
+                        conn.requestMethod = "POST"
+                        conn.setRequestProperty("Content-Type", "application/json")
+                        conn.connectTimeout = 5000
+                        conn.readTimeout = 5000
+                        conn.doOutput = true
+                        val json = """{"action":"reject","callerId":"$callerId","callId":"$callId"}"""
+                        conn.outputStream.use { it.write(json.toByteArray()) }
+                        conn.responseCode
+                        conn.disconnect()
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
+                }.start()
                 val js = """
                     (function() {
                         try {
@@ -753,9 +779,11 @@ class MainActivity : AppCompatActivity() {
                         }
                     })();
                 """.trimIndent()
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 300)
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 800)
-                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 1500)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 100)
+                webView.postDelayed({ webView.evaluateJavascript(js, null) }, 600)
+            }
+            "OPEN_CALL" -> {
+                stopCallRingtoneInternal()
             }
         }
     }
@@ -764,13 +792,27 @@ class MainActivity : AppCompatActivity() {
         try {
             stopCallRingtoneInternal()
 
-            // Play Android system default incoming call ringtone
             val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            activeRingtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)?.apply {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            try {
+                callMediaPlayer = MediaPlayer().apply {
+                    setDataSource(applicationContext, ringtoneUri)
+                    setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                            .build()
+                    )
                     isLooping = true
+                    prepare()
+                    start()
                 }
-                play()
+            } catch (mediaErr: Exception) {
+                activeRingtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)?.apply {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        isLooping = true
+                    }
+                    play()
+                }
             }
 
             // Vibrate pattern
@@ -790,6 +832,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopCallRingtoneInternal() {
         try {
+            callMediaPlayer?.apply {
+                if (isPlaying) stop()
+                release()
+            }
+            callMediaPlayer = null
             activeRingtone?.stop()
             activeRingtone = null
             callVibrator?.cancel()

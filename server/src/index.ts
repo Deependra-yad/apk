@@ -122,6 +122,26 @@ app.use('/api/stickers', stickerRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/auth/qr', qrAuthRoutes);
 
+// Direct Call Actions from Android Notifications & Native Clients
+app.post('/api/calls/action', async (req, res) => {
+  const { action, callerId, receiverId, callId } = req.body;
+  if (!action) return res.status(400).json({ error: 'Action is required' });
+
+  if (action === 'reject') {
+    for (const [recId, call] of activeCalls.entries()) {
+      if ((receiverId && recId === receiverId) || (callerId && call.callerId === callerId) || (callId && call.callId === callId)) {
+        if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
+        activeCalls.delete(recId);
+        io.to(`user_${call.callerId}`).emit('call_rejected', { callId: call.callId });
+        io.to(`user_${call.receiverId}`).emit('call_ended', { callId: call.callId });
+      }
+    }
+    return res.json({ success: true, message: 'Call rejected' });
+  }
+
+  res.json({ success: true });
+});
+
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
   res.status(200).send('Liquid Chat Backend is running successfully.');
@@ -267,6 +287,23 @@ const connectedUsers = new Map<string, string>();
 // Map of socketId -> userId
 const socketToUser = new Map<string, string>();
 
+interface ActiveCallSession {
+  callId: string;
+  callerId: string;
+  receiverId: string;
+  fromUser: { id: string; username: string; avatar?: string };
+  offer: any;
+  isVideo: boolean;
+  createdAt: number;
+  status: 'ringing' | 'connected' | 'ended';
+  callerSocketId: string;
+  receiverSocketId?: string;
+  timeoutTimer?: NodeJS.Timeout;
+}
+
+// Map of receiverId -> ActiveCallSession
+const activeCalls = new Map<string, ActiveCallSession>();
+
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
 import jwt from 'jsonwebtoken';
 
@@ -342,6 +379,23 @@ io.on('connection', (socket) => {
       }
     } catch (e) {
       console.error('Error fetching user during registration:', e);
+    }
+
+    // Immediately deliver any pending ringing call to this reconnected/newly joined user
+    try {
+      const pendingCall = activeCalls.get(uid);
+      if (pendingCall && pendingCall.status === 'ringing' && (Date.now() - pendingCall.createdAt < 45000)) {
+        pendingCall.receiverSocketId = socket.id;
+        console.log(`Delivering pending incoming call ${pendingCall.callId} to reconnected user ${uid}`);
+        socket.emit('incoming_call', {
+          callId: pendingCall.callId,
+          from: pendingCall.fromUser,
+          offer: pendingCall.offer,
+          isVideo: pendingCall.isVideo
+        });
+      }
+    } catch (callErr) {
+      console.error('Error delivering pending call to user:', callErr);
     }
   };
 
@@ -581,15 +635,51 @@ io.on('connection', (socket) => {
 
   // --- WebRTC Calling Signaling ---
   socket.on('call_offer', ({ to, offer, fromUser, isVideo }) => {
+    const callerId = fromUser?.id || socketToUser.get(socket.id);
+    const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+
+    // Clear any existing call session for this receiver
+    const existing = activeCalls.get(to);
+    if (existing?.timeoutTimer) {
+      clearTimeout(existing.timeoutTimer);
+    }
+
+    // Auto timeout after 45 seconds if unanswered
+    const timeoutTimer = setTimeout(() => {
+      const current = activeCalls.get(to);
+      if (current && current.callId === callId && current.status === 'ringing') {
+        console.log(`Call ${callId} timed out after 45s`);
+        activeCalls.delete(to);
+        io.to(`user_${callerId}`).emit('call_missed');
+        io.to(`user_${to}`).emit('call_ended');
+      }
+    }, 45000);
+
+    const callSession: ActiveCallSession = {
+      callId,
+      callerId,
+      receiverId: to,
+      fromUser,
+      offer,
+      isVideo: !!isVideo,
+      createdAt: Date.now(),
+      status: 'ringing',
+      callerSocketId: socket.id,
+      timeoutTimer
+    };
+
+    activeCalls.set(to, callSession);
+
     io.to(`user_${to}`).emit('incoming_call', {
+      callId,
       from: fromUser,
       offer,
-      isVideo
+      isVideo: !!isVideo
     });
     
     // Trigger push notification for incoming call (force=true with interactive actions)
     sendPushNotification(to, `Incoming ${isVideo ? 'Video' : 'Voice'} Call`, `Incoming call from ${fromUser?.username || 'someone'}`, {
-      url: `/#call?from=${fromUser?.id}&video=${isVideo}`,
+      url: `/#call?from=${fromUser?.id}&video=${isVideo}&callId=${callId}`,
       force: true,
       type: 'call',
       callerId: fromUser?.id,
@@ -598,20 +688,57 @@ io.on('connection', (socket) => {
     });
   });
 
-  socket.on('call_answer', ({ to, answer }) => {
-    io.to(`user_${to}`).emit('call_answered', { answer });
+  socket.on('call_answer', ({ to, answer, callId }) => {
+    // Find active call session
+    const myUid = socketToUser.get(socket.id);
+    let session = activeCalls.get(myUid || '');
+    if (!session && callId) {
+      session = Array.from(activeCalls.values()).find(c => c.callId === callId);
+    }
+    if (session) {
+      session.status = 'connected';
+      if (session.timeoutTimer) {
+        clearTimeout(session.timeoutTimer);
+        session.timeoutTimer = undefined;
+      }
+    }
+    io.to(`user_${to}`).emit('call_answered', { answer, callId });
   });
 
   socket.on('ice_candidate', ({ to, candidate }) => {
     io.to(`user_${to}`).emit('ice_candidate', { candidate });
   });
 
-  socket.on('call_rejected', ({ to }) => {
-    io.to(`user_${to}`).emit('call_rejected');
+  socket.on('call_rejected', ({ to, callId }) => {
+    const myUid = socketToUser.get(socket.id);
+    const session = activeCalls.get(myUid || '');
+    if (session?.timeoutTimer) {
+      clearTimeout(session.timeoutTimer);
+    }
+    activeCalls.delete(myUid || '');
+    for (const [recId, call] of activeCalls.entries()) {
+      if (call.callerId === to || call.receiverId === to || (callId && call.callId === callId)) {
+        if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
+        activeCalls.delete(recId);
+      }
+    }
+    io.to(`user_${to}`).emit('call_rejected', { callId });
   });
 
-  socket.on('end_call', ({ to }) => {
-    io.to(`user_${to}`).emit('call_ended');
+  socket.on('end_call', ({ to, callId }) => {
+    const myUid = socketToUser.get(socket.id);
+    const session = activeCalls.get(myUid || '');
+    if (session?.timeoutTimer) {
+      clearTimeout(session.timeoutTimer);
+    }
+    activeCalls.delete(myUid || '');
+    for (const [recId, call] of activeCalls.entries()) {
+      if (call.callerId === to || call.receiverId === to || (callId && call.callId === callId)) {
+        if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
+        activeCalls.delete(recId);
+      }
+    }
+    io.to(`user_${to}`).emit('call_ended', { callId });
   });
 
   // --- Disconnection ---
@@ -620,6 +747,16 @@ io.on('connection', (socket) => {
     if (disconnectedUserId) {
       connectedUsers.delete(disconnectedUserId);
       socketToUser.delete(socket.id);
+
+      // If this disconnected user was in an active call, end it cleanly
+      for (const [recId, call] of activeCalls.entries()) {
+        if (call.callerId === disconnectedUserId || call.receiverId === disconnectedUserId) {
+          if (call.timeoutTimer) clearTimeout(call.timeoutTimer);
+          activeCalls.delete(recId);
+          const targetId = call.callerId === disconnectedUserId ? call.receiverId : call.callerId;
+          io.to(`user_${targetId}`).emit('call_ended', { callId: call.callId });
+        }
+      }
 
       try {
         await prisma.user.update({
