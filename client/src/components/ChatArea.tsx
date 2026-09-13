@@ -8,7 +8,7 @@ import {
   Film, BarChart2, Star, Copy, Play, Pause, Volume2, Eye, 
   Code2, Archive, File, Edit2, Forward, CheckSquare, Square, 
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
-  ArrowLeft, Lock, Plus, RefreshCw
+  ArrowLeft, Lock, Plus, RefreshCw, Zap, Cpu
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -26,7 +26,7 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
-import { getKeyFromIDB, importPublicKey, deriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext, cacheDecryptedMessage, getCachedDecryptedMessage } from '@/utils/crypto';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, getOrDeriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext, cacheDecryptedMessage, getCachedDecryptedMessage } from '@/utils/crypto';
 import { ShieldCheck, Camera, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CameraQrScannerModal from './CameraQrScannerModal';
@@ -202,8 +202,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               activeContact.publicKey = contactPubKey;
               const myKey = await ensureUserKeyPair(user.id, token);
               if (myKey) {
-                const otherPubKey = await importPublicKey(contactPubKey);
-                const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+                const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
                 loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
                   // Check persistent zero-knowledge local cache first
                   const cached = getCachedDecryptedMessage(user.id, m.id);
@@ -267,16 +266,16 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           if (socket) {
             socket.emit('mark_seen', { senderId: activeContact.id, receiverId: user.id });
           }
-        }).catch(() => {
-          setMessages([]);
+        }).catch((err) => {
+          console.warn('Background message sync error (cached messages retained):', err);
         });
       } else if (activeGroup) {
         axios.get(`/api/messages/group/${activeGroup.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
           setMessages(Array.isArray(res.data) ? res.data : []);
-        }).catch(() => {
-          setMessages([]);
+        }).catch((err) => {
+          console.warn('Background group sync error (cached messages retained):', err);
         });
       }
     }
@@ -473,8 +472,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       if (!contactPubKey) return;
       const myKey = await ensureUserKeyPair(user.id, token);
       if (!myKey) return;
-      const otherPubKey = await importPublicKey(contactPubKey);
-      const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+      const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
       
       const rawText = msg.rawText || msg.text;
       let newText = msg.text;
@@ -548,8 +546,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         if (contactPubKey) {
           const myKey = await ensureUserKeyPair(user!.id, token || undefined);
           if (myKey) {
-            const otherPubKey = await importPublicKey(contactPubKey);
-            const sharedKey = await deriveSharedKey(myKey.privateKey, otherPubKey);
+            const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
             
             if (emitData.text) {
               const encryptedText = await encryptMessage(sharedKey, emitData.text);
@@ -817,19 +814,87 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
   if (!activeContact && !activeGroup) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-liquid-dark relative overflow-hidden p-6 text-center">
-        <motion.div
-          animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
-          transition={{ repeat: Infinity, duration: 6, ease: "easeInOut" }}
-          className="w-28 h-28 mb-8 rounded-full bg-gradient-to-tr from-liquid-accent via-cyan-400 to-liquid-secondary shadow-[0_0_50px_rgba(0,210,255,0.4)] flex items-center justify-center p-1"
-        >
-          <div className="w-full h-full bg-liquid-base rounded-full flex items-center justify-center">
-            <span className="text-4xl">🌊</span>
+      <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-liquid-dark via-[#090714] to-liquid-dark relative overflow-hidden p-6 text-center select-none">
+        {/* Cyber Neon Ambient Lighting */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-gradient-to-r from-cyan-500/15 via-fuchsia-500/15 to-blue-500/15 rounded-full blur-[140px] pointer-events-none -z-10" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,210,255,0.06),transparent_70%)] pointer-events-none -z-10" />
+
+        {/* 3D Animated Liquid Core */}
+        <div className="relative mb-8">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ repeat: Infinity, duration: 25, ease: "linear" }}
+            className="w-36 h-36 rounded-full border border-cyan-500/30 border-dashed absolute -inset-3 animate-spin-slow pointer-events-none"
+          />
+          <motion.div
+            animate={{ rotate: -360 }}
+            transition={{ repeat: Infinity, duration: 18, ease: "linear" }}
+            className="w-44 h-44 rounded-full border border-purple-500/20 border-dotted absolute -inset-7 pointer-events-none"
+          />
+          <motion.div
+            animate={{ scale: [1, 1.06, 1], y: [0, -6, 0] }}
+            transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+            className="w-28 h-28 rounded-3xl bg-gradient-to-br from-[#00d2ff] via-[#9333ea] to-[#ff2a85] p-1 shadow-[0_0_60px_rgba(0,210,255,0.4)] flex items-center justify-center"
+          >
+            <div className="w-full h-full bg-slate-950/90 rounded-[22px] backdrop-blur-xl flex flex-col items-center justify-center">
+              <span className="text-4xl drop-shadow-[0_0_15px_rgba(0,210,255,0.8)]">🌊</span>
+              <span className="text-[10px] font-mono font-bold tracking-widest text-cyan-400 mt-1">LIQUID</span>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Security Badge */}
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 shadow-[0_0_15px_rgba(0,210,255,0.15)] mb-4">
+          <ShieldCheck size={14} className="text-cyan-400" />
+          <span className="text-[11px] font-mono font-bold tracking-wider text-cyan-300 uppercase">
+            Zero-Knowledge End-to-End Encrypted
+          </span>
+        </div>
+
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight mb-2">
+          Liquid Chat <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-pink-400 to-purple-400">Cyber</span>
+        </h2>
+        <p className="text-foreground/60 max-w-md text-xs sm:text-sm leading-relaxed mb-6">
+          Sub-millisecond messaging, decentralized elliptic cryptography, and instant cross-device synchronization.
+        </p>
+
+        {/* Feature Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-md w-full text-left">
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-cyan-500/30 transition-all backdrop-blur-md">
+            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold mb-1">
+              <Zap size={14} />
+              <span>Instant 0ms Sync</span>
+            </div>
+            <p className="text-[11px] text-foreground/50">Zero lag message caching & hardware-accelerated crypto</p>
           </div>
-        </motion.div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">Welcome to Liquid Chat</h2>
-        <p className="text-foreground/60 max-w-sm">
-          Select a contact, open a group, or start a new conversation.
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-purple-500/30 transition-all backdrop-blur-md">
+            <div className="flex items-center gap-2 text-purple-400 text-xs font-bold mb-1">
+              <Lock size={14} />
+              <span>P-256 ECDH</span>
+            </div>
+            <p className="text-[11px] text-foreground/50">Military-grade key exchange & AES-GCM 256 encryption</p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-pink-500/30 transition-all backdrop-blur-md">
+            <div className="flex items-center gap-2 text-pink-400 text-xs font-bold mb-1">
+              <Bot size={14} />
+              <span>Liquid AI Inside</span>
+            </div>
+            <p className="text-[11px] text-foreground/50">Type <code className="text-pink-300 font-mono">/ai &lt;prompt&gt;</code> in any chat</p>
+          </div>
+
+          <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 hover:border-emerald-500/30 transition-all backdrop-blur-md">
+            <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold mb-1">
+              <Sparkles size={14} />
+              <span>Web & Android</span>
+            </div>
+            <p className="text-[11px] text-foreground/50">Native APK & desktop web seamless pairing</p>
+          </div>
+        </div>
+
+        <p className="text-[11px] text-foreground/40 font-mono mt-6">
+          Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-foreground/70">Ctrl</kbd> + <kbd className="px-1.5 py-0.5 rounded bg-white/10 border border-white/15 text-foreground/70">K</kbd> to search contacts or enter 10-digit Liquid ID
         </p>
       </div>
     );
@@ -861,8 +926,10 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
   return (
     <div className="flex-1 min-h-0 flex flex-col h-full bg-liquid-dark relative overflow-hidden">
-      {/* Ambient Lighting */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[300px] bg-liquid-accent/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+      {/* Cyber-Liquid Ambient Lighting Mesh */}
+      <div className="absolute top-0 right-1/4 w-[600px] h-[350px] bg-cyan-500/10 rounded-full blur-[150px] pointer-events-none -z-10" />
+      <div className="absolute bottom-10 left-10 w-[500px] h-[350px] bg-purple-600/10 rounded-full blur-[160px] pointer-events-none -z-10" />
+      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(0,210,255,0.04),transparent_50%)] pointer-events-none -z-10" />
 
       {/* Multi-Select Bulk Actions Top Bar Overlay */}
       {isMultiSelectMode ? (
@@ -1215,10 +1282,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   </div>
                 </div>
               )}
-              <motion.div
-                initial={{ opacity: 0, y: 15, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                transition={{ delay: 0.02, type: "spring", stiffness: 260, damping: 24 }}
+              <div
                 className={`max-w-[85%] sm:max-w-[70%] flex items-start gap-2 relative group ${
                   isMe ? 'self-end flex-row-reverse' : 'self-start flex-row'
                 }`}
@@ -1265,12 +1329,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }}
                   onMouseEnter={() => setHoveredMessageId(msg.id)}
                   onMouseLeave={() => setHoveredMessageId(null)}
-                  className={`px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl relative transition-all min-w-0 break-words shadow-sm text-sm sm:text-[15px] ${
+                  className={`px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl relative transition-all min-w-0 break-words shadow-sm text-sm sm:text-[15px] ${
                     isMe
-                      ? 'rounded-tr-xs bg-gradient-to-r from-[#ff5e97] via-[#f04f85] to-[#9333ea] text-white shadow-[0_4px_22px_rgba(255,94,151,0.32)] border border-white/20'
-                      : 'rounded-tl-xs bg-[#181329]/90 text-[#f6edff] border border-[#a855f7]/30 shadow-[0_4px_20px_rgba(0,0,0,0.45)] backdrop-blur-xl'
+                      ? 'rounded-tr-xs bg-gradient-to-br from-[#00d2ff] via-[#0084ff] to-[#7928ca] text-white shadow-[0_4px_22px_rgba(0,132,255,0.35)] border border-white/25 backdrop-blur-md'
+                      : 'rounded-tl-xs bg-gradient-to-br from-[#121626]/95 to-[#0b0d18]/95 text-slate-100 border border-cyan-500/25 shadow-[0_4px_22px_rgba(0,0,0,0.55)] backdrop-blur-xl hover:border-cyan-500/40'
                   } ${
-                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(255,117,151,0.5)]' : ''
+                    isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.5)]' : ''
                   }`}
                 >
                   {/* Floating Action Bar on Hover (Desktop ONLY) */}
@@ -1502,11 +1566,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                     {isMe && !msg.isDeleted && !isGroup && (
                       <span className="leading-none ml-0.5" title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
                         {msg.isPending ? (
-                          <Clock size={11} className="text-foreground/50 animate-pulse" />
+                          <Clock size={11} className="text-white/60 animate-spin" />
                         ) : msg.isSeen ? (
-                          <CheckCheck size={14} className="text-[#53bdeb]" />
+                          <CheckCheck size={14} className="text-[#00f2fe] drop-shadow-[0_0_6px_rgba(0,242,254,0.8)]" />
                         ) : (
-                          <CheckCheck size={14} className="text-foreground/50" />
+                          <CheckCheck size={14} className="text-white/60" />
                         )}
                       </span>
                     )}
@@ -1528,7 +1592,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   currentUserId={user?.id}
                 />
               </div>
-            </motion.div>
+            </div>
             </React.Fragment>
           );
         })}

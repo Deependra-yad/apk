@@ -17,13 +17,22 @@ export const exportPublicKey = async (key: CryptoKey) => {
   return btoa(String.fromCharCode(...exportedKeyBuffer));
 };
 
-export const importPublicKey = async (base64Key: string) => {
+// Fast In-Memory Caches to eliminate redundant WebCrypto math & network latency
+let memoryCachedKeyPair: CryptoKeyPair | null = null;
+let memoryCachedUserId: string | null = null;
+const importedPubKeyCache = new Map<string, CryptoKey>();
+const derivedSharedKeyCache = new Map<string, CryptoKey>();
+
+export const importPublicKey = async (base64Key: string): Promise<CryptoKey> => {
+  if (importedPubKeyCache.has(base64Key)) {
+    return importedPubKeyCache.get(base64Key)!;
+  }
   const binaryString = atob(base64Key);
   const bytes = new Uint8Array(binaryString.length);
   for (let i = 0; i < binaryString.length; i++) {
     bytes[i] = binaryString.charCodeAt(i);
   }
-  return await window.crypto.subtle.importKey(
+  const key = await window.crypto.subtle.importKey(
     'raw',
     bytes,
     {
@@ -33,6 +42,8 @@ export const importPublicKey = async (base64Key: string) => {
     true,
     []
   );
+  importedPubKeyCache.set(base64Key, key);
+  return key;
 };
 
 export const deriveSharedKey = async (privateKey: CryptoKey, publicKey: CryptoKey) => {
@@ -49,6 +60,16 @@ export const deriveSharedKey = async (privateKey: CryptoKey, publicKey: CryptoKe
     false,
     ['encrypt', 'decrypt']
   );
+};
+
+export const getOrDeriveSharedKey = async (privateKey: CryptoKey, otherPubKeyBase64: string): Promise<CryptoKey> => {
+  if (derivedSharedKeyCache.has(otherPubKeyBase64)) {
+    return derivedSharedKeyCache.get(otherPubKeyBase64)!;
+  }
+  const otherPubKey = await importPublicKey(otherPubKeyBase64);
+  const sharedKey = await deriveSharedKey(privateKey, otherPubKey);
+  derivedSharedKeyCache.set(otherPubKeyBase64, sharedKey);
+  return sharedKey;
 };
 
 export const encryptMessage = async (sharedKey: CryptoKey, text: string) => {
@@ -427,8 +448,21 @@ export const restoreKeyWithPassword = async (
   }
 };
 
+export const clearCryptoMemoryCache = () => {
+  memoryCachedKeyPair = null;
+  memoryCachedUserId = null;
+  importedPubKeyCache.clear();
+  derivedSharedKeyCache.clear();
+};
+
 export const ensureUserKeyPair = async (userId: string, token?: string, password?: string): Promise<CryptoKeyPair | null> => {
   if (typeof window === 'undefined') return null;
+
+  // 1. Instant 0ms return if already loaded in RAM
+  if (memoryCachedKeyPair && memoryCachedUserId === userId) {
+    return memoryCachedKeyPair;
+  }
+
   try {
     let keyPair = await getKeyFromIDBOrLocalStorage(userId);
     const authToken = token || localStorage.getItem('liquid_token');
@@ -456,6 +490,8 @@ export const ensureUserKeyPair = async (userId: string, token?: string, password
     if (!keyPair) {
       keyPair = await generateKeyPair();
       await saveKeyToIDBAndLocalStorage(userId, keyPair);
+      memoryCachedKeyPair = keyPair;
+      memoryCachedUserId = userId;
       const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
       
       if (authToken) {
@@ -483,25 +519,36 @@ export const ensureUserKeyPair = async (userId: string, token?: string, password
         }
       }
     } else {
-      const authToken = token || localStorage.getItem('liquid_token');
-      if (authToken) {
-        const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
-        const axios = (await import('axios')).default;
-        axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
-          headers: { Authorization: `Bearer ${authToken}` }
-        }).catch(() => {});
+      memoryCachedKeyPair = keyPair;
+      memoryCachedUserId = userId;
 
-        // If password is known and user has no server backup yet, back it up now
-        if (password) {
-          try {
-            const backupRes = await axios.get('/api/users/key-backup', {
+      // Only sync public key to server ONCE per session to eliminate network latency spam!
+      const syncSessionKey = `liquid_pubkey_synced_${userId}`;
+      const isAlreadySynced = typeof sessionStorage !== 'undefined' && sessionStorage.getItem(syncSessionKey) === 'true';
+
+      const authToken = token || localStorage.getItem('liquid_token');
+      if (authToken && !isAlreadySynced) {
+        try {
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.setItem(syncSessionKey, 'true');
+          }
+          const pubKeyBase64 = await exportPublicKey(keyPair.publicKey);
+          const axios = (await import('axios')).default;
+          axios.put('/api/users/public-key', { publicKey: pubKeyBase64 }, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          }).catch(() => {});
+
+          // If password is known and user has no server backup yet, back it up now
+          if (password) {
+            axios.get('/api/users/key-backup', {
               headers: { Authorization: `Bearer ${authToken}` }
-            });
-            if (!backupRes.data?.encryptedPrivateKey) {
-              await backupKeyWithPassword(userId, password, keyPair, authToken);
-            }
-          } catch (e) {}
-        }
+            }).then(backupRes => {
+              if (!backupRes.data?.encryptedPrivateKey) {
+                backupKeyWithPassword(userId, password, keyPair!, authToken);
+              }
+            }).catch(() => {});
+          }
+        } catch (e) {}
       }
     }
     return keyPair;

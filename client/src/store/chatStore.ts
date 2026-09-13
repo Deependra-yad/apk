@@ -61,6 +61,7 @@ export interface GroupItem {
 interface ChatState {
   socket: Socket | null;
   messages: Message[];
+  messagesByChat: Record<string, Message[]>;
   groups: GroupItem[];
   onlineUsers: string[];
   typingUsers: string[];
@@ -109,6 +110,7 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set, get) => ({
   socket: null,
   messages: [],
+  messagesByChat: {},
   groups: [],
   onlineUsers: [],
   typingUsers: [],
@@ -263,11 +265,10 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         if (senderPubKeyStr) {
           try {
-            const { ensureUserKeyPair, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
+            const { ensureUserKeyPair, getOrDeriveSharedKey, decryptMessage, cacheDecryptedMessage } = await import('@/utils/crypto');
             const myKey = await ensureUserKeyPair(userId);
             if (myKey) {
-              const senderPubKey = await importPublicKey(senderPubKeyStr);
-              const sharedKey = await deriveSharedKey(myKey.privateKey, senderPubKey);
+              const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, senderPubKeyStr);
               
               if (finalMessage.text) {
                 const dec = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
@@ -289,7 +290,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               }
 
               if (finalMessage.text && finalMessage.text !== '[Decryption Failed]') {
-                const { cacheDecryptedMessage } = await import('@/utils/crypto');
                 cacheDecryptedMessage(userId, finalMessage.id, { text: finalMessage.text, fileUrl: finalMessage.fileUrl });
               }
             }
@@ -305,12 +305,19 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
       if (activeContact && (finalMessage.senderId === activeContact.id || finalMessage.receiverId === activeContact.id)) {
         set((state) => {
-          // Avoid duplicate messages
           if (state.messages.some(m => m.id === finalMessage.id)) return state;
           const activeConversations = !state.activeConversations.includes(finalMessage.senderId) 
             ? [...state.activeConversations, finalMessage.senderId] 
             : state.activeConversations;
-          return { messages: [...state.messages, finalMessage], activeConversations };
+          const updated = [...state.messages, finalMessage];
+          return { 
+            messages: updated,
+            messagesByChat: {
+              ...state.messagesByChat,
+              [activeContact.id]: updated
+            },
+            activeConversations 
+          };
         });
         if (finalMessage.senderId === activeContact.id) {
           socket.emit('mark_seen', { senderId: finalMessage.senderId, receiverId: userId });
@@ -324,8 +331,17 @@ export const useChatStore = create<ChatState>((set, get) => ({
           const preview = finalMessage.text || (finalMessage.type === 'image' ? '📷 Photo' : finalMessage.type === 'video' ? '🎥 Video' : finalMessage.type === 'audio' ? '🎵 Voice Note' : finalMessage.fileName || 'Attachment');
           sendBrowserNotification(finalMessage.sender?.username || 'New Message', preview, finalMessage.sender?.avatar);
 
+          const existingHistory = state.messagesByChat[finalMessage.senderId] || [];
+          const updatedHistory = existingHistory.some(m => m.id === finalMessage.id)
+            ? existingHistory
+            : [...existingHistory, finalMessage];
+
           return {
             activeConversations,
+            messagesByChat: {
+              ...state.messagesByChat,
+              [finalMessage.senderId]: updatedHistory
+            },
             incomingToast: { ...finalMessage, text: preview },
             unreadCounts: { ...state.unreadCounts, [finalMessage.senderId]: (state.unreadCounts[finalMessage.senderId] || 0) + 1 }
           };
@@ -342,16 +358,35 @@ export const useChatStore = create<ChatState>((set, get) => ({
       const { activeGroup, groups } = get();
       soundEffects.playMessageReceived();
 
-      if (activeGroup && message.groupId === activeGroup.id) {
-        set((state) => {
-          let updatedList = state.messages;
+      set((state) => {
+        const groupHistory = state.messagesByChat[message.groupId!] || [];
+        const cleanedHistory = message.tempId 
+          ? groupHistory.filter(m => m.id !== message.tempId && m.tempId !== message.tempId) 
+          : groupHistory;
+        const updatedHistory = cleanedHistory.some(m => m.id === message.id)
+          ? cleanedHistory
+          : [...cleanedHistory, message];
+
+        let updatedMessages = state.messages;
+        if (activeGroup && message.groupId === activeGroup.id) {
           if (message.tempId) {
-            updatedList = updatedList.filter(m => m.id !== message.tempId && m.tempId !== message.tempId);
+            updatedMessages = state.messages.filter(m => m.id !== message.tempId && m.tempId !== message.tempId);
           }
-          if (updatedList.some(m => m.id === message.id)) return state;
-          return { messages: [...updatedList, message] };
-        });
-      } else {
+          if (!updatedMessages.some(m => m.id === message.id)) {
+            updatedMessages = [...updatedMessages, message];
+          }
+        }
+
+        return {
+          messages: updatedMessages,
+          messagesByChat: {
+            ...state.messagesByChat,
+            [message.groupId!]: updatedHistory
+          }
+        };
+      });
+
+      if (!activeGroup || message.groupId !== activeGroup.id) {
         const grp = groups.find(g => g.id === message.groupId);
         const preview = message.text || (message.type === 'image' ? '📷 Photo' : message.type === 'video' ? '🎥 Video' : message.type === 'audio' ? '🎵 Voice Note' : message.fileName || 'Attachment');
         
@@ -427,12 +462,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
         const idx = state.messages.findIndex(
           (m) => (message.tempId && (m.id === message.tempId || m.tempId === message.tempId)) || m.id === message.id
         );
+        let updated: Message[];
         if (idx !== -1) {
-          const updated = [...state.messages];
+          updated = [...state.messages];
           updated[idx] = confirmedMessage;
-          return { messages: updated };
+        } else {
+          updated = [...state.messages, confirmedMessage];
         }
-        return { messages: [...state.messages, confirmedMessage] };
+
+        const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+        return { 
+          messages: updated,
+          messagesByChat: currentChatId ? {
+            ...state.messagesByChat,
+            [currentChatId]: updated
+          } : state.messagesByChat
+        };
       });
     });
 
@@ -546,13 +591,25 @@ export const useChatStore = create<ChatState>((set, get) => ({
   },
 
   setActiveContact: (contact) => {
-    set((state) => ({ 
-      activeContact: contact, 
-      activeGroup: contact ? null : state.activeGroup, 
-      replyingTo: null, 
-      editingMessage: null, 
-      selectedMessageIds: [] 
-    }));
+    set((state) => {
+      const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+      const newChatId = contact?.id;
+      const updatedMessagesByChat = currentChatId 
+        ? { ...state.messagesByChat, [currentChatId]: state.messages }
+        : state.messagesByChat;
+      
+      const cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+
+      return { 
+        activeContact: contact, 
+        activeGroup: null, 
+        messagesByChat: updatedMessagesByChat,
+        messages: cached,
+        replyingTo: null, 
+        editingMessage: null, 
+        selectedMessageIds: [] 
+      };
+    });
   },
 
   setActiveGroup: (group) => {
@@ -560,26 +617,59 @@ export const useChatStore = create<ChatState>((set, get) => ({
     if (group && socket) {
       socket.emit('join_group', group.id);
     }
-    set((state) => ({ 
-      activeGroup: group, 
-      activeContact: group ? null : state.activeContact, 
-      replyingTo: null, 
-      editingMessage: null, 
-      selectedMessageIds: [] 
-    }));
+    set((state) => {
+      const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+      const newChatId = group?.id;
+      const updatedMessagesByChat = currentChatId 
+        ? { ...state.messagesByChat, [currentChatId]: state.messages }
+        : state.messagesByChat;
+      
+      const cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+
+      return { 
+        activeGroup: group, 
+        activeContact: null, 
+        messagesByChat: updatedMessagesByChat,
+        messages: cached,
+        replyingTo: null, 
+        editingMessage: null, 
+        selectedMessageIds: [] 
+      };
+    });
   },
 
   setGroups: (groups) => set({ groups: Array.isArray(groups) ? groups : [] }),
-  setMessages: (messages) => set({ messages: Array.isArray(messages) ? messages : [] }),
+  setMessages: (messages) => set((state) => {
+    const safeMessages = Array.isArray(messages) ? messages : [];
+    const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+    return {
+      messages: safeMessages,
+      messagesByChat: currentChatId ? {
+        ...state.messagesByChat,
+        [currentChatId]: safeMessages
+      } : state.messagesByChat
+    };
+  }),
+
   addMessage: (message) => set((state) => {
+    const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+    const targetChatId = message.groupId || (message.senderId === state.activeContact?.id ? message.senderId : (message.receiverId || currentChatId));
+    
     // If it's a 1-on-1 message, add the other party to active conversations
     const otherId = message.senderId === localStorage.getItem('userId') ? message.receiverId : message.senderId;
     const activeConversations = otherId && !state.activeConversations.includes(otherId) && !message.groupId
       ? [...state.activeConversations, otherId]
       : state.activeConversations;
     
+    const updatedMessages = [...state.messages.filter(m => m.id !== message.id && m.id !== message.tempId), message];
+    const updatedMessagesByChat = targetChatId ? {
+      ...state.messagesByChat,
+      [targetChatId]: [...(state.messagesByChat[targetChatId] || []).filter(m => m.id !== message.id && m.id !== message.tempId), message]
+    } : state.messagesByChat;
+
     return { 
-      messages: [...state.messages, message],
+      messages: updatedMessages,
+      messagesByChat: updatedMessagesByChat,
       activeConversations
     };
   }),

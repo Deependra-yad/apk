@@ -76,17 +76,18 @@ router.get('/:userId', authenticate, async (req: any, res) => {
       orderBy: { createdAt: 'asc' }
     });
 
-    // Mark messages sent by userId as seen
-    await prisma.message.updateMany({
+    // Send response immediately to client without blocking
+    res.json(messages);
+
+    // Mark messages sent by userId as seen asynchronously in background
+    prisma.message.updateMany({
       where: {
         senderId: userId,
         receiverId: myId,
         isSeen: false
       },
       data: { isSeen: true }
-    });
-
-    res.json(messages);
+    }).catch((err: any) => console.error('Background mark seen error:', err));
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch messages' });
   }

@@ -571,11 +571,8 @@ io.on('connection', (socket) => {
           if (!isReceiverConnected) {
             sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
           }
-          
-          const receiverSocket = connectedUsers.get(data.receiverId);
-          if (receiverSocket) {
-            io.to(`user_${data.receiverId}`).emit('receive_message', msg);
-          }
+          // Deliver immediately in real-time to receiver's socket room
+          io.to(`user_${data.receiverId}`).emit('receive_message', msg);
           io.to(`user_${data.senderId}`).emit('message_sent', { ...msg, tempId: data.tempId });
         }
     } catch (err) {
