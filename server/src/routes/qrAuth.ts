@@ -2,6 +2,7 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
+import { getClientIp } from '../utils/ip';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
@@ -77,7 +78,7 @@ router.post('/init', (req, res) => {
   const now = Date.now();
   const expiresAt = now + 90 * 1000; // 90 seconds validity
 
-  const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown IP';
+  const ip = getClientIp(req);
   const userAgent = (req.headers['user-agent'] as string) || 'Desktop Browser';
 
   const session: QrSession = {

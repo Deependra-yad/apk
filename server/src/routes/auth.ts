@@ -2,6 +2,7 @@ import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import prisma from '../prisma';
+import { getClientIp } from '../utils/ip';
 
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
@@ -70,7 +71,7 @@ router.post('/google', async (req, res) => {
 
     if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
 
-    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const ip = getClientIp(req);
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
     await prisma.user.update({
@@ -169,7 +170,7 @@ router.post('/google-redirect', async (req, res) => {
 
     if (user.isBanned) return res.redirect('https://web.liquidchat.online/auth?error=AccountBanned');
 
-    const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+    const ip = getClientIp(req);
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
     await prisma.user.update({
@@ -255,7 +256,7 @@ router.post('/google-redirect', async (req, res) => {
   
       if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
 
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       await prisma.user.update({
@@ -315,7 +316,7 @@ router.post('/google-redirect', async (req, res) => {
       const passwordHash = await bcrypt.hash(password, 10);
       const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(cleanUsername)}`;
 
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       const { generateLiquidNumber } = await import('../utils/numberGen');
@@ -390,7 +391,7 @@ router.post('/google-redirect', async (req, res) => {
 
       if (user.isBanned) return res.status(403).json({ error: 'Your account is banned' });
 
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       await prisma.user.update({
@@ -462,7 +463,7 @@ router.post('/logout', async (req, res) => {
     const token = authHeader.split(' ')[1];
     try {
       const decoded: any = jwt.verify(token, JWT_SECRET);
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       await prisma.loginLog.create({

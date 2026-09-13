@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
 import { sendOtpEmail, sendActivityNotification } from '../utils/email';
+import { getClientIp } from '../utils/ip';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -79,7 +80,7 @@ router.post('/verify-otp', async (req, res) => {
 
       const passwordHash = await bcrypt.hash(password, 10);
       const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}`;
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
       
       const { generateLiquidNumber } = await import('../utils/numberGen');
@@ -127,7 +128,7 @@ router.post('/verify-otp', async (req, res) => {
       
       if (user.isBanned) return res.status(403).json({ error: 'Your account has been banned.' });
       
-      const ip = (req.headers['x-forwarded-for'] as string) || (req.socket.remoteAddress as string) || 'Unknown';
+      const ip = getClientIp(req);
       const userAgent = req.headers['user-agent'] || 'Unknown';
 
       await prisma.user.update({
