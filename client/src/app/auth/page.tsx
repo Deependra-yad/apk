@@ -60,6 +60,18 @@ function AuthForm() {
     }
   }, [router, searchParams]);
 
+  const navigateToApp = (token: string, user: any) => {
+    const chatParam = searchParams.get('chat');
+    const userStr = encodeURIComponent(JSON.stringify(user));
+    const target = new URL('https://web.liquidchat.online');
+    target.searchParams.set('token', token);
+    target.searchParams.set('user', userStr);
+    if (chatParam) {
+      target.searchParams.set('chat', chatParam);
+    }
+    window.location.href = target.toString();
+  };
+
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     const loginId = identifier.trim() || email.trim();
@@ -91,8 +103,7 @@ function AuthForm() {
         console.warn('Key setup on login:', keyErr);
       }
 
-      const chatParam = searchParams.get('chat');
-      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+      navigateToApp(data.token, data.user);
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {
@@ -135,8 +146,7 @@ function AuthForm() {
         console.warn('Key setup on signup:', keyErr);
       }
 
-      const chatParam = searchParams.get('chat');
-      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+      navigateToApp(data.token, data.user);
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -213,8 +223,7 @@ function AuthForm() {
         localStorage.setItem('liquid_token', data.token);
         localStorage.setItem('liquid_user', JSON.stringify(data.user));
         useAuthStore.getState().setAuth(data.user, data.token);
-        const chatParam = searchParams.get('chat');
-        window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+        navigateToApp(data.token, data.user);
       }
     } catch (err: any) {
       setError(err.message);

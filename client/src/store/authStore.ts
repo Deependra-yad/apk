@@ -108,6 +108,40 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
   initAuth: () => {
     if (typeof window === 'undefined') return;
+
+    // Check if authenticated credentials were passed via URL parameters (cross-subdomain redirect)
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlToken = urlParams.get('token');
+    const urlUser = urlParams.get('user');
+
+    if (urlToken) {
+      let parsedUser: any = null;
+      if (urlUser) {
+        try {
+          parsedUser = JSON.parse(decodeURIComponent(urlUser));
+        } catch {
+          try {
+            parsedUser = JSON.parse(urlUser);
+          } catch {}
+        }
+      }
+
+      localStorage.setItem('liquid_token', urlToken);
+      if (parsedUser) {
+        localStorage.setItem('liquid_user', JSON.stringify(parsedUser));
+      }
+      set({ user: parsedUser, token: urlToken });
+
+      // Clean query params from URL without page reload
+      urlParams.delete('token');
+      urlParams.delete('user');
+      const newQuery = urlParams.toString() ? `?${urlParams.toString()}` : '';
+      window.history.replaceState({}, '', `${window.location.pathname}${newQuery}`);
+
+      get().fetchMe(urlToken);
+      return;
+    }
+
     const token = localStorage.getItem('liquid_token');
     const userStr = localStorage.getItem('liquid_user');
     if (token && userStr) {

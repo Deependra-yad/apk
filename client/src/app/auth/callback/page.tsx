@@ -80,7 +80,7 @@ function CallbackLogic() {
               if (returnOrigin && returnOrigin !== window.location.origin) {
                 window.location.href = `${returnOrigin}/auth/callback?token=${data.token}&user=${userStr}`;
               } else {
-                window.location.href = "https://web.liquidchat.online";
+                window.location.href = `https://web.liquidchat.online/?token=${data.token}&user=${userStr}`;
               }
             }
             return;
@@ -132,7 +132,7 @@ function CallbackLogic() {
             if (returnOrigin && returnOrigin !== window.location.origin) {
               window.location.href = `${returnOrigin}/auth/callback?token=${token}&user=${safeUserJson}`;
             } else {
-              window.location.href = "https://web.liquidchat.online";
+              window.location.href = `https://web.liquidchat.online/?token=${token}&user=${safeUserJson}`;
             }
           }
         } catch (err) {
