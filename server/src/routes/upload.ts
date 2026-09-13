@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { Router } from 'express';
 import multer from 'multer';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
@@ -13,15 +14,17 @@ const upload = multer({
 });
 
 // Configure Cloudflare R2 / AWS S3 Client
-const s3Client = new S3Client({
-  region: process.env.S3_REGION || 'auto',
-  endpoint: process.env.S3_ENDPOINT,
-  forcePathStyle: true,
-  credentials: {
-    accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
-    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
-  }
-});
+function getS3Client() {
+  return new S3Client({
+    region: process.env.S3_REGION || 'auto',
+    endpoint: process.env.S3_ENDPOINT,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+      secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+    }
+  });
+}
 
 router.post('/', upload.single('file'), async (req, res) => {
   if (!req.file) {
@@ -53,10 +56,11 @@ router.post('/', upload.single('file'), async (req, res) => {
         ContentType: mimeType,
       };
 
+      const s3Client = getS3Client();
       await s3Client.send(new PutObjectCommand(uploadParams));
 
       // Construct public URL
-      const publicUrlBase = process.env.S3_PUBLIC_DOMAIN || process.env.S3_ENDPOINT;
+      const publicUrlBase = (process.env.S3_PUBLIC_DOMAIN || process.env.S3_ENDPOINT || '').replace(/\/+$/, '');
       const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
 
       return res.json({ fileUrl, fileName, fileSize, mimeType, type });
