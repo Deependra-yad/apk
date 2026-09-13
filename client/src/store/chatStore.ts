@@ -76,7 +76,10 @@ interface ChatState {
   activeConversations: string[];
   incomingToast: any | null;
   unreadCounts: Record<string, number>;
+  ping: number | null;
+  pingStatus: 'connected' | 'connecting' | 'disconnected';
 
+  measurePing: () => Promise<number | null>;
   fetchUnreadCounts: (token: string) => Promise<void>;
   markAsRead: (id: string) => void;
   connectSocket: (userId: string) => void;
@@ -150,6 +153,34 @@ export const useChatStore = create<ChatState>((set, get) => ({
   })(),
   incomingToast: null,
   unreadCounts: {},
+  ping: null,
+  pingStatus: 'connecting',
+
+  measurePing: async () => {
+    const s = get().socket;
+    if (s && s.connected) {
+      return new Promise<number | null>((resolve) => {
+        const start = Date.now();
+        s.emit('client_ping', start, (sentTime: number) => {
+          const latency = Math.max(1, Date.now() - (sentTime || start));
+          set({ ping: latency, pingStatus: 'connected' });
+          resolve(latency);
+        });
+        setTimeout(() => resolve(get().ping), 2500);
+      });
+    } else {
+      try {
+        const start = Date.now();
+        await axios.get('/api/ping');
+        const latency = Math.max(1, Date.now() - start);
+        set({ ping: latency, pingStatus: 'connected' });
+        return latency;
+      } catch (e) {
+        set({ pingStatus: 'disconnected', ping: null });
+        return null;
+      }
+    }
+  },
 
   fetchUnreadCounts: async (token) => {
     try {
@@ -184,12 +215,43 @@ export const useChatStore = create<ChatState>((set, get) => ({
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 20000,
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       upgrade: true
     });
 
+    let pingTimer: any = null;
+    const sendPing = () => {
+      if (socket.connected) {
+        const start = Date.now();
+        socket.emit('client_ping', start, (sentTime: number) => {
+          const latency = Math.max(1, Date.now() - (sentTime || start));
+          set({ ping: latency, pingStatus: 'connected' });
+        });
+      } else {
+        set({ pingStatus: socket.active ? 'connecting' : 'disconnected' });
+      }
+    };
+
+    socket.on('server_pong', (sentTime: number) => {
+      const latency = Math.max(1, Date.now() - sentTime);
+      set({ ping: latency, pingStatus: 'connected' });
+    });
+
     socket.on('connect', () => {
+      set({ pingStatus: 'connected' });
       socket.emit('user_connected', { userId, sessionId });
+      sendPing();
+      if (pingTimer) clearInterval(pingTimer);
+      pingTimer = setInterval(sendPing, 3500);
+    });
+
+    socket.on('disconnect', () => {
+      set({ pingStatus: 'disconnected' });
+      if (pingTimer) clearInterval(pingTimer);
+    });
+
+    socket.on('connect_error', () => {
+      set({ pingStatus: 'connecting' });
     });
 
     socket.on('online_users', (users: string[]) => {
@@ -616,7 +678,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const socket = get().socket;
     if (socket) {
       socket.disconnect();
-      set({ socket: null, onlineUsers: [], typingUsers: [] });
+      set({ socket: null, onlineUsers: [], typingUsers: [], pingStatus: 'disconnected', ping: null });
     }
   },
 

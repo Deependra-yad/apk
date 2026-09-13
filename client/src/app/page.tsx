@@ -17,6 +17,7 @@ import StatusStoriesBar from '@/components/StatusStoriesBar';
 import NotificationToast from '@/components/NotificationToast';
 import DesktopOnlyGate from '@/components/DesktopOnlyGate';
 import LiquidLogo from '@/components/LiquidLogo';
+import RealtimePingBadge from '@/components/RealtimePingBadge';
 
 // Code-split heavy modals and landing page for instantaneous initial page loading
 const LandingPage = dynamic(() => import('@/components/LandingPage'), { ssr: false });
@@ -92,7 +93,19 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const [isNewGroupModalOpen, setIsNewGroupModalOpen] = useState(false);
   const [contextMenuTarget, setContextMenuTarget] = useState<{ id: string; type: 'contact' | 'group'; name: string } | null>(null);
   const [showUpdateBanner, setShowUpdateBanner] = useState(false);
-  const [showLanding, setShowLanding] = useState<boolean>(forceChat ? false : true);
+  const [showLanding, setShowLanding] = useState<boolean>(() => {
+    if (forceChat) return false;
+    if (typeof window === 'undefined') return false;
+    const isNativeAndroidApp = Boolean((window as any).Android);
+    const isWebSubdomainOrPath = window.location.hostname.startsWith('web.') || window.location.pathname.startsWith('/web');
+    const urlParams = new URLSearchParams(window.location.search);
+    const hasChatParam = Boolean(urlParams.get('chat'));
+    const hasToken = Boolean(localStorage.getItem('liquid_token'));
+    if (isNativeAndroidApp || isWebSubdomainOrPath || hasChatParam || hasToken) {
+      return false;
+    }
+    return true;
+  });
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
 
   // WhatsApp-Grade App Lock & Chat Lock States
@@ -129,10 +142,10 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     );
     const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
     const hasChatParam = Boolean(urlParams?.get('chat'));
+    const hasToken = typeof window !== 'undefined' && Boolean(localStorage.getItem('liquid_token'));
 
-    // If native Android APK or web.* subdomain or /web path or ?chat=..., show chat.
-    // Visiting root domain liquidchat.online without parameters displays the landing page.
-    if (isNativeAndroidApp || isWebSubdomainOrPath || hasChatParam) {
+    // If native Android APK or web.* subdomain or /web path or logged-in user, show chat immediately
+    if (isNativeAndroidApp || isWebSubdomainOrPath || hasChatParam || hasToken) {
       setShowLanding(false);
     } else {
       setShowLanding(true);
@@ -438,79 +451,78 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
         } catch (e) {}
       }
 
-      // Fetch active conversations list (full user objects with actual message history)
-      axios.get('/api/users/conversations', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(async (res) => {
-        const others = Array.isArray(res.data) ? res.data.filter((u: any) => u.id !== user.id) : [];
-        let updatedList = [...others];
+      // Fetch active conversations, groups, and chat metadata in parallel (3x faster load)
+      const authHeader = { headers: { Authorization: `Bearer ${token}` } };
+      Promise.allSettled([
+        axios.get('/api/users/conversations', authHeader),
+        axios.get('/api/groups', authHeader),
+        axios.get('/api/users/chat-meta', authHeader)
+      ]).then(async ([convResult, groupResult, metaResult]) => {
+        if (convResult.status === 'fulfilled') {
+          const res = convResult.value;
+          const others = Array.isArray(res.data) ? res.data.filter((u: any) => u.id !== user.id) : [];
+          let updatedList = [...others];
 
-        if (pendingChatTarget) {
-          // Check if target is already in conversations
-          let matched = others.find((u: any) => 
-            u.liquidNumber === pendingChatTarget || 
-            u.username?.toLowerCase() === pendingChatTarget.toLowerCase() || 
-            u.id === pendingChatTarget
-          );
+          if (pendingChatTarget) {
+            let matched = others.find((u: any) => 
+              u.liquidNumber === pendingChatTarget || 
+              u.username?.toLowerCase() === pendingChatTarget.toLowerCase() || 
+              u.id === pendingChatTarget
+            );
 
-          if (!matched) {
-            // Target not in conversation list yet, fetch public user profile
-            try {
-              const pubRes = await axios.get(`/api/users/public/${encodeURIComponent(pendingChatTarget)}`);
-              if (pubRes.data && pubRes.data.id !== user.id) {
-                matched = pubRes.data;
-                updatedList = [matched, ...updatedList];
+            if (!matched) {
+              try {
+                const pubRes = await axios.get(`/api/users/public/${encodeURIComponent(pendingChatTarget)}`);
+                if (pubRes.data && pubRes.data.id !== user.id) {
+                  matched = pubRes.data;
+                  updatedList = [matched, ...updatedList];
+                }
+              } catch (err) {
+                if (pendingUserData && pendingUserData.id !== user.id) {
+                  matched = pendingUserData;
+                  updatedList = [matched, ...updatedList];
+                }
               }
-            } catch (err) {
-              if (pendingUserData && pendingUserData.id !== user.id) {
-                matched = pendingUserData;
-                updatedList = [matched, ...updatedList];
-              }
+            }
+
+            if (matched) {
+              useChatStore.getState().setActiveContact(matched);
+              useChatStore.getState().setActiveGroup(null);
+              setShowLanding(false);
             }
           }
 
-          if (matched) {
-            useChatStore.getState().setActiveContact(matched);
-            useChatStore.getState().setActiveGroup(null);
-            setShowLanding(false);
+          setUsers(updatedList);
+          useChatStore.getState().setActiveConversations(updatedList.map((u: any) => u.id));
+          try {
+            if (user?.id) {
+              localStorage.setItem(`liquid_cached_conversations_${user.id}`, JSON.stringify(updatedList));
+            }
+            import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
+              updatedList.forEach((u: any) => {
+                if (u.id && u.publicKey) cacheUserPublicKey(u.id, u.publicKey);
+              });
+            }).catch(() => {});
+          } catch (e) {}
+        }
+
+        if (groupResult.status === 'fulfilled') {
+          const groupData = groupResult.value.data;
+          setGroups(groupData);
+          try {
+            if (user?.id) {
+              localStorage.setItem(`liquid_cached_groups_${user.id}`, JSON.stringify(groupData));
+            }
+          } catch (e) {}
+          const currentSocket = useChatStore.getState().socket;
+          if (currentSocket) {
+            groupData.forEach((group: any) => currentSocket.emit('join_group', group.id));
           }
         }
 
-        setUsers(updatedList);
-        useChatStore.getState().setActiveConversations(updatedList.map((u: any) => u.id));
-        try {
-          if (user?.id) {
-            localStorage.setItem(`liquid_cached_conversations_${user.id}`, JSON.stringify(updatedList));
-          }
-          import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
-            updatedList.forEach((u: any) => {
-              if (u.id && u.publicKey) cacheUserPublicKey(u.id, u.publicKey);
-            });
-          }).catch(() => {});
-        } catch (e) {}
-      }).catch(console.error);
-
-      // Fetch groups
-      axios.get('/api/groups', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        setGroups(res.data);
-        try {
-          if (user?.id) {
-            localStorage.setItem(`liquid_cached_groups_${user.id}`, JSON.stringify(res.data));
-          }
-        } catch (e) {}
-        const socket = useChatStore.getState().socket;
-        if (socket) {
-          res.data.forEach((group: any) => socket.emit('join_group', group.id));
+        if (metaResult.status === 'fulfilled') {
+          setChatMetaMap(metaResult.value.data);
         }
-      });
-
-      // Fetch chat metadata
-      axios.get('/api/users/chat-meta', {
-        headers: { Authorization: `Bearer ${token}` }
-      }).then(res => {
-        setChatMetaMap(res.data);
       });
     }
   }, [isClient, user, token, router, connectSocket, fetchSettings, setGroups, setChatMetaMap]);
@@ -983,6 +995,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                     <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
                       PRO
                     </span>
+                    <RealtimePingBadge compact={true} />
                   </div>
                 {user?.liquidNumber ? (
                   <button 

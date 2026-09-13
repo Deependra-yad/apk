@@ -241,6 +241,12 @@ app.get('/api/calls/active', async (req, res) => {
   }
 });
 
+// Real-time ping endpoint for latency measurement
+app.get('/api/ping', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.json({ pong: true, time: Date.now() });
+});
+
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
   res.status(200).send('Liquid Chat Backend is running successfully.');
@@ -390,6 +396,15 @@ io.use(async (socket, next) => {
 });
 
 io.on('connection', (socket) => {
+  // Real-time bidirectional ping measurement
+  socket.on('client_ping', (timestamp: number, callback?: (ts: number) => void) => {
+    if (typeof callback === 'function') {
+      callback(timestamp);
+    } else {
+      socket.emit('server_pong', timestamp);
+    }
+  });
+
   const qrSessionId = (socket as any).qrSessionId || (socket.handshake.query.qrSessionId as string);
   if (qrSessionId) {
     socket.join(`qr_${qrSessionId}`);
@@ -439,7 +454,7 @@ io.on('connection', (socket) => {
     try {
       const user = await prisma.user.findUnique({
         where: { id: uid },
-        select: { id: true, username: true, avatar: true, about: true, lastSeen: true, stories: true }
+        select: { id: true, username: true, avatar: true, about: true, lastSeen: true }
       });
       if (user) {
         io.emit('user_joined', user);

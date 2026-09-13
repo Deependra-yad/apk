@@ -22,33 +22,43 @@ const authenticate = (req: any, res: any, next: any) => {
 router.get('/unread-counts', authenticate, async (req: any, res) => {
   const userId = req.userId;
   try {
-    const unreadMessages = await prisma.message.findMany({
-      where: {
-        receiverId: userId,
-        isSeen: false,
-        groupId: null
-      },
-      select: { senderId: true }
-    });
+    const [unreadDirect, userMemberships] = await Promise.all([
+      prisma.message.findMany({
+        where: {
+          receiverId: userId,
+          isSeen: false,
+          groupId: null
+        },
+        select: { senderId: true }
+      }),
+      prisma.groupMember.findMany({
+        where: { userId },
+        select: { groupId: true }
+      })
+    ]);
 
     const counts: Record<string, number> = {};
-    unreadMessages.forEach((msg: any) => {
+    unreadDirect.forEach((msg: any) => {
       counts[msg.senderId] = (counts[msg.senderId] || 0) + 1;
     });
 
-    const unreadGroupMessages = await prisma.message.findMany({
-      where: {
-        groupId: { not: null },
-        senderId: { not: userId },
-      },
-      select: { id: true, groupId: true, isSeen: true }
-    });
-    // Global group unread counting for simplicity (assumes if anyone hasn't seen it, it's counted if isSeen is false).
-    unreadGroupMessages.forEach((msg: any) => {
-      if (!msg.isSeen && msg.groupId) {
-        counts[msg.groupId] = (counts[msg.groupId] || 0) + 1;
-      }
-    });
+    const userGroupIds = userMemberships.map((m: any) => m.groupId);
+    if (userGroupIds.length > 0) {
+      const unreadGroupMessages = await prisma.message.findMany({
+        where: {
+          groupId: { in: userGroupIds },
+          senderId: { not: userId },
+          isSeen: false
+        },
+        select: { groupId: true },
+        take: 100
+      });
+      unreadGroupMessages.forEach((msg: any) => {
+        if (msg.groupId) {
+          counts[msg.groupId] = (counts[msg.groupId] || 0) + 1;
+        }
+      });
+    }
 
     res.json(counts);
   } catch (error) {

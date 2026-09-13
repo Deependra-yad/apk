@@ -37,6 +37,7 @@ import {
   lockChat, 
   unlockChatPermanently 
 } from '@/utils/securityLock';
+import RealtimePingBadge from './RealtimePingBadge';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -176,6 +177,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   useEffect(() => {
     if (token && user) {
       if (activeContact) {
+        // 0ms INSTANT HYDRATION from local cache
+        try {
+          const cached = localStorage.getItem(`liquid_chat_history_${user.id}_${activeContact.id}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setMessages(parsed);
+              setIsChatLoading(false);
+            }
+          }
+        } catch (e) {}
+
         setIsChatLoading(messages.length === 0);
         axios.get(`/api/messages/${activeContact.id}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -291,6 +304,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           console.warn('Background message sync error (cached messages retained):', err);
         });
       } else if (activeGroup) {
+        // 0ms INSTANT HYDRATION for groups
+        try {
+          const cached = localStorage.getItem(`liquid_chat_history_${user.id}_${activeGroup.id}`);
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setMessages(parsed);
+              setIsChatLoading(false);
+            }
+          }
+        } catch (e) {}
+
         setIsChatLoading(messages.length === 0);
         axios.get(`/api/messages/group/${activeGroup.id}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -1162,7 +1187,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-0.5 sm:gap-1 text-foreground/80 shrink-0 relative">
+          <div className="flex items-center gap-1 sm:gap-1.5 text-foreground/80 shrink-0 relative">
+            <RealtimePingBadge compact={true} className="mr-0.5 sm:mr-1" />
             {!isGroup && (
               <>
                 <button 

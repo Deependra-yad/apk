@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import LiquidLogo from '@/components/LiquidLogo';
+import RealtimePingBadge from '@/components/RealtimePingBadge';
 
 interface LiquidSidebarProps {
   activeTab: string;
@@ -69,6 +70,11 @@ export default function LiquidSidebar({ activeTab, setActiveTab, onOpenProfile, 
               </motion.button>
             );
           })}
+        </div>
+
+        {/* Real-time Ping Detail */}
+        <div className="flex flex-col items-center">
+          <RealtimePingBadge compact={true} />
         </div>
 
         {/* Profile Avatar Button */}

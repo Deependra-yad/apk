@@ -12,29 +12,32 @@ interface DesktopOnlyGateProps {
 }
 
 export default function DesktopOnlyGate({ children }: DesktopOnlyGateProps) {
-  const [isMobile, setIsMobile] = useState<boolean | null>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    if ((window as any).Android) return false;
+    if (sessionStorage.getItem('liquid_desktop_bypass') === '1') return false;
+    const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const touchScreenSmall = window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1024;
+    return mobileUA || touchScreenSmall;
+  });
   const [bypassed, setBypassed] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
-    // 1. If running inside the official Liquid Chat native Android app WebView, never block
     if ((window as any).Android) {
       setIsMobile(false);
       return;
     }
 
-    // 2. Check session bypass
     if (sessionStorage.getItem('liquid_desktop_bypass') === '1') {
       setBypassed(true);
       setIsMobile(false);
       return;
     }
 
-    // 3. WhatsApp Web style detection: Mobile user-agent or touch viewport
     const mobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const touchScreenSmall = window.matchMedia('(pointer: coarse)').matches && window.innerWidth < 1024;
-
     setIsMobile(mobileUA || touchScreenSmall);
   }, []);
 
@@ -50,11 +53,6 @@ export default function DesktopOnlyGate({ children }: DesktopOnlyGateProps) {
       window.location.href = '/LiquidChat.apk';
     }, 1500);
   };
-
-  // SSR / Loading state
-  if (isMobile === null) {
-    return <div className="min-h-screen bg-[#06060c]" />;
-  }
 
   // If on Desktop or Bypassed or Native App: render children
   if (!isMobile || bypassed) {

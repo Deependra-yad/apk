@@ -46,23 +46,31 @@ export default function AppInitializer() {
       const syncFCMToken = () => {
         try {
           const fcmToken = (window as any).Android.getFCMToken();
-          if (fcmToken) {
+          const lastSynced = sessionStorage.getItem('liquid_synced_fcm_token');
+          if (fcmToken && fcmToken !== lastSynced) {
             axios.post('/api/push/fcm-subscribe', { token: fcmToken }, {
               headers: { Authorization: `Bearer ${token}` }
+            }).then(() => {
+              sessionStorage.setItem('liquid_synced_fcm_token', fcmToken);
             }).catch(err => console.warn('FCM sync error', err));
           }
         } catch (e) {}
       };
       
-      // Sync immediately and then every 5 seconds
       syncFCMToken();
-      const interval = setInterval(syncFCMToken, 5000);
+      // Only re-check once every 5 minutes in case token was refreshed
+      const interval = setInterval(syncFCMToken, 300000);
 
       const handleFcmMessage = (event: MessageEvent) => {
         if (event.data?.type === 'FCM_TOKEN' && event.data?.token) {
-          axios.post('/api/push/fcm-subscribe', { token: event.data.token }, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const lastSynced = sessionStorage.getItem('liquid_synced_fcm_token');
+          if (event.data.token !== lastSynced) {
+            axios.post('/api/push/fcm-subscribe', { token: event.data.token }, {
+              headers: { Authorization: `Bearer ${token}` }
+            }).then(() => {
+              sessionStorage.setItem('liquid_synced_fcm_token', event.data.token);
+            }).catch(() => {});
+          }
         }
       };
       window.addEventListener('message', handleFcmMessage);
