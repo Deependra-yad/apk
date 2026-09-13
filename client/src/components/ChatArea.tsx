@@ -534,6 +534,85 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     }
   };
 
+  // On-demand decrypt & download file handler
+  const handleDownloadMessageFile = async (msg: any) => {
+    let targetUrl = resolveMediaUrl(msg.fileUrl);
+    if (!targetUrl && msg.fileUrl?.startsWith('ENC:')) {
+      try {
+        const contactPubKey = activeContact?.publicKey || getCachedUserPublicKey(activeContact?.id || '');
+        if (contactPubKey && user?.id) {
+          const myKey = await ensureUserKeyPair(user.id, token || undefined);
+          if (myKey) {
+            const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
+            const parts = msg.fileUrl.substring(4).split(':');
+            if (parts.length === 2) {
+              const decUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+              if (decUrl && decUrl !== '[Decryption Failed]') {
+                targetUrl = resolveMediaUrl(decUrl);
+                cacheDecryptedMessage(user.id, msg.id, { text: msg.text || '', fileUrl: decUrl });
+                setMessages(messages.map(m => m.id === msg.id ? { ...m, fileUrl: decUrl } : m));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("On-demand file decrypt error:", e);
+      }
+    }
+
+    if (!targetUrl && msg.rawFileUrl && !msg.rawFileUrl.startsWith('ENC:')) {
+      targetUrl = resolveMediaUrl(msg.rawFileUrl);
+    }
+
+    if (targetUrl) {
+      downloadFile(targetUrl, msg.fileName || 'file');
+    } else {
+      alert("Unable to decrypt file link. Please ensure keys are synced.");
+    }
+  };
+
+  // On-demand decrypt & preview file handler
+  const handlePreviewMessageFile = async (msg: any) => {
+    let targetUrl = resolveMediaUrl(msg.fileUrl);
+    if (!targetUrl && msg.fileUrl?.startsWith('ENC:')) {
+      try {
+        const contactPubKey = activeContact?.publicKey || getCachedUserPublicKey(activeContact?.id || '');
+        if (contactPubKey && user?.id) {
+          const myKey = await ensureUserKeyPair(user.id, token || undefined);
+          if (myKey) {
+            const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
+            const parts = msg.fileUrl.substring(4).split(':');
+            if (parts.length === 2) {
+              const decUrl = await decryptMessage(sharedKey, parts[0], parts[1]);
+              if (decUrl && decUrl !== '[Decryption Failed]') {
+                targetUrl = resolveMediaUrl(decUrl);
+                cacheDecryptedMessage(user.id, msg.id, { text: msg.text || '', fileUrl: decUrl });
+                setMessages(messages.map(m => m.id === msg.id ? { ...m, fileUrl: decUrl } : m));
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error("On-demand file decrypt preview error:", e);
+      }
+    }
+
+    if (!targetUrl && msg.rawFileUrl && !msg.rawFileUrl.startsWith('ENC:')) {
+      targetUrl = resolveMediaUrl(msg.rawFileUrl);
+    }
+
+    if (targetUrl) {
+      setSelectedDocumentForModal({
+        url: targetUrl,
+        name: msg.fileName || 'Document',
+        size: msg.fileSize,
+        mimeType: msg.mimeType
+      });
+    } else {
+      alert("Unable to preview file. Link is still encrypted or invalid.");
+    }
+  };
+
   // Open specific file attachment type
   const triggerFileInput = (accept: string) => {
     fileTypeFilterRef.current = accept;
@@ -1538,21 +1617,16 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                           <div className="flex items-center gap-2 pt-2 border-t border-foreground/10">
                             <button
-                              onClick={() => setSelectedDocumentForModal({
-                                url: resolveMediaUrl(msg.fileUrl),
-                                name: msg.fileName || 'Document',
-                                size: msg.fileSize,
-                                mimeType: msg.mimeType
-                              })}
-                              className="flex-1 h-8 rounded-lg bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
+                              onClick={() => handlePreviewMessageFile(msg)}
+                              className="flex-1 h-8 rounded-lg bg-foreground/10 hover:bg-foreground/20 text-foreground text-xs font-medium flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <Eye size={13} />
                               <span>Preview</span>
                             </button>
 
                             <button
-                              onClick={(e) => { e.stopPropagation(); downloadFile(resolveMediaUrl(msg.fileUrl), msg.fileName || 'file'); }}
-                              className="px-3 h-8 rounded-lg bg-liquid-accent/20 hover:bg-liquid-accent/30 text-liquid-accent text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors"
+                              onClick={(e) => { e.stopPropagation(); handleDownloadMessageFile(msg); }}
+                              className="px-3 h-8 rounded-lg bg-liquid-accent/20 hover:bg-liquid-accent/30 text-liquid-accent text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                             >
                               <Download size={13} />
                               <span>Save</span>

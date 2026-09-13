@@ -63,12 +63,6 @@ export const downloadFile = async (url: string, filename: string) => {
         return;
       }
 
-      // If remote HTTP/HTTPS file, use native DownloadManager (shows download notification & progress)
-      if ((absUrl.startsWith('http://') || absUrl.startsWith('https://')) && android.downloadFile) {
-        android.downloadFile(absUrl, cleanFilename);
-        return;
-      }
-
       // If Blob URI in memory, convert to base64 and save directly to MediaStore
       if (absUrl.startsWith('blob:') && android.saveBase64File) {
         try {
@@ -87,13 +81,32 @@ export const downloadFile = async (url: string, filename: string) => {
           console.warn("Android blob download error:", e);
         }
       }
+
+      // If remote HTTP/HTTPS file, use native direct streaming into MediaStore.Downloads!
+      if ((absUrl.startsWith('http://') || absUrl.startsWith('https://')) && android.downloadFile) {
+        android.downloadFile(absUrl, cleanFilename);
+        return;
+      }
     }
 
-    // 2. Direct Web Blob Download (Standard for Chrome, Edge, Safari, Mobile Browsers)
+    // 2. Direct Web Download:
+    // If it's a blob: or data: URL, create anchor and click
+    if (absUrl.startsWith('blob:') || absUrl.startsWith('data:')) {
+      const a = document.createElement('a');
+      a.href = absUrl;
+      a.download = cleanFilename;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => document.body.removeChild(a), 2000);
+      return;
+    }
+
+    // For remote URLs (HTTP/HTTPS):
+    // First try fetching as blob with Authorization token if available on same origin
     try {
       const token = localStorage.getItem('liquid_token');
       const headers: Record<string, string> = {};
-      if (token && !absUrl.startsWith('blob:') && !absUrl.startsWith('data:')) {
+      if (token && absUrl.startsWith(window.location.origin)) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
@@ -111,14 +124,14 @@ export const downloadFile = async (url: string, filename: string) => {
         setTimeout(() => {
           document.body.removeChild(a);
           window.URL.revokeObjectURL(blobUrl);
-        }, 3000);
+        }, 5000);
         return;
       }
     } catch (fetchErr) {
-      console.warn("Direct blob fetch failed, falling back to direct anchor", fetchErr);
+      console.warn("Blob fetch failed, falling back to direct link download:", fetchErr);
     }
 
-    // 3. Clean Fallback: standard anchor click with download attribute
+    // 3. Fallback: Trigger browser native download via anchor with download attribute
     const a = document.createElement('a');
     a.href = absUrl;
     a.download = cleanFilename;

@@ -26,6 +26,7 @@ export default function DocumentViewerModal({
   const [isTextLoading, setIsTextLoading] = useState(false);
   const [copied, setCopied] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [isDownloading, setIsDownloading] = useState(false);
   const isAndroid = typeof window !== 'undefined' && !!(window as any).Android;
 
   const cleanName = fileName?.toLowerCase() || '';
@@ -68,8 +69,14 @@ export default function DocumentViewerModal({
     if (typeof window !== 'undefined' && (window as any).Android?.previewFile) {
       (window as any).Android.previewFile(fileUrl, fileName, mimeType || '');
     } else {
-      downloadFile(fileUrl, fileName);
+      handleDownload();
     }
+  };
+
+  const handleDownload = () => {
+    setIsDownloading(true);
+    downloadFile(fileUrl, fileName);
+    setTimeout(() => setIsDownloading(false), 2000);
   };
 
   const handleCopyCode = () => {
@@ -134,11 +141,12 @@ export default function DocumentViewerModal({
               )}
 
               <button
-                onClick={() => downloadFile(fileUrl, fileName)}
-                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-black text-xs font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all cursor-pointer"
+                onClick={handleDownload}
+                disabled={isDownloading}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-black text-xs font-bold flex items-center gap-1.5 shadow-[0_0_15px_rgba(0,210,255,0.3)] hover:brightness-110 transition-all cursor-pointer disabled:opacity-70"
               >
-                <Download size={14} />
-                <span className="hidden sm:inline">Download</span>
+                <Download size={14} className={isDownloading ? 'animate-bounce' : ''} />
+                <span className="hidden sm:inline">{isDownloading ? 'Saving...' : 'Download'}</span>
               </button>
 
               <button

@@ -808,86 +808,141 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun downloadUrlDirectly(url: String, filename: String) {
-        try {
-            val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
-                url
-            } else if (url.startsWith("/")) {
-                "$WEB_URL$url"
-            } else {
-                "$WEB_URL/$url"
-            }
+        val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+            url
+        } else if (url.startsWith("/")) {
+            "$WEB_URL$url"
+        } else {
+            "$WEB_URL/$url"
+        }
 
-            val cleanFilename = filename.substringBefore("?").substringBefore("#")
-                .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                .trim()
-                .ifBlank { "download_${System.currentTimeMillis()}" }
-            val resolvedMime = getMimeTypeForFile(cleanFilename, null)
+        val cleanFilename = filename.substringBefore("?").substringBefore("#")
+            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            .trim()
+            .ifBlank { "download_${System.currentTimeMillis()}" }
+        val resolvedMime = getMimeTypeForFile(cleanFilename, null)
 
-            val request = DownloadManager.Request(Uri.parse(fullUrl)).apply {
-                setTitle(cleanFilename)
-                setDescription("Downloading $cleanFilename")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, cleanFilename)
-                setAllowedOverMetered(true)
-                setAllowedOverRoaming(true)
-                setMimeType(resolvedMime)
-                
-                // Add Cookies and User-Agent headers
+        Toast.makeText(this, "Downloading $cleanFilename...", Toast.LENGTH_SHORT).show()
+
+        Thread {
+            var outputStream: java.io.OutputStream? = null
+            var targetUri: Uri? = null
+            var targetFile: java.io.File? = null
+
+            try {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val values = android.content.ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, cleanFilename)
+                        put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime)
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    }
+                    targetUri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    if (targetUri != null) {
+                        outputStream = contentResolver.openOutputStream(targetUri)
+                    }
+                }
+
+                if (outputStream == null) {
+                    val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                    if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                    targetFile = java.io.File(downloadsDir, cleanFilename)
+                    outputStream = java.io.FileOutputStream(targetFile)
+                }
+
+                val conn = java.net.URL(fullUrl).openConnection() as java.net.HttpURLConnection
+                conn.connectTimeout = 15000
+                conn.readTimeout = 60000
+                conn.instanceFollowRedirects = true
                 val cookies = CookieManager.getInstance().getCookie(fullUrl)
                 if (!cookies.isNullOrEmpty()) {
-                    addRequestHeader("Cookie", cookies)
+                    conn.setRequestProperty("Cookie", cookies)
                 }
-                addRequestHeader("User-Agent", webView.settings.userAgentString)
-            }
-            val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-            dm.enqueue(request)
-            Toast.makeText(this, "Downloading $cleanFilename to Downloads folder...", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            // Secondary attempt using app-specific external files dir (scoped storage fallback)
-            try {
-                val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
-                    url
-                } else if (url.startsWith("/")) {
-                    "$WEB_URL$url"
+                conn.setRequestProperty("User-Agent", webView.settings.userAgentString)
+                conn.connect()
+
+                if (conn.responseCode in 200..299) {
+                    conn.inputStream.use { input ->
+                        outputStream!!.use { out ->
+                            input.copyTo(out, bufferSize = 32 * 1024)
+                        }
+                    }
                 } else {
-                    "$WEB_URL/$url"
+                    throw Exception("Server returned HTTP ${conn.responseCode}")
                 }
-                val cleanFilename = filename.substringBefore("?").substringBefore("#")
-                    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    .trim()
-                    .ifBlank { "download_${System.currentTimeMillis()}" }
-                val resolvedMime = getMimeTypeForFile(cleanFilename, null)
-                val request = DownloadManager.Request(Uri.parse(fullUrl)).apply {
-                    setTitle(cleanFilename)
-                    setDescription("Downloading $cleanFilename")
-                    setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, cleanFilename)
-                    setAllowedOverMetered(true)
-                    setAllowedOverRoaming(true)
-                    setMimeType(resolvedMime)
+                conn.disconnect()
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && targetUri != null) {
+                    val completedValues = android.content.ContentValues().apply {
+                        put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    }
+                    contentResolver.update(targetUri, completedValues, null, null)
+                } else if (targetFile != null) {
+                    android.media.MediaScannerConnection.scanFile(
+                        this@MainActivity,
+                        arrayOf(targetFile.absolutePath),
+                        arrayOf(resolvedMime),
+                        null
+                    )
                 }
-                val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-                dm.enqueue(request)
-                Toast.makeText(this, "Downloading $cleanFilename...", Toast.LENGTH_SHORT).show()
-            } catch (e2: Exception) {
-                // Final Fallback: Open in system browser
-                try {
-                    val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
-                        url
-                    } else if (url.startsWith("/")) {
-                        "$WEB_URL$url"
-                    } else {
-                        "$WEB_URL/$url"
-                    }
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl)).apply {
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    }
-                    startActivity(browserIntent)
-                    Toast.makeText(this, "Opening in browser to download...", Toast.LENGTH_SHORT).show()
-                } catch (ex: Exception) {
-                    Toast.makeText(this, "Download failed: ${e.message}", Toast.LENGTH_LONG).show()
+
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_LONG).show()
+                    showDownloadCompletedNotification(cleanFilename, resolvedMime, targetUri, targetFile)
+                }
+            } catch (e: Exception) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && targetUri != null) {
+                    try { contentResolver.delete(targetUri, null, null) } catch (_: Exception) {}
+                }
+                runOnUiThread {
+                    Toast.makeText(this@MainActivity, "Direct save error: ${e.message}. Opening in browser...", Toast.LENGTH_SHORT).show()
+                    try {
+                        val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl)).apply {
+                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                        }
+                        startActivity(browserIntent)
+                    } catch (_: Exception) {}
                 }
             }
+        }.start()
+    }
+
+    private fun showDownloadCompletedNotification(filename: String, mimeType: String, uri: Uri?, file: java.io.File?) {
+        try {
+            val contentUri = uri ?: if (file != null) {
+                FileProvider.getUriForFile(this, "${applicationContext.packageName}.fileprovider", file)
+            } else null
+
+            val intent = if (contentUri != null) {
+                Intent(Intent.ACTION_VIEW).apply {
+                    setDataAndType(contentUri, mimeType)
+                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+            } else {
+                Intent(DownloadManager.ACTION_VIEW_DOWNLOADS).apply {
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                }
+            }
+
+            val pendingIntent = android.app.PendingIntent.getActivity(
+                this,
+                (System.currentTimeMillis() % 100000).toInt(),
+                intent,
+                android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+            )
+
+            val builder = NotificationCompat.Builder(this, "liquid_chat_messages")
+                .setSmallIcon(android.R.drawable.stat_sys_download_done)
+                .setContentTitle("Download Complete")
+                .setContentText(filename)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+
+            val nm = getSystemService(NotificationManager::class.java)
+            nm.notify((System.currentTimeMillis() % 100000).toInt(), builder.build())
+        } catch (e: Exception) {
+            e.printStackTrace()
         }
     }
 
