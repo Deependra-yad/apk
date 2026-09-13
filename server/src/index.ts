@@ -373,23 +373,34 @@ const sendPushNotification = async (
 
 io.use(async (socket, next) => {
   try {
-    const qrSessionId = socket.handshake.query.qrSessionId as string;
+    const qrSessionId = (socket.handshake.query.qrSessionId as string) || (socket.handshake.auth?.qrSessionId as string);
     if (qrSessionId) {
       (socket as any).isQrClient = true;
       (socket as any).qrSessionId = qrSessionId;
       return next();
     }
 
-    const token = socket.handshake.query.token as string;
+    const token = (socket.handshake.query.token as string) || (socket.handshake.auth?.token as string);
     if (!token) return next(new Error('Authentication required'));
 
     const decoded: any = jwt.verify(token, JWT_SECRET);
-    if (!decoded.userId) return next(new Error('Invalid token'));
+    if (!decoded?.userId) return next(new Error('Invalid token'));
 
-    const user = await prisma.user.findUnique({ where: { id: decoded.userId } });
-    if (!user) return next(new Error('User not found'));
-    if (user.isBanned) return next(new Error('Your account is banned'));
+    // Check memory cache first to eliminate DB roundtrip latency on connections & reconnects
+    let user = userProfileCache.get(decoded.userId);
+    if (!user) {
+      const dbUser = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        select: { id: true, username: true, avatar: true, isBanned: true, publicKey: true }
+      });
+      if (!dbUser) return next(new Error('User not found'));
+      if (dbUser.isBanned) return next(new Error('Your account is banned'));
+      userProfileCache.set(dbUser.id, dbUser as any);
+    } else if ((user as any).isBanned) {
+      return next(new Error('Your account is banned'));
+    }
 
+    (socket as any).userId = decoded.userId;
     next();
   } catch (err) {
     next(new Error('Authentication failed'));

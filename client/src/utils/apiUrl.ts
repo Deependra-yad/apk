@@ -4,14 +4,21 @@ export const getApiUrl = (): string => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return `http://${window.location.hostname}:5000`;
     }
-    // IMPORTANT: For production (Vercel), we MUST return the origin (Vercel domain) 
-    // instead of the direct Railway URL. Indian ISPs like Jio actively block `*.up.railway.app`. 
-    // By returning origin, we force the frontend to proxy all API/Socket traffic through 
-    // Vercel's Edge network (via next.config.ts rewrites), completely bypassing the Jio block!
+    // IMPORTANT: For production HTTP REST APIs (Vercel), return origin for proxying
     return window.location.origin;
   }
   // Server-side rendering fallback
   return process.env.NEXT_PUBLIC_API_URL || 'https://apk-production-740c.up.railway.app';
+};
+
+export const getSocketUrl = (): string => {
+  if (typeof window !== 'undefined') {
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      return `http://${window.location.hostname}:5000`;
+    }
+  }
+  // Direct connection to stateful WebSocket server on Railway
+  return process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || 'https://apk-production-740c.up.railway.app';
 };
 
 export const resolveMediaUrl = (url?: string | null): string => {

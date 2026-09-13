@@ -17,7 +17,6 @@ import StatusStoriesBar from '@/components/StatusStoriesBar';
 import NotificationToast from '@/components/NotificationToast';
 import DesktopOnlyGate from '@/components/DesktopOnlyGate';
 import LiquidLogo from '@/components/LiquidLogo';
-import RealtimePingBadge from '@/components/RealtimePingBadge';
 
 // Code-split heavy modals and landing page for instantaneous initial page loading
 const LandingPage = dynamic(() => import('@/components/LandingPage'), { ssr: false });
@@ -995,7 +994,6 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                     <span className="px-2 py-0.5 rounded-full bg-liquid-accent/15 border border-liquid-accent/30 text-[10px] font-mono text-liquid-accent font-semibold">
                       PRO
                     </span>
-                    <RealtimePingBadge compact={true} />
                   </div>
                 {user?.liquidNumber ? (
                   <button 

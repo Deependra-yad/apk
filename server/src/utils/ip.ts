@@ -119,3 +119,4 @@ export function parseUserAgent(uaString?: string | null): {
 
   return { browser, os, device, summary };
 }
+

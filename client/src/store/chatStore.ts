@@ -1,8 +1,19 @@
 import { create } from 'zustand';
 import { io, Socket } from 'socket.io-client';
 import { soundEffects } from '@/utils/audioSynth';
-import { getApiUrl } from '@/utils/apiUrl';
+import { getApiUrl, getSocketUrl } from '@/utils/apiUrl';
 import { sendBrowserNotification, requestNotificationPermission } from '@/utils/notifications';
+import { 
+  ensureUserKeyPair, 
+  getOrDeriveSharedKey, 
+  decryptMessage, 
+  cacheDecryptedMessage, 
+  cacheUserPublicKey, 
+  getCachedUserPublicKey, 
+  getKeyFromIDBOrLocalStorage, 
+  importPublicKey, 
+  deriveSharedKey 
+} from '@/utils/crypto';
 import axios from 'axios';
 
 export interface Message {
@@ -207,14 +218,15 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const token = typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null;
     const sessionId = typeof window !== 'undefined' ? localStorage.getItem('liquid_session_id') : null;
 
-    const socketUrl = getApiUrl();
+    const socketUrl = getSocketUrl();
     const socket = io(socketUrl, {
       query: { userId, token, sessionId },
+      auth: { token, sessionId, userId },
       reconnection: true,
       reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000,
+      reconnectionDelay: 500,
+      reconnectionDelayMax: 2500,
+      timeout: 15000,
       transports: ['websocket', 'polling'],
       upgrade: true
     });
@@ -242,7 +254,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       socket.emit('user_connected', { userId, sessionId });
       sendPing();
       if (pingTimer) clearInterval(pingTimer);
-      pingTimer = setInterval(sendPing, 3500);
+      pingTimer = setInterval(sendPing, 8000);
     });
 
     socket.on('disconnect', () => {
@@ -250,7 +262,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       if (pingTimer) clearInterval(pingTimer);
     });
 
-    socket.on('connect_error', () => {
+    socket.on('connect_error', (err: any) => {
+      const freshToken = typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null;
+      if (freshToken && freshToken !== token) {
+        socket.auth = { token: freshToken, sessionId, userId };
+        socket.io.opts.query = { userId, token: freshToken, sessionId };
+      }
       set({ pingStatus: 'connecting' });
     });
 
@@ -329,7 +346,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
       
       if (finalMessage.isEncrypted && finalMessage.iv) {
         if (!senderPubKeyStr && finalMessage.senderId) {
-          const { getCachedUserPublicKey } = await import('@/utils/crypto');
           senderPubKeyStr = getCachedUserPublicKey(finalMessage.senderId) || undefined;
         }
 
@@ -344,7 +360,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
               if (res.data?.publicKey) {
                 const fetchedKey: string = res.data.publicKey;
                 senderPubKeyStr = fetchedKey;
-                const { cacheUserPublicKey } = await import('@/utils/crypto');
                 cacheUserPublicKey(finalMessage.senderId, fetchedKey);
                 const contact = get().activeContact;
                 if (contact && contact.id === finalMessage.senderId) {
@@ -354,10 +369,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             }
           } catch (e) {}
         } else if (senderPubKeyStr && finalMessage.senderId) {
-          const keyToCache = senderPubKeyStr;
-          import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
-            cacheUserPublicKey(finalMessage.senderId, keyToCache);
-          }).catch(() => {});
+          cacheUserPublicKey(finalMessage.senderId, senderPubKeyStr);
         }
 
         finalMessage.rawText = finalMessage.text;
@@ -365,7 +377,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
         if (senderPubKeyStr) {
           try {
-            const { ensureUserKeyPair, getOrDeriveSharedKey, decryptMessage, cacheDecryptedMessage } = await import('@/utils/crypto');
             const myKey = await ensureUserKeyPair(userId);
             if (myKey) {
               const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, senderPubKeyStr);
@@ -522,7 +533,6 @@ export const useChatStore = create<ChatState>((set, get) => ({
         try {
           const contact = get().activeContact;
           if (contact?.publicKey) {
-            const { getKeyFromIDBOrLocalStorage, importPublicKey, deriveSharedKey, decryptMessage } = await import('@/utils/crypto');
             const myKey = await getKeyFromIDBOrLocalStorage(userId);
             if (myKey) {
               const otherPubKey = await importPublicKey(contact.publicKey);
@@ -553,9 +563,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       }
 
       if (confirmedMessage.id && (confirmedMessage.text || confirmedMessage.fileUrl) && confirmedMessage.text !== '[Decryption Failed]') {
-        import('@/utils/crypto').then(({ cacheDecryptedMessage }) => {
-          cacheDecryptedMessage(userId, confirmedMessage.id, { text: confirmedMessage.text || '', fileUrl: confirmedMessage.fileUrl });
-        }).catch(() => {});
+        cacheDecryptedMessage(userId, confirmedMessage.id, { text: confirmedMessage.text || '', fileUrl: confirmedMessage.fileUrl });
       }
 
       set((state) => {

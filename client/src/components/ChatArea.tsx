@@ -8,7 +8,7 @@ import {
   Film, BarChart2, Star, Copy, Play, Pause, Volume2, Eye, 
   Code2, Archive, File, Edit2, Forward, CheckSquare, Square, 
   Users, UserPlus, Info, CornerUpRight, Bot, Sparkles, Pin, Clock, FolderKanban,
-  ArrowLeft, Lock, Plus, RefreshCw, Zap, Cpu
+  ArrowLeft, Lock, Plus, RefreshCw, Zap, Cpu, Ban
 } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '@/store/authStore';
@@ -37,7 +37,6 @@ import {
   lockChat, 
   unlockChatPermanently 
 } from '@/utils/securityLock';
-import RealtimePingBadge from './RealtimePingBadge';
 
 interface ChatAreaProps {
   onStartCall: (isVideo: boolean) => void;
@@ -1188,7 +1187,6 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
           {/* Action Buttons */}
           <div className="flex items-center gap-1 sm:gap-1.5 text-foreground/80 shrink-0 relative">
-            <RealtimePingBadge compact={true} className="mr-0.5 sm:mr-1" />
             {!isGroup && (
               <>
                 <button 
@@ -1479,10 +1477,14 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   }}
                   onMouseEnter={() => setHoveredMessageId(msg.id)}
                   onMouseLeave={() => setHoveredMessageId(null)}
-                  className={`px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl relative transition-all min-w-0 break-words shadow-sm text-sm sm:text-[15px] ${
-                    isMe
-                      ? 'rounded-tr-xs bg-gradient-to-br from-[#00d2ff] via-[#0084ff] to-[#7928ca] text-white shadow-[0_4px_22px_rgba(0,132,255,0.35)] border border-white/25 backdrop-blur-md'
-                      : 'rounded-tl-xs bg-gradient-to-br from-[#121626]/95 to-[#0b0d18]/95 text-slate-100 border border-cyan-500/25 shadow-[0_4px_22px_rgba(0,0,0,0.55)] backdrop-blur-xl hover:border-cyan-500/40'
+                  className={`relative transition-all min-w-0 break-words text-sm sm:text-[15px] ${
+                    msg.isDeleted
+                      ? 'px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/10 text-white/50 italic max-w-xs shadow-none'
+                      : `px-3.5 py-2.5 sm:px-4 sm:py-2.5 rounded-2xl shadow-sm ${
+                          isMe
+                            ? 'rounded-tr-xs bg-gradient-to-br from-[#00d2ff] via-[#0084ff] to-[#7928ca] text-white shadow-[0_4px_22px_rgba(0,132,255,0.35)] border border-white/25 backdrop-blur-md'
+                            : 'rounded-tl-xs bg-gradient-to-br from-[#121626]/95 to-[#0b0d18]/95 text-slate-100 border border-cyan-500/25 shadow-[0_4px_22px_rgba(0,0,0,0.55)] backdrop-blur-xl hover:border-cyan-500/40'
+                        }`
                   } ${
                     isSelected ? 'ring-2 ring-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.5)]' : ''
                   }`}
@@ -1561,10 +1563,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                   {/* Deleted State */}
                   {msg.isDeleted ? (
-                    <p className="italic opacity-60 text-xs flex items-center gap-1.5 py-1">
-                      <Trash2 size={13} />
+                    <div className="italic text-white/50 text-xs flex items-center gap-1.5 py-0.5 select-none">
+                      <Ban size={13} className="opacity-40 shrink-0" />
                       <span>This message was deleted</span>
-                    </p>
+                      <span className="text-[10px] opacity-40 ml-2 font-mono not-italic">{msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : ''}</span>
+                    </div>
                   ) : (
                     <>
                       {/* Media: Image with Click-to-Lightbox */}
@@ -1704,22 +1707,24 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   )}
 
                   {/* Footer: Edited, Star, Time & Read Receipts */}
-                  <div className="float-right ml-3 mt-1 inline-flex items-center gap-1 select-none pointer-events-none text-[10px] text-foreground/60 leading-none">
-                    {msg.isEdited && <span className="italic font-medium text-[9px] text-foreground/50 mr-0.5">(edited)</span>}
-                    {msg.isStarred && <Star size={10} className="text-yellow-400 fill-yellow-400 mr-0.5" />}
-                    <span>{msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : 'Now'}</span>
-                    {isMe && !msg.isDeleted && !isGroup && (
-                      <span className="leading-none ml-0.5" title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
-                        {msg.isPending ? (
-                          <Clock size={11} className="text-white/60 animate-spin" />
-                        ) : msg.isSeen ? (
-                          <CheckCheck size={14} className="text-[#00f2fe] drop-shadow-[0_0_6px_rgba(0,242,254,0.8)]" />
-                        ) : (
-                          <CheckCheck size={14} className="text-white/60" />
-                        )}
-                      </span>
-                    )}
-                  </div>
+                  {!msg.isDeleted && (
+                    <div className="float-right ml-3 mt-1 inline-flex items-center gap-1 select-none pointer-events-none text-[10px] text-foreground/60 leading-none">
+                      {msg.isEdited && <span className="italic font-medium text-[9px] text-foreground/50 mr-0.5">(edited)</span>}
+                      {msg.isStarred && <Star size={10} className="text-yellow-400 fill-yellow-400 mr-0.5" />}
+                      <span>{msg.createdAt ? format(new Date(msg.createdAt), 'h:mm a') : 'Now'}</span>
+                      {isMe && !isGroup && (
+                        <span className="leading-none ml-0.5" title={msg.isPending ? "Sending..." : msg.isSeen ? "Read" : "Delivered"}>
+                          {msg.isPending ? (
+                            <Clock size={11} className="text-white/60 animate-spin" />
+                          ) : msg.isSeen ? (
+                            <CheckCheck size={14} className="text-[#00f2fe] drop-shadow-[0_0_6px_rgba(0,242,254,0.8)]" />
+                          ) : (
+                            <CheckCheck size={14} className="text-white/60" />
+                          )}
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Reactions Popover */}
                   {activeReactionMessageId === msg.id && (
@@ -1932,12 +1937,20 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                   {/* Attachment Dropdown Menu */}
                   <AnimatePresence>
                     {isAttachmentMenuOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, scale: 0.8, y: 15 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        exit={{ opacity: 0, scale: 0.8, y: 15 }}
-                        className="absolute bottom-12 right-0 sm:left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-2.5 rounded-2xl border border-foreground/10 shadow-[0_0_30px_rgba(0,0,0,0.6)] flex flex-col gap-1.5 min-w-[190px]"
-                      >
+                      <>
+                        <div 
+                          className="fixed inset-0 z-20" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsAttachmentMenuOpen(false);
+                          }} 
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.85, y: 10 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.85, y: 10 }}
+                          className="absolute bottom-12 right-0 sm:right-auto sm:left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-2.5 rounded-2xl border border-foreground/15 shadow-[0_10px_35px_rgba(0,0,0,0.7)] flex flex-col gap-1.5 min-w-[200px]"
+                        >
                         <button
                           onPointerDown={(e) => { e.preventDefault(); triggerFileInput('image/*'); }}
                           className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
@@ -1984,7 +1997,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                           </button>
                         )}
                       </motion.div>
-                    )}
+                    </>
+                  )}
                   </AnimatePresence>
                 </div>
               </div>
