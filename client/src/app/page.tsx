@@ -389,6 +389,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
 
+      // Warm up crypto keypair in RAM immediately on app startup so all message encryptions/decryptions are 0ms
+      import('@/utils/crypto').then(({ ensureUserKeyPair }) => {
+        ensureUserKeyPair(user.id, token);
+      }).catch(() => {});
+
       // Instant 0ms hydration of cached contacts & groups from local storage
       try {
         const cachedRaw = localStorage.getItem(`liquid_cached_conversations_${user.id}`) || localStorage.getItem(`liquid_saved_contacts_${user.id}`);

@@ -119,6 +119,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [decryptedMediaCache, setDecryptedMediaCache] = useState<Record<string, string>>({});
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [retryingMsgId, setRetryingMsgId] = useState<string | null>(null);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   // Live timer tick for real-time relative "last seen" formatting
   const [, setLiveTimeTicker] = useState(0);
   useEffect(() => {
@@ -175,6 +176,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   useEffect(() => {
     if (token && user) {
       if (activeContact) {
+        setIsChatLoading(messages.length === 0);
         axios.get(`/api/messages/${activeContact.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(async res => {
@@ -206,6 +208,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               if (myKey) {
                 const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, contactPubKey);
                 loadedMessages = await Promise.all(loadedMessages.map(async (m: any) => {
+                  // Fast path: if this message is ALREADY in currently loaded messages and decrypted, reuse it
+                  const currentMsg = messages.find((msg: any) => msg.id === m.id);
+                  if (currentMsg && currentMsg.text && currentMsg.text !== '[Decryption Failed]') {
+                    return { ...m, text: currentMsg.text, fileUrl: currentMsg.fileUrl || m.fileUrl, rawText: currentMsg.rawText || m.text, rawFileUrl: currentMsg.rawFileUrl || m.fileUrl };
+                  }
+
                   // Check persistent zero-knowledge local cache first
                   const cached = getCachedDecryptedMessage(user.id, m.id);
                   if (cached && cached.text) {
@@ -256,6 +264,10 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           } else {
             // Even if contact public key is pending, check local decrypted cache
             loadedMessages = loadedMessages.map((m: any) => {
+              const currentMsg = messages.find((msg: any) => msg.id === m.id);
+              if (currentMsg && currentMsg.text && currentMsg.text !== '[Decryption Failed]') {
+                return currentMsg;
+              }
               const cached = getCachedDecryptedMessage(user.id, m.id);
               if (cached && cached.text) {
                 return { ...m, text: cached.text, fileUrl: cached.fileUrl || m.fileUrl, rawText: m.text, rawFileUrl: m.fileUrl };
@@ -265,18 +277,23 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           }
           
           setMessages(loadedMessages);
+          setIsChatLoading(false);
           if (socket) {
             socket.emit('mark_seen', { senderId: activeContact.id, receiverId: user.id });
           }
         }).catch((err) => {
+          setIsChatLoading(false);
           console.warn('Background message sync error (cached messages retained):', err);
         });
       } else if (activeGroup) {
+        setIsChatLoading(messages.length === 0);
         axios.get(`/api/messages/group/${activeGroup.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
           setMessages(Array.isArray(res.data) ? res.data : []);
+          setIsChatLoading(false);
         }).catch((err) => {
+          setIsChatLoading(false);
           console.warn('Background group sync error (cached messages retained):', err);
         });
       }
@@ -1249,6 +1266,18 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             </p>
           </div>
         </div>
+
+        {isChatLoading && filteredMessages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center py-20 gap-3 select-none">
+            <div className="relative flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full border-2 border-liquid-accent/30 border-t-liquid-accent animate-spin" />
+              <Zap size={18} className="absolute text-liquid-accent animate-pulse" />
+            </div>
+            <span className="text-xs font-mono text-liquid-accent tracking-wider animate-pulse">
+              Syncing secure conversation...
+            </span>
+          </div>
+        )}
 
         {filteredMessages.map((msg, i) => {
           const isMe = msg.senderId === user?.id;

@@ -73,11 +73,12 @@ router.get('/:userId', authenticate, async (req: any, res) => {
       include: {
         sender: { select: { id: true, username: true, avatar: true, publicKey: true } }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'desc' },
+      take: 100
     });
 
-    // Send response immediately to client without blocking
-    res.json(messages);
+    // Send response immediately to client without blocking (reversed to chronological order)
+    res.json(messages.reverse());
 
     // Mark messages sent by userId as seen asynchronously in background
     prisma.message.updateMany({
@@ -112,10 +113,11 @@ router.get('/group/:groupId', authenticate, async (req: any, res) => {
       include: {
         sender: { select: { id: true, username: true, avatar: true } }
       },
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'desc' },
+      take: 100
     });
 
-    res.json(messages);
+    res.json(messages.reverse());
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch group messages' });
   }

@@ -636,7 +636,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? { ...state.messagesByChat, [currentChatId]: state.messages }
         : state.messagesByChat;
       
-      const cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+      let cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+      if ((!cached || cached.length === 0) && newChatId) {
+        try {
+          const storedUser = localStorage.getItem('liquid_user');
+          const uid = storedUser ? JSON.parse(storedUser)?.id : null;
+          if (uid) {
+            const rawStored = localStorage.getItem(`liquid_chat_history_${uid}_${newChatId}`);
+            if (rawStored) {
+              const parsed = JSON.parse(rawStored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                cached = parsed;
+                updatedMessagesByChat[newChatId] = cached;
+              }
+            }
+          }
+        } catch (e) {}
+      }
 
       return { 
         activeContact: contact, 
@@ -662,7 +678,23 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ? { ...state.messagesByChat, [currentChatId]: state.messages }
         : state.messagesByChat;
       
-      const cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+      let cached = newChatId ? (updatedMessagesByChat[newChatId] || []) : [];
+      if ((!cached || cached.length === 0) && newChatId) {
+        try {
+          const storedUser = localStorage.getItem('liquid_user');
+          const uid = storedUser ? JSON.parse(storedUser)?.id : null;
+          if (uid) {
+            const rawStored = localStorage.getItem(`liquid_group_history_${uid}_${newChatId}`);
+            if (rawStored) {
+              const parsed = JSON.parse(rawStored);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                cached = parsed;
+                updatedMessagesByChat[newChatId] = cached;
+              }
+            }
+          }
+        } catch (e) {}
+      }
 
       return { 
         activeGroup: group, 
@@ -680,6 +712,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   setMessages: (messages) => set((state) => {
     const safeMessages = Array.isArray(messages) ? messages : [];
     const currentChatId = state.activeContact?.id || state.activeGroup?.id;
+    if (currentChatId) {
+      try {
+        const storedUser = localStorage.getItem('liquid_user');
+        const uid = storedUser ? JSON.parse(storedUser)?.id : null;
+        if (uid) {
+          const key = state.activeGroup 
+            ? `liquid_group_history_${uid}_${currentChatId}` 
+            : `liquid_chat_history_${uid}_${currentChatId}`;
+          localStorage.setItem(key, JSON.stringify(safeMessages.slice(-100)));
+        }
+      } catch (e) {}
+    }
     return {
       messages: safeMessages,
       messagesByChat: currentChatId ? {
@@ -711,6 +755,16 @@ export const useChatStore = create<ChatState>((set, get) => ({
       ...state.messagesByChat,
       [targetChatId]: [...(state.messagesByChat[targetChatId] || []).filter(m => m.id !== message.id && m.id !== message.tempId), message]
     } : state.messagesByChat;
+
+    if (targetChatId && currentUserId) {
+      try {
+        const key = message.groupId 
+          ? `liquid_group_history_${currentUserId}_${targetChatId}` 
+          : `liquid_chat_history_${currentUserId}_${targetChatId}`;
+        const chatList = updatedMessagesByChat[targetChatId] || updatedMessages;
+        localStorage.setItem(key, JSON.stringify(chatList.slice(-100)));
+      } catch (e) {}
+    }
 
     return { 
       messages: updatedMessages,
