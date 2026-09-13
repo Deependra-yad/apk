@@ -203,32 +203,45 @@ router.get('/conversations', authenticate, async (req: any, res) => {
       return res.json([]);
     }
 
-    const users = await prisma.user.findMany({
-      where: { id: { in: Array.from(userIds) } },
-      select: {
-        id: true,
-        username: true,
-        liquidNumber: true,
-        avatar: true,
-        about: true,
-        lastSeen: true,
-        publicKey: true,
-        settings: { 
-          select: { 
-            lastSeenPrivacy: true, 
-            profilePhotoPrivacy: true, 
-            aboutPrivacy: true, 
-            groupsPrivacy: true 
-          } 
+    // Query users and block list in parallel without nested N-join relations
+    const [users, myBlocks] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: Array.from(userIds) } },
+        select: {
+          id: true,
+          username: true,
+          liquidNumber: true,
+          avatar: true,
+          about: true,
+          lastSeen: true,
+          publicKey: true,
+          settings: { 
+            select: { 
+              lastSeenPrivacy: true, 
+              profilePhotoPrivacy: true, 
+              aboutPrivacy: true, 
+              groupsPrivacy: true 
+            } 
+          }
+        }
+      }),
+      prisma.blockList.findMany({
+        where: {
+          OR: [
+            { blockerId: userId, blockedId: { in: Array.from(userIds) } },
+            { blockedId: userId, blockerId: { in: Array.from(userIds) } }
+          ]
         },
-        blocksInitiated: { select: { blockedId: true } },
-        blocksReceived: { select: { blockerId: true } }
-      }
-    });
+        select: { blockerId: true, blockedId: true }
+      })
+    ]);
+
+    const blockedByMeSet = new Set(myBlocks.filter((b: any) => b.blockerId === userId).map((b: any) => b.blockedId));
+    const blockedMeSet = new Set(myBlocks.filter((b: any) => b.blockedId === userId).map((b: any) => b.blockerId));
 
     const sanitizedUsers = users.map((u: any) => {
-      const isBlockedByMe = u.blocksReceived.some((b: any) => b.blockerId === userId);
-      const hasBlockedMe = u.blocksInitiated.some((b: any) => b.blockedId === userId);
+      const isBlockedByMe = blockedByMeSet.has(u.id);
+      const hasBlockedMe = blockedMeSet.has(u.id);
       const lastSeenPriv = u.settings?.lastSeenPrivacy || 'everyone';
       const photoPriv = u.settings?.profilePhotoPrivacy || 'everyone';
       const aboutPriv = u.settings?.aboutPrivacy || 'everyone';
@@ -241,7 +254,7 @@ router.get('/conversations', authenticate, async (req: any, res) => {
       if (photoPriv === 'nobody' || isBlockedByMe || hasBlockedMe) hidePhoto = true;
       if (aboutPriv === 'nobody' || isBlockedByMe || hasBlockedMe) hideAbout = true;
 
-      const { settings, blocksInitiated, blocksReceived, ...safeUser } = u;
+      const { settings, ...safeUser } = u;
       if (hideLastSeen) safeUser.lastSeen = null;
       if (hidePhoto) safeUser.avatar = `https://api.dicebear.com/7.x/identicon/svg?seed=${u.username}`;
       if (hideAbout) safeUser.about = null;

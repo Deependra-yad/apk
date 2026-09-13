@@ -28,7 +28,7 @@ export const resolveMediaUrl = (url?: string | null): string => {
   return `${backend}${url.startsWith('/') ? '' : '/'}${url}`;
 };
 
-// Reliable download helper that works inside Android APK, mobile browsers, and desktop PWAs
+// Reliable download helper that works seamlessly inside Android APK, mobile browsers, and desktop PWAs
 export const downloadFile = async (url: string, filename: string) => {
   try {
     if (!url || typeof window === 'undefined') return;
@@ -42,53 +42,54 @@ export const downloadFile = async (url: string, filename: string) => {
       .trim() || `download_${Date.now()}`;
 
     // Ensure URL is absolute or valid schema
-    const absUrl = url.startsWith('/') 
+    let absUrl = url.startsWith('/') 
       ? `${window.location.origin}${url}` 
       : (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('blob:') || url.startsWith('data:'))
         ? url
         : `${window.location.origin}/${url}`;
 
+    // Force attachment header from backend
+    if (absUrl.includes('/api/upload/') && !absUrl.includes('download=')) {
+      absUrl += (absUrl.includes('?') ? '&' : '?') + 'download=1';
+    }
+
     // 1. Android Native App Bridge (running inside LiquidChat APK)
-    // Priority: saveBase64File writes directly to MediaStore.Downloads (Android 10-15 Q+)
-    // bypassing DownloadManager permissions, auth token headers, and ISP blocks!
-    if ((window as any).Android?.saveBase64File) {
-      try {
-        if (absUrl.startsWith('data:')) {
-          (window as any).Android.saveBase64File(absUrl, cleanFilename);
-          return;
-        }
+    if ((window as any).Android) {
+      const android = (window as any).Android;
 
-        const token = localStorage.getItem('liquid_token');
-        const headers: Record<string, string> = {};
-        if (token && !absUrl.startsWith('blob:') && !absUrl.startsWith('data:')) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
+      // Handle Data URIs directly
+      if (absUrl.startsWith('data:') && android.saveBase64File) {
+        android.saveBase64File(absUrl, cleanFilename);
+        return;
+      }
 
-        const res = await fetch(absUrl, { headers });
-        if (res.ok) {
+      // If remote HTTP/HTTPS file, use native DownloadManager (shows download notification & progress)
+      if ((absUrl.startsWith('http://') || absUrl.startsWith('https://')) && android.downloadFile) {
+        android.downloadFile(absUrl, cleanFilename);
+        return;
+      }
+
+      // If Blob URI in memory, convert to base64 and save directly to MediaStore
+      if (absUrl.startsWith('blob:') && android.saveBase64File) {
+        try {
+          const res = await fetch(absUrl);
           const blob = await res.blob();
           const reader = new FileReader();
           reader.onloadend = () => {
             const base64Data = reader.result as string;
-            if (base64Data && (window as any).Android?.saveBase64File) {
-              (window as any).Android.saveBase64File(base64Data, cleanFilename);
+            if (base64Data) {
+              android.saveBase64File(base64Data, cleanFilename, blob.type || '');
             }
           };
           reader.readAsDataURL(blob);
           return;
+        } catch (e) {
+          console.warn("Android blob download error:", e);
         }
-      } catch (nativeErr) {
-        console.warn("Native Base64 save failed, trying fallback bridge:", nativeErr);
       }
     }
 
-    // Secondary Android native bridge fallback
-    if ((window as any).Android?.downloadFile) {
-      (window as any).Android.downloadFile(absUrl, cleanFilename);
-      return;
-    }
-
-    // 2. Direct Blob Download (Standard for Chrome, Edge, Safari, Mobile Browsers)
+    // 2. Direct Web Blob Download (Standard for Chrome, Edge, Safari, Mobile Browsers)
     try {
       const token = localStorage.getItem('liquid_token');
       const headers: Record<string, string> = {};
@@ -131,4 +132,3 @@ export const downloadFile = async (url: string, filename: string) => {
     window.open(url, '_blank');
   }
 };
-

@@ -30,6 +30,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
@@ -255,39 +256,33 @@ class MainActivity : AppCompatActivity() {
             }
 
             @JavascriptInterface
+            fun previewFile(url: String, filename: String) {
+                previewFileWithMime(url, filename, null)
+            }
+
+            @JavascriptInterface
+            fun previewFile(url: String, filename: String, mimeType: String?) {
+                previewFileWithMime(url, filename, mimeType)
+            }
+
+            @JavascriptInterface
+            fun previewBase64File(base64Data: String, filename: String) {
+                previewBase64FileWithMime(base64Data, filename, null)
+            }
+
+            @JavascriptInterface
+            fun previewBase64File(base64Data: String, filename: String, mimeType: String?) {
+                previewBase64FileWithMime(base64Data, filename, mimeType)
+            }
+
+            @JavascriptInterface
             fun saveBase64File(base64Data: String, filename: String) {
-                runOnUiThread {
-                    try {
-                        val cleanBase64 = if (base64Data.contains(",")) base64Data.substringAfter(",") else base64Data
-                        val bytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT)
-                        val cleanFilename = filename.substringBefore("?").substringBefore("#")
-                            .replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                            .trim()
-                            .ifBlank { "file_${System.currentTimeMillis()}" }
+                saveBase64FileInternal(base64Data, filename, null)
+            }
 
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                            val values = android.content.ContentValues().apply {
-                                put(MediaStore.MediaColumns.DISPLAY_NAME, cleanFilename)
-                                put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
-                            }
-                            val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-                            if (uri != null) {
-                                contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
-                                Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
-                                return@runOnUiThread
-                            }
-                        }
-
-                        val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
-                        if (!downloadsDir.exists()) downloadsDir.mkdirs()
-                        val file = java.io.File(downloadsDir, cleanFilename)
-                        java.io.FileOutputStream(file).use { it.write(bytes) }
-                        android.media.MediaScannerConnection.scanFile(this@MainActivity, arrayOf(file.absolutePath), null, null)
-                        Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
-                    } catch (e: Exception) {
-                        Toast.makeText(this@MainActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
-                    }
-                }
+            @JavascriptInterface
+            fun saveBase64File(base64Data: String, filename: String, mimeType: String?) {
+                saveBase64FileInternal(base64Data, filename, mimeType)
             }
 
             @JavascriptInterface
@@ -634,41 +629,215 @@ class MainActivity : AppCompatActivity() {
         permissionLauncher.launch(arrayOf(Manifest.permission.RECORD_AUDIO))
     }
 
+    private fun getMimeTypeForFile(filename: String, explicitMime: String?): String {
+        if (!explicitMime.isNullOrBlank() && explicitMime != "application/octet-stream" && explicitMime != "binary/octet-stream") {
+            return explicitMime
+        }
+        val ext = filename.substringAfterLast('.', "").lowercase()
+        if (ext.isNotEmpty()) {
+            val detected = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+            if (!detected.isNullOrEmpty()) return detected
+        }
+        return when (ext) {
+            "pdf" -> "application/pdf"
+            "png" -> "image/png"
+            "jpg", "jpeg" -> "image/jpeg"
+            "gif" -> "image/gif"
+            "webp" -> "image/webp"
+            "svg" -> "image/svg+xml"
+            "mp4" -> "video/mp4"
+            "webm" -> "video/webm"
+            "mp3" -> "audio/mpeg"
+            "wav" -> "audio/wav"
+            "ogg" -> "audio/ogg"
+            "txt" -> "text/plain"
+            "json" -> "application/json"
+            "html" -> "text/html"
+            "doc", "docx" -> "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            "xls", "xlsx" -> "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            "ppt", "pptx" -> "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            "apk" -> "application/vnd.android.package-archive"
+            "zip" -> "application/zip"
+            else -> "application/octet-stream"
+        }
+    }
+
+    private fun previewFileWithMime(url: String, filename: String, mimeType: String?) {
+        runOnUiThread {
+            Toast.makeText(this, "Opening preview...", Toast.LENGTH_SHORT).show()
+            Thread {
+                try {
+                    val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                        .trim()
+                        .ifBlank { "preview_${System.currentTimeMillis()}" }
+                    val resolvedMime = getMimeTypeForFile(cleanFilename, mimeType)
+
+                    val previewDir = java.io.File(cacheDir, "previews").apply { mkdirs() }
+                    val targetFile = java.io.File(previewDir, cleanFilename)
+
+                    val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                        url
+                    } else if (url.startsWith("/")) {
+                        "$WEB_URL$url"
+                    } else {
+                        "$WEB_URL/$url"
+                    }
+
+                    val connection = java.net.URL(fullUrl).openConnection() as java.net.HttpURLConnection
+                    connection.connectTimeout = 15000
+                    connection.readTimeout = 20000
+                    val cookies = CookieManager.getInstance().getCookie(fullUrl)
+                    if (!cookies.isNullOrEmpty()) {
+                        connection.setRequestProperty("Cookie", cookies)
+                    }
+                    connection.setRequestProperty("User-Agent", webView.settings.userAgentString)
+                    connection.connect()
+
+                    if (connection.responseCode in 200..299) {
+                        connection.inputStream.use { input ->
+                            java.io.FileOutputStream(targetFile).use { output ->
+                                input.copyTo(output)
+                            }
+                        }
+                    } else {
+                        throw Exception("HTTP ${connection.responseCode}")
+                    }
+                    connection.disconnect()
+
+                    runOnUiThread {
+                        openFileWithNativeIntent(targetFile, resolvedMime, cleanFilename)
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Could not open preview: ${e.message}", Toast.LENGTH_SHORT).show()
+                        downloadUrlDirectly(url, filename)
+                    }
+                }
+            }.start()
+        }
+    }
+
+    private fun previewBase64FileWithMime(base64Data: String, filename: String, mimeType: String?) {
+        runOnUiThread {
+            Thread {
+                try {
+                    val cleanBase64 = if (base64Data.contains(",")) base64Data.substringAfter(",") else base64Data
+                    val bytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT)
+                    val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                        .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                        .trim()
+                        .ifBlank { "preview_${System.currentTimeMillis()}" }
+                    val resolvedMime = getMimeTypeForFile(cleanFilename, mimeType)
+
+                    val previewDir = java.io.File(cacheDir, "previews").apply { mkdirs() }
+                    val targetFile = java.io.File(previewDir, cleanFilename)
+                    java.io.FileOutputStream(targetFile).use { it.write(bytes) }
+
+                    runOnUiThread {
+                        openFileWithNativeIntent(targetFile, resolvedMime, cleanFilename)
+                    }
+                } catch (e: Exception) {
+                    runOnUiThread {
+                        Toast.makeText(this@MainActivity, "Preview failed: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }.start()
+        }
+    }
+
+    private fun openFileWithNativeIntent(file: java.io.File, mimeType: String, filename: String) {
+        try {
+            val contentUri = FileProvider.getUriForFile(
+                this@MainActivity,
+                "${applicationContext.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(contentUri, mimeType)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            startActivity(Intent.createChooser(intent, "Open $filename with..."))
+        } catch (e: ActivityNotFoundException) {
+            Toast.makeText(this@MainActivity, "No app available to open $filename", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this@MainActivity, "Unable to view file: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun saveBase64FileInternal(base64Data: String, filename: String, mimeType: String?) {
+        runOnUiThread {
+            try {
+                val cleanBase64 = if (base64Data.contains(",")) base64Data.substringAfter(",") else base64Data
+                val bytes = android.util.Base64.decode(cleanBase64, android.util.Base64.DEFAULT)
+                val cleanFilename = filename.substringBefore("?").substringBefore("#")
+                    .replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    .trim()
+                    .ifBlank { "file_${System.currentTimeMillis()}" }
+                val resolvedMime = getMimeTypeForFile(cleanFilename, mimeType)
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    val values = android.content.ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, cleanFilename)
+                        put(MediaStore.MediaColumns.MIME_TYPE, resolvedMime)
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+                        put(MediaStore.MediaColumns.IS_PENDING, 1)
+                    }
+                    val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
+                    if (uri != null) {
+                        contentResolver.openOutputStream(uri)?.use { it.write(bytes) }
+                        values.clear()
+                        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                        contentResolver.update(uri, values, null, null)
+                        Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
+                        return@runOnUiThread
+                    }
+                }
+
+                val downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+                if (!downloadsDir.exists()) downloadsDir.mkdirs()
+                val file = java.io.File(downloadsDir, cleanFilename)
+                java.io.FileOutputStream(file).use { it.write(bytes) }
+                android.media.MediaScannerConnection.scanFile(this@MainActivity, arrayOf(file.absolutePath), arrayOf(resolvedMime), null)
+                Toast.makeText(this@MainActivity, "Saved to Downloads: $cleanFilename", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(this@MainActivity, "Save failed: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun downloadUrlDirectly(url: String, filename: String) {
         try {
-            if (!url.startsWith("http://") && !url.startsWith("https://")) {
-                Toast.makeText(this, "Invalid download link", Toast.LENGTH_SHORT).show()
-                return
+            val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                url
+            } else if (url.startsWith("/")) {
+                "$WEB_URL$url"
+            } else {
+                "$WEB_URL/$url"
             }
 
             val cleanFilename = filename.substringBefore("?").substringBefore("#")
                 .replace(Regex("[\\\\/:*?\"<>|]"), "_")
                 .trim()
                 .ifBlank { "download_${System.currentTimeMillis()}" }
+            val resolvedMime = getMimeTypeForFile(cleanFilename, null)
 
-            val request = DownloadManager.Request(Uri.parse(url)).apply {
+            val request = DownloadManager.Request(Uri.parse(fullUrl)).apply {
                 setTitle(cleanFilename)
                 setDescription("Downloading $cleanFilename")
                 setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                 setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, cleanFilename)
                 setAllowedOverMetered(true)
                 setAllowedOverRoaming(true)
+                setMimeType(resolvedMime)
                 
                 // Add Cookies and User-Agent headers
-                val cookies = CookieManager.getInstance().getCookie(url)
+                val cookies = CookieManager.getInstance().getCookie(fullUrl)
                 if (!cookies.isNullOrEmpty()) {
                     addRequestHeader("Cookie", cookies)
                 }
                 addRequestHeader("User-Agent", webView.settings.userAgentString)
-                
-                val extension = MimeTypeMap.getFileExtensionFromUrl(url.substringBefore("?"))
-                val ext = if (!extension.isNullOrEmpty()) extension else cleanFilename.substringAfterLast('.', "")
-                if (!ext.isNullOrEmpty()) {
-                    val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext.lowercase())
-                    if (!mime.isNullOrEmpty()) {
-                        setMimeType(mime)
-                    }
-                }
             }
             val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             dm.enqueue(request)
@@ -676,17 +845,26 @@ class MainActivity : AppCompatActivity() {
         } catch (e: Exception) {
             // Secondary attempt using app-specific external files dir (scoped storage fallback)
             try {
+                val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                    url
+                } else if (url.startsWith("/")) {
+                    "$WEB_URL$url"
+                } else {
+                    "$WEB_URL/$url"
+                }
                 val cleanFilename = filename.substringBefore("?").substringBefore("#")
                     .replace(Regex("[\\\\/:*?\"<>|]"), "_")
                     .trim()
                     .ifBlank { "download_${System.currentTimeMillis()}" }
-                val request = DownloadManager.Request(Uri.parse(url)).apply {
+                val resolvedMime = getMimeTypeForFile(cleanFilename, null)
+                val request = DownloadManager.Request(Uri.parse(fullUrl)).apply {
                     setTitle(cleanFilename)
                     setDescription("Downloading $cleanFilename")
                     setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
                     setDestinationInExternalFilesDir(this@MainActivity, Environment.DIRECTORY_DOWNLOADS, cleanFilename)
                     setAllowedOverMetered(true)
                     setAllowedOverRoaming(true)
+                    setMimeType(resolvedMime)
                 }
                 val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
                 dm.enqueue(request)
@@ -694,8 +872,16 @@ class MainActivity : AppCompatActivity() {
             } catch (e2: Exception) {
                 // Final Fallback: Open in system browser
                 try {
-                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                    browserIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    val fullUrl = if (url.startsWith("http://") || url.startsWith("https://")) {
+                        url
+                    } else if (url.startsWith("/")) {
+                        "$WEB_URL$url"
+                    } else {
+                        "$WEB_URL/$url"
+                    }
+                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(fullUrl)).apply {
+                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                    }
                     startActivity(browserIntent)
                     Toast.makeText(this, "Opening in browser to download...", Toast.LENGTH_SHORT).show()
                 } catch (ex: Exception) {

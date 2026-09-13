@@ -44,7 +44,11 @@ function AuthForm() {
     const token = localStorage.getItem('liquid_token');
     const chatParam = searchParams.get('chat');
     if (token) {
-      window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+      if (typeof window !== 'undefined' && (window.location.hostname.includes('liquidchat.online') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+        router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
+      } else {
+        window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
+      }
       return;
     }
     const urlError = searchParams.get('error');
@@ -62,6 +66,11 @@ function AuthForm() {
 
   const navigateToApp = (token: string, user: any) => {
     const chatParam = searchParams.get('chat');
+    // If staying on the same domain (web.liquidchat.online or localhost or APK), use fast Next.js SPA router replacement
+    if (typeof window !== 'undefined' && (window.location.hostname.includes('liquidchat.online') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
+      return;
+    }
     const userStr = encodeURIComponent(JSON.stringify(user));
     const target = new URL('https://web.liquidchat.online');
     target.searchParams.set('token', token);

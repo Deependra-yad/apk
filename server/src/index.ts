@@ -7,6 +7,7 @@ import webpush from 'web-push';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getMessaging } from 'firebase-admin/messaging';
 import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
 
 try {
   let serviceAccount;
@@ -134,6 +135,9 @@ const connectedUsers = {
   has: (uid: string) => (userSockets.get(uid)?.size || 0) > 0,
   keys: () => userSockets.keys()
 };
+
+// Memory cache for user profiles to eliminate DB joins on real-time socket events
+const userProfileCache = new Map<string, { id: string; username: string; avatar?: string | null; publicKey?: string | null }>();
 
 interface ActiveCallSession {
   callId: string;
@@ -513,68 +517,121 @@ io.on('connection', (socket) => {
     }
   });
 
-  // --- Real-Time Messaging (Direct & Group) ---
+  // --- Real-Time Messaging (Direct & Group) with 0ms Latency ---
   socket.on('send_message', async (data) => {
-    console.log('RECEIVED send_message:', data);
     try {
       const isGroup = !!data.groupId;
+      const messageId = (data.id && typeof data.id === 'string' && !data.id.startsWith('temp-')) ? data.id : uuidv4();
 
-      // If direct chat, verify sender isn't blocked by receiver
-        if (!isGroup && data.receiverId) {
-          const isBlocked = await prisma.blockList.findUnique({
-            where: { blockerId_blockedId: { blockerId: data.receiverId, blockedId: data.senderId } }
-          });
-          if (isBlocked) {
-            socket.emit('message_error', { error: 'You cannot message this contact', tempId: data.tempId });
-            return;
+      let senderInfo = userProfileCache.get(data.senderId);
+      if (!senderInfo) {
+        senderInfo = {
+          id: data.senderId,
+          username: data.senderUsername || 'User',
+          avatar: data.senderAvatar || null,
+          publicKey: data.senderPublicKey || null
+        };
+        // Background cache population
+        prisma.user.findUnique({
+          where: { id: data.senderId },
+          select: { id: true, username: true, avatar: true, publicKey: true }
+        }).then((u: any) => {
+          if (u) userProfileCache.set(u.id, u);
+        }).catch(() => {});
+      }
+
+      const immediateMsg = {
+        id: messageId,
+        text: data.text || '',
+        senderId: data.senderId,
+        receiverId: isGroup ? null : data.receiverId,
+        groupId: isGroup ? data.groupId : null,
+        type: data.type || 'text',
+        fileUrl: data.fileUrl || null,
+        fileName: data.fileName || null,
+        fileSize: data.fileSize || null,
+        mimeType: data.mimeType || null,
+        duration: data.duration || null,
+        forwardedFrom: data.forwardedFrom || null,
+        pollData: data.pollData ? (typeof data.pollData === 'string' ? data.pollData : JSON.stringify(data.pollData)) : null,
+        replyToId: data.replyToId || null,
+        replyToText: data.replyToText || null,
+        isSeen: false,
+        iv: data.iv || null,
+        isEncrypted: !!data.isEncrypted,
+        createdAt: new Date().toISOString(),
+        sender: senderInfo,
+        tempId: data.tempId
+      };
+
+      // 1. INSTANT 0ms ZERO-DELAY REAL-TIME DELIVERY TO SOCKET ROOMS
+      if (isGroup) {
+        io.to(`group_${data.groupId}`).emit('receive_group_message', immediateMsg);
+      } else {
+        io.to(`user_${data.receiverId}`).emit('receive_message', immediateMsg);
+        io.to(`user_${data.senderId}`).emit('message_sent', immediateMsg);
+      }
+
+      // 2. ASYNC PERSISTENCE, BLOCK CHECK & OFFLINE PUSH (DOES NOT BLOCK USER CHAT)
+      (async () => {
+        try {
+          if (!isGroup && data.receiverId) {
+            const isBlocked = await prisma.blockList.findUnique({
+              where: { blockerId_blockedId: { blockerId: data.receiverId, blockedId: data.senderId } }
+            });
+            if (isBlocked) {
+              socket.emit('message_error', { error: 'You cannot message this contact', tempId: data.tempId });
+              return;
+            }
           }
-        }
 
-      const msg = await prisma.message.create({
-        data: {
-          text: data.text || '',
-          senderId: data.senderId,
-          receiverId: isGroup ? null : data.receiverId,
-          groupId: isGroup ? data.groupId : null,
-          type: data.type || 'text',
-          fileUrl: data.fileUrl || null,
-          fileName: data.fileName || null,
-          fileSize: data.fileSize || null,
-          mimeType: data.mimeType || null,
-          duration: data.duration || null,
-          forwardedFrom: data.forwardedFrom || null,
-          pollData: data.pollData ? JSON.stringify(data.pollData) : null,
-          replyToId: data.replyToId || null,
-          replyToText: data.replyToText || null,
-          isSeen: false,
-          iv: data.iv || null,
-          isEncrypted: !!data.isEncrypted
-        },
-        include: {
-          sender: { select: { id: true, username: true, avatar: true, publicKey: true } }
-        }
-      });
-
-        if (isGroup) {
-          // Broadcast to group room (including sender)
-          io.to(`group_${data.groupId}`).emit('receive_group_message', { ...msg, tempId: data.tempId });
-          
-          const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
-          members.forEach((member: any) => {
-            if (member.userId !== data.senderId && !connectedUsers.has(member.userId)) {
-              sendPushNotification(member.userId, `New message in group`, `${msg.sender?.username}: ${msg.text || msg.type}`);
+          const persisted = await prisma.message.create({
+            data: {
+              id: messageId,
+              text: data.text || '',
+              senderId: data.senderId,
+              receiverId: isGroup ? null : data.receiverId,
+              groupId: isGroup ? data.groupId : null,
+              type: data.type || 'text',
+              fileUrl: data.fileUrl || null,
+              fileName: data.fileName || null,
+              fileSize: data.fileSize || null,
+              mimeType: data.mimeType || null,
+              duration: data.duration || null,
+              forwardedFrom: data.forwardedFrom || null,
+              pollData: data.pollData ? (typeof data.pollData === 'string' ? data.pollData : JSON.stringify(data.pollData)) : null,
+              replyToId: data.replyToId || null,
+              replyToText: data.replyToText || null,
+              isSeen: false,
+              iv: data.iv || null,
+              isEncrypted: !!data.isEncrypted
+            },
+            include: {
+              sender: { select: { id: true, username: true, avatar: true, publicKey: true } }
             }
           });
-        } else {
-          // Only trigger push notification if recipient is offline / not currently active in the app
-          const isReceiverConnected = connectedUsers.has(data.receiverId);
-          if (!isReceiverConnected) {
-            sendPushNotification(data.receiverId, `Message from ${msg.sender?.username}`, msg.text || msg.type);
+
+          if (persisted.sender) {
+            userProfileCache.set(persisted.sender.id, persisted.sender);
           }
-          // Deliver immediately in real-time to receiver's socket room
-          io.to(`user_${data.receiverId}`).emit('receive_message', msg);
-          io.to(`user_${data.senderId}`).emit('message_sent', { ...msg, tempId: data.tempId });
+
+          if (isGroup) {
+            const members = await prisma.groupMember.findMany({ where: { groupId: data.groupId } });
+            members.forEach((member: any) => {
+              if (member.userId !== data.senderId && !connectedUsers.has(member.userId)) {
+                sendPushNotification(member.userId, `New message in group`, `${persisted.sender?.username}: ${persisted.text || persisted.type}`);
+              }
+            });
+          } else {
+            const isReceiverConnected = connectedUsers.has(data.receiverId);
+            if (!isReceiverConnected) {
+              sendPushNotification(data.receiverId, `Message from ${persisted.sender?.username}`, persisted.text || persisted.type);
+            }
+          }
+        } catch (dbErr) {
+          console.error('Background DB persist message error:', dbErr);
         }
+      })();
     } catch (err) {
       console.error('Error sending message:', err);
     }

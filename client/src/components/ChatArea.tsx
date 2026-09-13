@@ -278,6 +278,11 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           
           setMessages(loadedMessages);
           setIsChatLoading(false);
+          try {
+            if (user?.id && activeContact?.id) {
+              localStorage.setItem(`liquid_chat_history_${user.id}_${activeContact.id}`, JSON.stringify(loadedMessages.slice(-50)));
+            }
+          } catch (e) {}
           if (socket) {
             socket.emit('mark_seen', { senderId: activeContact.id, receiverId: user.id });
           }
@@ -290,8 +295,14 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         axios.get(`/api/messages/group/${activeGroup.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
-          setMessages(Array.isArray(res.data) ? res.data : []);
+          const groupMsgs = Array.isArray(res.data) ? res.data : [];
+          setMessages(groupMsgs);
           setIsChatLoading(false);
+          try {
+            if (user?.id && activeGroup?.id) {
+              localStorage.setItem(`liquid_chat_history_${user.id}_${activeGroup.id}`, JSON.stringify(groupMsgs.slice(-50)));
+            }
+          } catch (e) {}
         }).catch((err) => {
           setIsChatLoading(false);
           console.warn('Background group sync error (cached messages retained):', err);
@@ -536,8 +547,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const emitSendMessage = async (data: any) => {
     const tempId = `temp-${Date.now()}`;
     // Zero-knowledge local cache for sender's device
-    if (user?.id && data.text) {
-      cacheDecryptedMessage(user.id, tempId, { text: data.text, fileUrl: data.fileUrl });
+    if (user?.id && (data.text || data.fileUrl)) {
+      cacheDecryptedMessage(user.id, tempId, { text: data.text || '', fileUrl: data.fileUrl });
     }
     // Optimistic UI updates with plaintext
     addMessage({

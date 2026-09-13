@@ -10,22 +10,25 @@ import {
   Loader2, MessageSquare, AlertCircle, QrCode, Lock, ShieldCheck,
   Keyboard, Command
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
-import CallModal from '@/components/CallModal';
 import StatusStoriesBar from '@/components/StatusStoriesBar';
-import StoriesPanel from '@/components/StoriesPanel';
-import CallsPanel from '@/components/CallsPanel';
-import SettingsPanel from '@/components/SettingsPanel';
-import ProfileDrawer from '@/components/ProfileDrawer';
-import NewGroupModal from '@/components/NewGroupModal';
-import StarredVaultPanel from '@/components/StarredVaultPanel';
 import NotificationToast from '@/components/NotificationToast';
-import LandingPage from '@/components/LandingPage';
 import DesktopOnlyGate from '@/components/DesktopOnlyGate';
-import UserQrModal from '@/components/UserQrModal';
 import LiquidLogo from '@/components/LiquidLogo';
-import PinLockModal from '@/components/PinLockModal';
+
+// Code-split heavy modals and landing page for instantaneous initial page loading
+const LandingPage = dynamic(() => import('@/components/LandingPage'), { ssr: false });
+const CallModal = dynamic(() => import('@/components/CallModal'), { ssr: false });
+const SettingsPanel = dynamic(() => import('@/components/SettingsPanel'), { ssr: false });
+const StoriesPanel = dynamic(() => import('@/components/StoriesPanel'), { ssr: false });
+const CallsPanel = dynamic(() => import('@/components/CallsPanel'), { ssr: false });
+const ProfileDrawer = dynamic(() => import('@/components/ProfileDrawer'), { ssr: false });
+const NewGroupModal = dynamic(() => import('@/components/NewGroupModal'), { ssr: false });
+const StarredVaultPanel = dynamic(() => import('@/components/StarredVaultPanel'), { ssr: false });
+const UserQrModal = dynamic(() => import('@/components/UserQrModal'), { ssr: false });
+const PinLockModal = dynamic(() => import('@/components/PinLockModal'), { ssr: false });
 import { 
   isPinConfigured,
   isAppLockEnabled, 

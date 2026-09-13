@@ -490,9 +490,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
         }
       }
 
-      if (confirmedMessage.id && confirmedMessage.text && confirmedMessage.text !== '[Decryption Failed]') {
+      if (confirmedMessage.id && (confirmedMessage.text || confirmedMessage.fileUrl) && confirmedMessage.text !== '[Decryption Failed]') {
         import('@/utils/crypto').then(({ cacheDecryptedMessage }) => {
-          cacheDecryptedMessage(userId, confirmedMessage.id, { text: confirmedMessage.text, fileUrl: confirmedMessage.fileUrl });
+          cacheDecryptedMessage(userId, confirmedMessage.id, { text: confirmedMessage.text || '', fileUrl: confirmedMessage.fileUrl });
         }).catch(() => {});
       }
 
