@@ -591,6 +591,52 @@ export const getCachedDecryptedMessage = (userId: string, msgId: string): { text
   } catch (e) {}
   return null;
 };
+// User Public Key Fast In-Memory and Local Cache
+const userPublicKeyMemoryCache = new Map<string, string>();
 
+export const cacheUserPublicKey = (userId: string, publicKey: string) => {
+  if (!userId || !publicKey) return;
+  userPublicKeyMemoryCache.set(userId, publicKey);
+  if (typeof window !== 'undefined') {
+    try {
+      localStorage.setItem(`liquid_pubkey_${userId}`, publicKey);
+    } catch (e) {}
+  }
+};
 
+export const getCachedUserPublicKey = (userId: string): string | null => {
+  if (!userId) return null;
+  if (userPublicKeyMemoryCache.has(userId)) {
+    return userPublicKeyMemoryCache.get(userId)!;
+  }
+  if (typeof window !== 'undefined') {
+    try {
+      const stored = localStorage.getItem(`liquid_pubkey_${userId}`);
+      if (stored) {
+        userPublicKeyMemoryCache.set(userId, stored);
+        return stored;
+      }
+    } catch (e) {}
+  }
+  return null;
+};
 
+export const getUserPublicKey = async (userId: string, token?: string): Promise<string | null> => {
+  const cached = getCachedUserPublicKey(userId);
+  if (cached) return cached;
+
+  const authToken = token || (typeof window !== 'undefined' ? localStorage.getItem('liquid_token') : null);
+  if (!authToken) return null;
+
+  try {
+    const axios = (await import('axios')).default;
+    const res = await axios.get(`/api/users/${userId}/public-key`, {
+      headers: { Authorization: `Bearer ${authToken}` }
+    });
+    if (res.data?.publicKey) {
+      cacheUserPublicKey(userId, res.data.publicKey);
+      return res.data.publicKey;
+    }
+  } catch (e) {}
+  return null;
+};

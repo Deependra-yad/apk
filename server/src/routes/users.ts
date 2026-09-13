@@ -188,7 +188,9 @@ router.get('/conversations', authenticate, async (req: any, res) => {
           { receiverId: userId, groupId: null }
         ]
       },
-      select: { senderId: true, receiverId: true }
+      select: { senderId: true, receiverId: true },
+      orderBy: { createdAt: 'desc' },
+      take: 250
     });
 
     const userIds = new Set<string>();
@@ -196,6 +198,10 @@ router.get('/conversations', authenticate, async (req: any, res) => {
       if (m.senderId !== userId && m.senderId) userIds.add(m.senderId);
       if (m.receiverId !== userId && m.receiverId) userIds.add(m.receiverId);
     });
+
+    if (userIds.size === 0) {
+      return res.json([]);
+    }
 
     const users = await prisma.user.findMany({
       where: { id: { in: Array.from(userIds) } },

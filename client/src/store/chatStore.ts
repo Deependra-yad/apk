@@ -111,7 +111,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   socket: null,
   messages: [],
   messagesByChat: {},
-  groups: [],
+  groups: (() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const storedUser = localStorage.getItem('liquid_user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        const cached = localStorage.getItem(`liquid_cached_groups_${u.id}`);
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return [];
+  })(),
   onlineUsers: [],
   typingUsers: [],
   groupTypingUsers: {},
@@ -122,7 +133,21 @@ export const useChatStore = create<ChatState>((set, get) => ({
   selectedMessageIds: [],
   searchQuery: '',
   chatMetaMap: {},
-  activeConversations: [],
+  activeConversations: (() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const storedUser = localStorage.getItem('liquid_user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        const cached = localStorage.getItem(`liquid_cached_conversations_${u.id}`) || localStorage.getItem(`liquid_saved_contacts_${u.id}`);
+        if (cached) {
+          const list = JSON.parse(cached);
+          if (Array.isArray(list)) return list.map((item: any) => item.id);
+        }
+      }
+    } catch (e) {}
+    return [];
+  })(),
   incomingToast: null,
   unreadCounts: {},
 
@@ -241,7 +266,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let senderPubKeyStr = (finalMessage.sender?.publicKey || get().activeContact?.publicKey) as string | undefined;
       
       if (finalMessage.isEncrypted && finalMessage.iv) {
-        // If public key is not in payload, fetch it directly from server
+        if (!senderPubKeyStr && finalMessage.senderId) {
+          const { getCachedUserPublicKey } = await import('@/utils/crypto');
+          senderPubKeyStr = getCachedUserPublicKey(finalMessage.senderId) || undefined;
+        }
+
+        // If public key is still not available, fetch it from server
         if (!senderPubKeyStr && finalMessage.senderId) {
           try {
             const token = localStorage.getItem('liquid_token');
@@ -250,14 +280,22 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 headers: { Authorization: `Bearer ${token}` }
               });
               if (res.data?.publicKey) {
-                senderPubKeyStr = res.data.publicKey;
+                const fetchedKey: string = res.data.publicKey;
+                senderPubKeyStr = fetchedKey;
+                const { cacheUserPublicKey } = await import('@/utils/crypto');
+                cacheUserPublicKey(finalMessage.senderId, fetchedKey);
                 const contact = get().activeContact;
                 if (contact && contact.id === finalMessage.senderId) {
-                  contact.publicKey = senderPubKeyStr;
+                  contact.publicKey = fetchedKey;
                 }
               }
             }
           } catch (e) {}
+        } else if (senderPubKeyStr && finalMessage.senderId) {
+          const keyToCache = senderPubKeyStr;
+          import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
+            cacheUserPublicKey(finalMessage.senderId, keyToCache);
+          }).catch(() => {});
         }
 
         finalMessage.rawText = finalMessage.text;
@@ -656,7 +694,14 @@ export const useChatStore = create<ChatState>((set, get) => ({
     const targetChatId = message.groupId || (message.senderId === state.activeContact?.id ? message.senderId : (message.receiverId || currentChatId));
     
     // If it's a 1-on-1 message, add the other party to active conversations
-    const otherId = message.senderId === localStorage.getItem('userId') ? message.receiverId : message.senderId;
+    let currentUserId: string | null = null;
+    try {
+      const u = localStorage.getItem('liquid_user');
+      if (u) currentUserId = JSON.parse(u)?.id;
+      if (!currentUserId) currentUserId = localStorage.getItem('userId');
+    } catch (e) {}
+
+    const otherId = message.senderId === currentUserId ? message.receiverId : message.senderId;
     const activeConversations = otherId && !state.activeConversations.includes(otherId) && !message.groupId
       ? [...state.activeConversations, otherId]
       : state.activeConversations;

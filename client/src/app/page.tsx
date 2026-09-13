@@ -67,7 +67,21 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
   const [isClient, setIsClient] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>(() => {
+    if (typeof window === 'undefined') return [];
+    try {
+      const storedUser = localStorage.getItem('liquid_user');
+      if (storedUser) {
+        const u = JSON.parse(storedUser);
+        const cached = localStorage.getItem(`liquid_cached_conversations_${u.id}`) || localStorage.getItem(`liquid_saved_contacts_${u.id}`);
+        if (cached) {
+          const list = JSON.parse(cached);
+          if (Array.isArray(list)) return list;
+        }
+      }
+    } catch (e) {}
+    return [];
+  });
   const [contactSearch, setContactSearch] = useState('');
   const [chatFilter, setChatFilter] = useState<'all' | 'unread' | 'groups' | 'archived'>('all');
   const [activeTab, setActiveTab] = useState('chat');
@@ -375,6 +389,30 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       fetchSettings(token);
       useChatStore.getState().fetchUnreadCounts(token);
 
+      // Instant 0ms hydration of cached contacts & groups from local storage
+      try {
+        const cachedRaw = localStorage.getItem(`liquid_cached_conversations_${user.id}`) || localStorage.getItem(`liquid_saved_contacts_${user.id}`);
+        if (cachedRaw) {
+          const cachedUsers = JSON.parse(cachedRaw);
+          if (Array.isArray(cachedUsers) && cachedUsers.length > 0) {
+            setUsers(cachedUsers);
+            useChatStore.getState().setActiveConversations(cachedUsers.map((u: any) => u.id));
+            import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
+              cachedUsers.forEach((u: any) => {
+                if (u.id && u.publicKey) cacheUserPublicKey(u.id, u.publicKey);
+              });
+            }).catch(() => {});
+          }
+        }
+        const cachedGroupsRaw = localStorage.getItem(`liquid_cached_groups_${user.id}`);
+        if (cachedGroupsRaw) {
+          const cachedGroups = JSON.parse(cachedGroupsRaw);
+          if (Array.isArray(cachedGroups) && cachedGroups.length > 0) {
+            setGroups(cachedGroups);
+          }
+        }
+      } catch (e) {}
+
       // Check for target chat from URL (?chat=...) or localStorage (liquid_pending_chat)
       const urlParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
       const chatQuery = urlParams?.get('chat');
@@ -432,6 +470,16 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
         setUsers(updatedList);
         useChatStore.getState().setActiveConversations(updatedList.map((u: any) => u.id));
+        try {
+          if (user?.id) {
+            localStorage.setItem(`liquid_cached_conversations_${user.id}`, JSON.stringify(updatedList));
+          }
+          import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
+            updatedList.forEach((u: any) => {
+              if (u.id && u.publicKey) cacheUserPublicKey(u.id, u.publicKey);
+            });
+          }).catch(() => {});
+        } catch (e) {}
       }).catch(console.error);
 
       // Fetch groups
@@ -439,6 +487,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => {
         setGroups(res.data);
+        try {
+          if (user?.id) {
+            localStorage.setItem(`liquid_cached_groups_${user.id}`, JSON.stringify(res.data));
+          }
+        } catch (e) {}
         const socket = useChatStore.getState().socket;
         if (socket) {
           res.data.forEach((group: any) => socket.emit('join_group', group.id));
@@ -761,12 +814,24 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       }
     } catch (e) {}
 
-    // Ensure they are in users list
+    if (contact.publicKey) {
+      import('@/utils/crypto').then(({ cacheUserPublicKey }) => {
+        cacheUserPublicKey(contact.id, contact.publicKey);
+      }).catch(() => {});
+    }
+
+    // Ensure they are in users list and cached conversations
     setUsers(prev => {
       const map = new Map();
       prev.forEach(u => map.set(u.id, u));
       map.set(contact.id, contact);
-      return Array.from(map.values());
+      const updated = Array.from(map.values());
+      try {
+        if (user?.id) {
+          localStorage.setItem(`liquid_cached_conversations_${user.id}`, JSON.stringify(updated));
+        }
+      } catch (e) {}
+      return updated;
     });
 
     setContactSearch('');
@@ -805,10 +870,6 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
       (u.liquidNumber && (u.liquidNumber === searchLow || u.liquidNumber === cleanSearchNum));
     
     const archived = isTargetArchived(u.id);
-    const hasHistory = activeConversations.includes(u.id) || 
-      (cleanSearchNum.length > 0 && u.liquidNumber && u.liquidNumber === cleanSearchNum) || 
-      (searchedContact?.id === u.id) ||
-      (activeContact?.id === u.id);
 
     // If currently active chat, always keep in list
     if (activeContact?.id === u.id) return true;
@@ -816,11 +877,9 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     // If searching, show any matched users
     if (contactSearch.trim()) return matchesSearch;
 
-    // If no search query, ONLY show users with chat history
-    if (!hasHistory) return false;
-
     if (chatFilter === 'archived') return archived;
     if (chatFilter === 'groups') return false;
+    if (chatFilter === 'unread') return (unreadCounts[u.id] || 0) > 0 && !archived;
     return !archived;
   });
 
@@ -835,7 +894,7 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
     const matchesSearch = !searchLow || g.name.toLowerCase().startsWith(searchLow);
     const archived = isTargetArchived(g.id);
     if (chatFilter === 'archived') return archived && matchesSearch;
-    if (chatFilter === 'unread') return false;
+    if (chatFilter === 'unread') return (unreadCounts[g.id] || 0) > 0 && !archived && matchesSearch;
     return !archived && matchesSearch;
   });
 

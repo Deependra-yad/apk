@@ -26,7 +26,7 @@ import LiquidAiModal from './LiquidAiModal';
 import MediaGalleryDrawer from './MediaGalleryDrawer';
 import StickerGifPicker from './StickerGifPicker';
 import { resolveMediaUrl, downloadFile } from '@/utils/apiUrl';
-import { getKeyFromIDB, importPublicKey, deriveSharedKey, getOrDeriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext, cacheDecryptedMessage, getCachedDecryptedMessage } from '@/utils/crypto';
+import { getKeyFromIDB, importPublicKey, deriveSharedKey, getOrDeriveSharedKey, decryptMessage, encryptMessage, encryptFile, decryptFile, generateSafetyNumber, ensureUserKeyPair, isBase64Ciphertext, cacheDecryptedMessage, getCachedDecryptedMessage, getCachedUserPublicKey, cacheUserPublicKey } from '@/utils/crypto';
 import { ShieldCheck, Camera, CheckCircle2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import CameraQrScannerModal from './CameraQrScannerModal';
@@ -180,11 +180,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         }).then(async res => {
           let loadedMessages = Array.isArray(res.data) ? res.data : [];
           
-          let contactPubKey = activeContact.publicKey;
+          let contactPubKey = activeContact.publicKey || getCachedUserPublicKey(activeContact.id);
           if (!contactPubKey) {
             const foundKeyMsg = loadedMessages.find((m: any) => m.senderId === activeContact.id && m.sender?.publicKey);
             if (foundKeyMsg) {
               contactPubKey = foundKeyMsg.sender.publicKey;
+              cacheUserPublicKey(activeContact.id, contactPubKey);
             } else {
               try {
                 const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
@@ -192,6 +193,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 });
                 if (pkRes.data?.publicKey) {
                   contactPubKey = pkRes.data.publicKey;
+                  cacheUserPublicKey(activeContact.id, contactPubKey);
                 }
               } catch (e) {}
             }
@@ -534,13 +536,16 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     
     if (!isGroup && activeContact) {
       try {
-        let contactPubKey = activeContact.publicKey;
+        let contactPubKey = activeContact.publicKey || getCachedUserPublicKey(activeContact.id);
         if (!contactPubKey && token) {
           const pkRes = await axios.get(`/api/users/${activeContact.id}/public-key`, {
             headers: { Authorization: `Bearer ${token}` }
           });
           contactPubKey = pkRes.data?.publicKey;
-          if (contactPubKey) activeContact.publicKey = contactPubKey;
+          if (contactPubKey) {
+            activeContact.publicKey = contactPubKey;
+            cacheUserPublicKey(activeContact.id, contactPubKey);
+          }
         }
 
         if (contactPubKey) {
