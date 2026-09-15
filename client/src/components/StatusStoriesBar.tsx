@@ -440,6 +440,7 @@ export default function StatusStoriesBar() {
                       autoPlay={!isPaused}
                       playsInline 
                       controls={false}
+                      muted={true}
                       className="max-w-full max-h-full object-contain rounded-xl"
                       onTimeUpdate={(e) => {
                         const vid = e.currentTarget;

@@ -484,6 +484,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                       autoPlay={!isPaused}
                       playsInline 
                       controls={false}
+                      muted={true}
                       className="max-w-full max-h-full object-contain rounded-xl"
                       onTimeUpdate={(e) => {
                         const vid = e.currentTarget;
