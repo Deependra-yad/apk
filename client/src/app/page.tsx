@@ -18,17 +18,19 @@ import NotificationToast from '@/components/NotificationToast';
 import DesktopOnlyGate from '@/components/DesktopOnlyGate';
 import LiquidLogo from '@/components/LiquidLogo';
 
-// Code-split heavy modals and landing page for instantaneous initial page loading
+// Heavy modals and landing page are dynamically imported to save initial bundle size
 const LandingPage = dynamic(() => import('@/components/LandingPage'), { ssr: false });
 const CallModal = dynamic(() => import('@/components/CallModal'), { ssr: false });
-const SettingsPanel = dynamic(() => import('@/components/SettingsPanel'), { ssr: false });
-const StoriesPanel = dynamic(() => import('@/components/StoriesPanel'), { ssr: false });
-const CallsPanel = dynamic(() => import('@/components/CallsPanel'), { ssr: false });
 const ProfileDrawer = dynamic(() => import('@/components/ProfileDrawer'), { ssr: false });
 const NewGroupModal = dynamic(() => import('@/components/NewGroupModal'), { ssr: false });
-const StarredVaultPanel = dynamic(() => import('@/components/StarredVaultPanel'), { ssr: false });
 const UserQrModal = dynamic(() => import('@/components/UserQrModal'), { ssr: false });
 const PinLockModal = dynamic(() => import('@/components/PinLockModal'), { ssr: false });
+
+// Main UI panels are statically imported to ensure INSTANT tab switching without network delays
+import SettingsPanel from '@/components/SettingsPanel';
+import StoriesPanel from '@/components/StoriesPanel';
+import CallsPanel from '@/components/CallsPanel';
+import StarredVaultPanel from '@/components/StarredVaultPanel';
 import { 
   isPinConfigured,
   isAppLockEnabled, 

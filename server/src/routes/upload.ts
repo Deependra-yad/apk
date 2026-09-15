@@ -46,25 +46,29 @@ router.post('/', upload.single('file'), async (req, res) => {
   try {
     // 1. Try Cloudflare R2 / S3 Upload First
     if (process.env.S3_ACCESS_KEY_ID && process.env.S3_BUCKET_NAME) {
-      const fileExtension = fileName.split('.').pop();
-      const uniqueFileName = `${uuidv4()}.${fileExtension}`;
-      
-      const uploadParams = {
-        Bucket: process.env.S3_BUCKET_NAME,
-        Key: uniqueFileName,
-        Body: req.file.buffer,
-        ContentType: mimeType,
-      };
+      try {
+        const fileExtension = fileName.split('.').pop();
+        const uniqueFileName = `${uuidv4()}.${fileExtension}`;
+        
+        const uploadParams = {
+          Bucket: process.env.S3_BUCKET_NAME,
+          Key: uniqueFileName,
+          Body: req.file.buffer,
+          ContentType: mimeType,
+        };
 
-      const s3Client = getS3Client();
-      await s3Client.send(new PutObjectCommand(uploadParams));
+        const s3Client = getS3Client();
+        await s3Client.send(new PutObjectCommand(uploadParams));
 
-      // Construct public URL
-      const fallbackPublic = process.env.S3_ENDPOINT?.includes('r2.cloudflarestorage') ? 'https://pub-1f22629913af4a189acd73eeb7790831.r2.dev' : process.env.S3_ENDPOINT;
-      const publicUrlBase = (process.env.S3_PUBLIC_DOMAIN || fallbackPublic || '').replace(/\/+$/, '');
-      const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
+        // Construct public URL
+        const fallbackPublic = process.env.S3_ENDPOINT?.includes('r2.cloudflarestorage') ? 'https://pub-1f22629913af4a189acd73eeb7790831.r2.dev' : process.env.S3_ENDPOINT;
+        const publicUrlBase = (process.env.S3_PUBLIC_DOMAIN || fallbackPublic || '').replace(/\/+$/, '');
+        const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
 
-      return res.json({ fileUrl, fileName, fileSize, mimeType, type });
+        return res.json({ fileUrl, fileName, fileSize, mimeType, type });
+      } catch (s3Error) {
+        console.warn('S3/R2 Upload Failed (Falling back to DB storage):', s3Error.message || s3Error);
+      }
     }
 
     let userId = null;
