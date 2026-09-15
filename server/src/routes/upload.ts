@@ -66,7 +66,7 @@ router.post('/', upload.single('file'), async (req, res) => {
         const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
 
         return res.json({ fileUrl, fileName, fileSize, mimeType, type });
-      } catch (s3Error) {
+      } catch (s3Error: any) {
         console.warn('S3/R2 Upload Failed (Falling back to DB storage):', s3Error.message || s3Error);
       }
     }
