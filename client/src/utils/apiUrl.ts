@@ -4,8 +4,8 @@ export const getApiUrl = (): string => {
     if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
       return `http://${window.location.hostname}:5000`;
     }
-    // IMPORTANT: For production HTTP REST APIs (Vercel), return origin for proxying
-    return window.location.origin;
+    // IMPORTANT: Connect DIRECTLY to Railway to eliminate Vercel serverless proxy latency (>1000ms)
+    return 'https://apk-production-740c.up.railway.app';
   }
   // Server-side rendering fallback
   return process.env.NEXT_PUBLIC_API_URL || 'https://apk-production-740c.up.railway.app';

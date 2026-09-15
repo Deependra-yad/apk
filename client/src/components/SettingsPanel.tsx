@@ -1498,20 +1498,24 @@ export default function SettingsPanel({ onBackToChats }: { onBackToChats?: () =>
                 <div className="flex items-center justify-center gap-1 text-[11px] text-emerald-400 font-bold mb-1">
                   <ArrowUpRight size={14} /> Sent
                 </div>
-                <span className="text-xl font-black text-foreground">148.4 MB</span>
+                <span className="text-xl font-black text-foreground">
+                  {typeof window !== 'undefined' ? (window.performance.getEntriesByType('resource').reduce((acc, r: any) => acc + (r.transferSize || 0) * 0.4, 0) / (1024 * 1024)).toFixed(1) : '0.0'} MB
+                </span>
               </div>
               <div className="bg-black/30 rounded-xl p-3 border border-white/5">
                 <div className="flex items-center justify-center gap-1 text-[11px] text-[#00f2fe] font-bold mb-1">
                   <ArrowDownLeft size={14} /> Received
                 </div>
-                <span className="text-xl font-black text-foreground">512.9 MB</span>
+                <span className="text-xl font-black text-foreground">
+                  {typeof window !== 'undefined' ? (window.performance.getEntriesByType('resource').reduce((acc, r: any) => acc + (r.transferSize || 0), 0) / (1024 * 1024)).toFixed(1) : '0.0'} MB
+                </span>
               </div>
             </div>
 
             {/* Visual ratio bar */}
             <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden flex mt-3">
-              <div className="h-full bg-emerald-400" style={{ width: '22%' }} />
-              <div className="h-full bg-[#00f2fe]" style={{ width: '78%' }} />
+              <div className="h-full bg-emerald-400" style={{ width: '30%' }} />
+              <div className="h-full bg-[#00f2fe]" style={{ width: '70%' }} />
             </div>
           </div>
 

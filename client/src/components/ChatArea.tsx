@@ -288,7 +288,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             });
           }
           
-          setMessages(loadedMessages);
+          const currentMsgs = useChatStore.getState().messages;
+          const merged = [...loadedMessages];
+          currentMsgs.forEach(cm => {
+            if (cm.isPending || (cm.tempId && !loadedMessages.some((lm: any) => lm.tempId === cm.tempId)) || !merged.some(m => m.id === cm.id)) {
+              if (!merged.some(m => m.id === cm.id || m.tempId === cm.tempId)) {
+                merged.push(cm);
+              }
+            }
+          });
+          merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          setMessages(merged);
           setIsChatLoading(false);
           try {
             if (user?.id && activeContact?.id) {
@@ -320,7 +330,17 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
           headers: { Authorization: `Bearer ${token}` }
         }).then(res => {
           const groupMsgs = Array.isArray(res.data) ? res.data : [];
-          setMessages(groupMsgs);
+          const currentMsgs = useChatStore.getState().messages;
+          const merged = [...groupMsgs];
+          currentMsgs.forEach(cm => {
+            if (cm.isPending || (cm.tempId && !groupMsgs.some((lm: any) => lm.tempId === cm.tempId)) || !merged.some(m => m.id === cm.id)) {
+              if (!merged.some(m => m.id === cm.id || m.tempId === cm.tempId)) {
+                merged.push(cm);
+              }
+            }
+          });
+          merged.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          setMessages(merged);
           setIsChatLoading(false);
           try {
             if (user?.id && activeGroup?.id) {
