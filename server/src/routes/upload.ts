@@ -60,7 +60,8 @@ router.post('/', upload.single('file'), async (req, res) => {
       await s3Client.send(new PutObjectCommand(uploadParams));
 
       // Construct public URL
-      const publicUrlBase = (process.env.S3_PUBLIC_DOMAIN || process.env.S3_ENDPOINT || '').replace(/\/+$/, '');
+      const fallbackPublic = process.env.S3_ENDPOINT?.includes('r2.cloudflarestorage') ? 'https://pub-1f22629913af4a189acd73eeb7790831.r2.dev' : process.env.S3_ENDPOINT;
+      const publicUrlBase = (process.env.S3_PUBLIC_DOMAIN || fallbackPublic || '').replace(/\/+$/, '');
       const fileUrl = `${publicUrlBase}/${uniqueFileName}`;
 
       return res.json({ fileUrl, fileName, fileSize, mimeType, type });
