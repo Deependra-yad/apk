@@ -798,14 +798,19 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     let type = 'text';
 
     if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await axios.post('/api/upload', formData);
-      fileUrl = res.data.fileUrl;
-      fileName = res.data.fileName;
-      fileSize = res.data.fileSize;
-      mimeType = res.data.mimeType;
-      type = res.data.type;
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        const res = await axios.post('/api/upload', formData);
+        fileUrl = res.data.fileUrl;
+        fileName = res.data.fileName;
+        fileSize = res.data.fileSize;
+        mimeType = res.data.mimeType;
+        type = res.data.type;
+      } catch (err) {
+        alert("File upload failed. Please try again.");
+        return;
+      }
     }
 
     emitSendMessage({

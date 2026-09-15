@@ -137,6 +137,7 @@ export default function StatusStoriesBar() {
       setNewCaption('');
     } catch (e) {
       console.error(e);
+      alert("Status upload failed. Please try again.");
     } finally {
       setIsUploading(false);
     }

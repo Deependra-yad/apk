@@ -95,6 +95,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
       setNewFile(null);
     } catch (e) {
       console.error(e);
+      alert("Story upload failed. Please try again.");
     } finally {
       setIsUploading(false);
     }
