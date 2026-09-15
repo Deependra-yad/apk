@@ -41,7 +41,7 @@ export default function RealtimePingBadge({ compact = false, className = '' }: R
   // Quality rating
   let qualityColor = 'text-emerald-400';
   let dotBg = 'bg-emerald-400';
-  let qualityText = 'Optimal (< 100ms)';
+  let qualityText = 'Optimal (< 150ms)';
 
   if (!isConnected) {
     qualityColor = isConnecting ? 'text-amber-400' : 'text-rose-400';
@@ -51,7 +51,7 @@ export default function RealtimePingBadge({ compact = false, className = '' }: R
     qualityColor = 'text-rose-400';
     dotBg = 'bg-rose-500';
     qualityText = 'High Latency';
-  } else if (ping > 110) {
+  } else if (ping > 150) {
     qualityColor = 'text-amber-400';
     dotBg = 'bg-amber-400';
     qualityText = 'Moderate Latency';
