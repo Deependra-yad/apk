@@ -344,7 +344,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       let finalMessage = { ...message };
       let senderPubKeyStr = (finalMessage.sender?.publicKey || get().activeContact?.publicKey) as string | undefined;
       
-      if (finalMessage.isEncrypted && finalMessage.iv) {
+      if (finalMessage.isEncrypted && (finalMessage.iv || finalMessage.fileUrl?.startsWith('ENC:'))) {
         if (!senderPubKeyStr && finalMessage.senderId) {
           senderPubKeyStr = getCachedUserPublicKey(finalMessage.senderId) || undefined;
         }
@@ -381,7 +381,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
             if (myKey) {
               const sharedKey = await getOrDeriveSharedKey(myKey.privateKey, senderPubKeyStr);
               
-              if (finalMessage.text) {
+              if (finalMessage.text && finalMessage.iv) {
                 const dec = await decryptMessage(sharedKey, finalMessage.text, finalMessage.iv);
                 if (dec && dec !== '[Decryption Failed]') {
                   finalMessage.text = dec;
@@ -400,8 +400,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
                 }
               }
 
-              if (finalMessage.text && finalMessage.text !== '[Decryption Failed]') {
-                cacheDecryptedMessage(userId, finalMessage.id, { text: finalMessage.text, fileUrl: finalMessage.fileUrl });
+              if ((finalMessage.text && finalMessage.text !== '[Decryption Failed]') || finalMessage.fileUrl) {
+                cacheDecryptedMessage(userId, finalMessage.id, { text: finalMessage.text || '', fileUrl: finalMessage.fileUrl });
               }
             }
           } catch (err) {
@@ -528,7 +528,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         confirmedMessage.text = optimistic.text || confirmedMessage.text;
         confirmedMessage.fileUrl = optimistic.fileUrl || confirmedMessage.fileUrl;
         confirmedMessage.isPending = false;
-      } else if (confirmedMessage.isEncrypted && confirmedMessage.iv) {
+      } else if (confirmedMessage.isEncrypted && (confirmedMessage.iv || confirmedMessage.fileUrl?.startsWith('ENC:'))) {
         // Fallback: If sent from another window/device, decrypt using contact public key
         try {
           const contact = get().activeContact;
@@ -540,7 +540,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
               confirmedMessage.rawText = confirmedMessage.text;
               if (confirmedMessage.fileUrl) confirmedMessage.rawFileUrl = confirmedMessage.fileUrl;
 
-              if (confirmedMessage.text) {
+              if (confirmedMessage.text && confirmedMessage.iv) {
                 const dec = await decryptMessage(sharedKey, confirmedMessage.text, confirmedMessage.iv);
                 if (dec && dec !== '[Decryption Failed]') {
                   confirmedMessage.text = dec;

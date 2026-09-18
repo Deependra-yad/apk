@@ -120,6 +120,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false);
   const [retryingMsgId, setRetryingMsgId] = useState<string | null>(null);
   const [isChatLoading, setIsChatLoading] = useState(false);
+  const [isUploadingMedia, setIsUploadingMedia] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   // Live timer tick for real-time relative "last seen" formatting
   const [, setLiveTimeTicker] = useState(0);
   useEffect(() => {
@@ -715,6 +717,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
               const encryptedUrl = await encryptMessage(sharedKey, emitData.fileUrl);
               emitData.fileUrl = `ENC:${encryptedUrl.ciphertext}:${encryptedUrl.iv}`;
               emitData.isEncrypted = true;
+              if (!emitData.iv) {
+                emitData.iv = encryptedUrl.iv;
+              }
             }
 
           }
@@ -739,24 +744,28 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       if (textareaRef.current) textareaRef.current.style.height = '20px';
       // Emit user prompt first
       emitSendMessage({
-        text: `🤖 /ai ${aiPrompt}`,
+        text: text.trim(),
         senderId: user.id,
         receiverId: isGroup ? null : activeContact?.id,
         groupId: isGroup ? activeGroup?.id : null,
         type: 'text'
       });
 
-      // Call AI endpoint
+      // Call Gemini AI backend
       try {
         const aiRes = await axios.post('/api/ai/chat', { prompt: aiPrompt });
-        emitSendMessage({
-          text: `✨ **Liquid AI Assistant:**\n${aiRes.data.response}`,
-          senderId: user.id,
-          receiverId: isGroup ? null : activeContact?.id,
-          groupId: isGroup ? activeGroup?.id : null,
-          type: 'text'
-        });
-      } catch (e) {}
+        if (aiRes.data?.response) {
+          emitSendMessage({
+            text: aiRes.data.response,
+            senderId: 'ai-copilot',
+            receiverId: isGroup ? null : activeContact?.id,
+            groupId: isGroup ? activeGroup?.id : null,
+            type: 'text'
+          });
+        }
+      } catch (err) {
+        console.error("AI Error:", err);
+      }
       return;
     }
 
@@ -767,26 +776,26 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
       socket.emit('typing_stop', { senderId: user.id, receiverId: activeContact!.id });
     }
 
-    // If Editing Existing Message
+    // Editing existing message
     if (editingMessage) {
       try {
         await axios.put(`/api/messages/${editingMessage.id}/edit`, {
-          text: text.trim()
+          newText: text
         }, {
           headers: { Authorization: `Bearer ${token}` }
         });
-
-        socket.emit('edit_message', {
+        socket?.emit('edit_message', {
           messageId: editingMessage.id,
-          text: text.trim(),
-          receiverId: isGroup ? null : activeContact?.id,
-          groupId: isGroup ? activeGroup?.id : null
+          newText: text,
+          chatId: isGroup ? activeGroup?.id : activeContact?.id,
+          isGroup
         });
-
         setEditingMessage(null);
         setText('');
-      if (textareaRef.current) textareaRef.current.style.height = '20px';
-      } catch (e) {}
+        if (textareaRef.current) textareaRef.current.style.height = '20px';
+      } catch (e) {
+        alert("Failed to edit message");
+      }
       return;
     }
 
@@ -798,6 +807,8 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     let type = 'text';
 
     if (file) {
+      setIsUploadingMedia(true);
+      setUploadProgress(`Uploading ${file.name}...`);
       try {
         const formData = new FormData();
         formData.append('file', file);
@@ -809,7 +820,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
         type = res.data.type;
       } catch (err) {
         alert("File upload failed. Please try again.");
+        setIsUploadingMedia(false);
+        setUploadProgress('');
         return;
+      } finally {
+        setIsUploadingMedia(false);
+        setUploadProgress('');
       }
     }
 
@@ -828,7 +844,7 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
     });
 
     setText('');
-      if (textareaRef.current) textareaRef.current.style.height = '20px';
+    if (textareaRef.current) textareaRef.current.style.height = '20px';
     setFile(null);
     setFilePreviewUrl(null);
     setReplyingTo(null);
@@ -1825,6 +1841,24 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
             <button onClick={() => setReplyingTo(null)} className="text-foreground/60 hover:text-foreground p-1">
               <X size={18} />
             </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Uploading Media Indicator */}
+      <AnimatePresence>
+        {isUploadingMedia && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-gradient-to-r from-liquid-accent/15 via-purple-500/15 to-pink-500/15 border-t border-liquid-accent/30 px-6 py-2.5 flex items-center justify-between z-20 backdrop-blur-xl"
+          >
+            <div className="flex items-center gap-3">
+              <RefreshCw size={15} className="animate-spin text-liquid-accent" />
+              <span className="text-xs font-semibold text-liquid-accent animate-pulse">{uploadProgress || 'Uploading and delivering media...'}</span>
+            </div>
+            <span className="text-[10px] font-mono text-foreground/50">Processing...</span>
           </motion.div>
         )}
       </AnimatePresence>

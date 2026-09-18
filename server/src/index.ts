@@ -652,7 +652,7 @@ io.on('connection', (socket) => {
         replyToId: data.replyToId || null,
         replyToText: data.replyToText || null,
         isSeen: false,
-        iv: data.iv || null,
+        iv: data.iv || (typeof data.fileUrl === 'string' && data.fileUrl.startsWith('ENC:') ? data.fileUrl.split(':')[2] : null),
         isEncrypted: !!data.isEncrypted,
         createdAt: new Date().toISOString(),
         sender: senderInfo,
@@ -698,7 +698,7 @@ io.on('connection', (socket) => {
               replyToId: data.replyToId || null,
               replyToText: data.replyToText || null,
               isSeen: false,
-              iv: data.iv || null,
+              iv: data.iv || (typeof data.fileUrl === 'string' && data.fileUrl.startsWith('ENC:') ? data.fileUrl.split(':')[2] : null),
               isEncrypted: !!data.isEncrypted
             },
             include: {

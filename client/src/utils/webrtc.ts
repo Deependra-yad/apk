@@ -282,13 +282,32 @@ export class WebRTCManager {
 
   async startScreenShare(): Promise<MediaStream | null> {
     if (!this.peer) return null;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getDisplayMedia) {
+      console.warn("Screen sharing is not supported by this browser or WebView engine.");
+      return null;
+    }
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      let screenStream: MediaStream;
+      try {
+        // audio: false is essential for Android Chromium WebView compatibility
+        screenStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: 'monitor',
+            frameRate: { ideal: 30, max: 30 }
+          },
+          audio: false
+        });
+      } catch (firstErr) {
+        // Fallback to basic constraint if custom displaySurface is not supported
+        screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      }
+
       const screenTrack = screenStream.getVideoTracks()[0];
+      if (!screenTrack) return null;
 
       const sender = this.peer.getSenders().find(s => s.track?.kind === 'video');
       if (sender) {
-        sender.replaceTrack(screenTrack);
+        await sender.replaceTrack(screenTrack);
       }
 
       screenTrack.onended = () => {
@@ -302,7 +321,7 @@ export class WebRTCManager {
 
       return screenStream;
     } catch (e) {
-      console.warn("Screen sharing cancelled:", e);
+      console.warn("Screen sharing cancelled or unsupported:", e);
       return null;
     }
   }
