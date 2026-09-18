@@ -65,3 +65,4 @@ export const useStoryStore = create<StoryStore>((set, get) => ({
     activeStoryIndex: state.activeStoryIndex !== null ? null : state.activeStoryIndex
   }))
 }));
+

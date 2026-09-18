@@ -13,7 +13,6 @@ import {
 import dynamic from 'next/dynamic';
 import LiquidSidebar from '@/components/LiquidSidebar';
 import ChatArea from '@/components/ChatArea';
-import StatusStoriesBar from '@/components/StatusStoriesBar';
 import NotificationToast from '@/components/NotificationToast';
 import DesktopOnlyGate from '@/components/DesktopOnlyGate';
 import LiquidLogo from '@/components/LiquidLogo';
@@ -1107,9 +1106,6 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
               </div>
             </div>
 
-            {/* Stories Feed Bar */}
-            <StatusStoriesBar />
-
             {/* Search Bar */}
             <div className="px-4 pt-3 pb-1 flex items-center gap-2">
               <div className="h-10 bg-background/30 rounded-xl px-3 flex-1 flex items-center gap-2.5 border border-foreground/5 focus-within:border-liquid-accent/50 transition-colors">
@@ -1310,85 +1306,6 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                 </div>
               )}
 
-              {/* Status Stories Carousel Tray */}
-              <div className="px-3 pt-2 pb-3 border-b border-foreground/5 shrink-0">
-                <div className="flex items-center gap-3.5 overflow-x-auto no-scrollbar py-1">
-                  {/* My Status Item */}
-                  <div 
-                    onClick={() => {
-                      const myStoryIndex = stories.findIndex(s => s.userId === user?.id);
-                      if (myStoryIndex !== -1) {
-                        setActiveStoryIndex(myStoryIndex);
-                      } else {
-                        setIsAddModalOpen(true);
-                      }
-                    }}
-                    className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group"
-                  >
-                    <div className={`relative w-14 h-14 rounded-full p-[2px] transition-transform group-hover:scale-105 ${
-                      stories.some(s => s.userId === user?.id) 
-                        ? 'bg-gradient-to-tr from-cyan-400 via-pink-500 to-purple-500 shadow-[0_0_12px_rgba(0,210,255,0.35)]' 
-                        : 'border-2 border-dashed border-foreground/20'
-                    }`}>
-                      <img 
-                        src={user?.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=LQ`} 
-                        alt="My Status" 
-                        className="w-full h-full rounded-full object-cover bg-liquid-base" 
-                      />
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setIsAddModalOpen(true);
-                        }}
-                        className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-liquid-accent text-liquid-dark flex items-center justify-center border-2 border-liquid-base shadow-md hover:scale-110 transition-transform"
-                        title="Add Status"
-                      >
-                        <Plus size={10} strokeWidth={3} />
-                      </div>
-                    </div>
-                    <span className="text-[11px] font-medium text-foreground/80 truncate max-w-[62px]">
-                      My Status
-                    </span>
-                  </div>
-
-                  {/* Contacts with Active Stories */}
-                  {(() => {
-                    const contactStoriesMap = new Map<string, { user: any; firstIndex: number; count: number }>();
-                    stories.forEach((story, index) => {
-                      const uId = story.userId || story.user?.id;
-                      if (uId && uId !== user?.id && story.user) {
-                        if (!contactStoriesMap.has(uId)) {
-                          contactStoriesMap.set(uId, { user: story.user, firstIndex: index, count: 1 });
-                        } else {
-                          contactStoriesMap.get(uId)!.count++;
-                        }
-                      }
-                    });
-
-                    return Array.from(contactStoriesMap.values()).map(({ user: storyUser, firstIndex }) => (
-                      <div
-                        key={storyUser.id}
-                        onClick={() => setActiveStoryIndex(firstIndex)}
-                        className="flex flex-col items-center gap-1.5 cursor-pointer shrink-0 group"
-                      >
-                        <div className="w-14 h-14 rounded-full p-[2.5px] bg-gradient-to-tr from-cyan-400 via-pink-500 to-purple-500 group-hover:scale-105 transition-transform shadow-[0_0_15px_rgba(255,117,151,0.35)]">
-                          <div className="w-full h-full rounded-full overflow-hidden bg-liquid-base border border-liquid-base">
-                            <img 
-                              src={storyUser.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(storyUser.username)}`} 
-                              alt={storyUser.username} 
-                              className="w-full h-full object-cover" 
-                            />
-                          </div>
-                        </div>
-                        <span className="text-[11px] font-medium text-foreground/80 truncate max-w-[62px]">
-                          {storyUser.username}
-                        </span>
-                      </div>
-                    ));
-                  })()}
-                </div>
-              </div>
-
               {unifiedChatList.length === 0 ? (
                 <div className="py-16 px-6 text-center flex flex-col items-center justify-center space-y-3 my-auto">
                   <div className="w-14 h-14 rounded-full bg-liquid-accent/10 border border-liquid-accent/20 flex items-center justify-center text-liquid-accent shadow-[0_0_20px_rgba(0,210,255,0.1)]">
@@ -1407,6 +1324,10 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                   const isPinned = isTargetPinned(item.id);
                   const isMuted = isTargetMuted(item.id);
                   const isSelected = selectedChatIds.includes(item.id);
+                  const contactStoryIndex = !isGroupItem 
+                    ? stories.findIndex(s => s.userId === item.id || s.user?.id === item.id) 
+                    : -1;
+                  const hasStory = contactStoryIndex !== -1;
 
                   return (
                     <motion.div
@@ -1457,10 +1378,12 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
 
                       {/* Avatar */}
                       <div className="relative shrink-0">
-                        <div className={`w-12 h-12 rounded-full p-[2px] ${
-                          isGroupItem 
-                            ? 'bg-gradient-to-tr from-purple-500 to-indigo-500' 
-                            : 'bg-foreground/10'
+                        <div className={`w-12 h-12 rounded-full p-[2px] transition-all ${
+                          hasStory 
+                            ? 'bg-gradient-to-tr from-cyan-400 via-pink-500 to-purple-500 shadow-[0_0_12px_rgba(255,117,151,0.4)] ring-2 ring-pink-500/40 hover:scale-105' 
+                            : isGroupItem 
+                              ? 'bg-gradient-to-tr from-purple-500 to-indigo-500' 
+                              : 'bg-foreground/10'
                         }`}>
                           <img 
                             src={isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar} 
@@ -1468,8 +1391,13 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                             className="w-full h-full rounded-full object-cover bg-liquid-base cursor-pointer" 
                             onClick={(e) => {
                               e.stopPropagation();
-                              setFullScreenImage(isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar);
+                              if (hasStory) {
+                                setActiveStoryIndex(contactStoryIndex);
+                              } else {
+                                setFullScreenImage(isGroupItem ? (item.avatar || `https://api.dicebear.com/7.x/identicon/svg?seed=${encodeURIComponent(item.name)}`) : (item as any).avatar);
+                              }
                             }}
+                            title={hasStory ? "Tap to view story" : "Tap to view avatar"}
                           />
                         </div>
                         {!isGroupItem && isOnline && (
