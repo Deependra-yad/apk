@@ -266,8 +266,19 @@ app.get('/api/db-status', async (req, res) => {
     // Test raw query
     await prisma.$queryRaw`SELECT 1`;
 
-    // Test tables
-    const userCount = await prisma.user.count();
+    // Test tables - auto-create if missing!
+    let userCount = 0;
+    try {
+      userCount = await prisma.user.count();
+    } catch (tableErr: any) {
+      if (tableErr.message && (tableErr.message.includes('does not exist') || tableErr.message.includes('relation'))) {
+        const { execSync } = require('child_process');
+        execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
+        userCount = await prisma.user.count();
+      } else {
+        throw tableErr;
+      }
+    }
 
     return res.json({
       status: 'connected',
@@ -280,6 +291,26 @@ app.get('/api/db-status', async (req, res) => {
       status: 'error',
       database: maskedUrl,
       error: err.message || String(err)
+    });
+  }
+});
+
+// Explicit endpoint to trigger schema push
+app.get('/api/db-init', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  try {
+    const { execSync } = require('child_process');
+    const out = execSync('npx prisma db push --accept-data-loss').toString();
+    return res.json({
+      success: true,
+      message: 'Prisma schema pushed successfully! All tables created.',
+      output: out
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      success: false,
+      error: err.message,
+      output: err.stdout?.toString() || err.stderr?.toString()
     });
   }
 });
