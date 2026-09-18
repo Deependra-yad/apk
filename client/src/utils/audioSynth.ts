@@ -3,6 +3,33 @@
 class SoundEffects {
   private ctx: AudioContext | null = null;
   private ringInterval: any = null;
+  private unlocked = false;
+
+  constructor() {
+    if (typeof window !== 'undefined') {
+      const unlock = () => {
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume().then(() => {
+            this.unlocked = true;
+          }).catch(() => {});
+        } else if (!this.ctx) {
+          try {
+            const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+            if (AudioCtx) {
+              this.ctx = new AudioCtx();
+              this.ctx.resume().catch(() => {});
+            }
+          } catch (e) {}
+        }
+        window.removeEventListener('pointerdown', unlock);
+        window.removeEventListener('touchstart', unlock);
+        window.removeEventListener('keydown', unlock);
+      };
+      window.addEventListener('pointerdown', unlock, { passive: true, once: true });
+      window.addEventListener('touchstart', unlock, { passive: true, once: true });
+      window.addEventListener('keydown', unlock, { passive: true, once: true });
+    }
+  }
 
   private getContext(): AudioContext {
     if (!this.ctx || this.ctx.state === 'closed') {
@@ -10,7 +37,7 @@ class SoundEffects {
       this.ctx = new AudioCtx();
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      this.ctx.resume().catch(() => {});
     }
     return this.ctx;
   }

@@ -8,7 +8,7 @@ import {
   Search, Users, Pin, BellOff, Archive, 
   MoreVertical, Plus, Check, Trash2, UserX, X,
   Loader2, MessageSquare, AlertCircle, QrCode, Lock, ShieldCheck,
-  Keyboard, Command
+  Keyboard, Command, CheckSquare, Square
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import LiquidSidebar from '@/components/LiquidSidebar';
@@ -129,6 +129,11 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const [isShortcutsModalOpen, setIsShortcutsModalOpen] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const initialFetchDone = useRef(false);
+
+  // Multi-Select Chat State (Android & Web)
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedChatIds, setSelectedChatIds] = useState<string[]>([]);
+  const longPressTimerRef = useRef<any>(null);
 
   // Determine if Landing page or Chat App should be shown
   useEffect(() => {
@@ -724,19 +729,74 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
   const handleToggleMeta = async (targetId: string, field: 'isPinned' | 'isArchived' | 'isMuted') => {
     if (!token) return;
     const current = chatMetaMap[targetId] || { isPinned: false, isArchived: false, isMuted: false };
-    const newValue = !current[field];
+    const updated = { ...current, [field]: !current[field] };
+    
+    // Optimistic update
+    updateChatMeta(targetId, updated);
 
     try {
       await axios.put('/api/users/chat-meta', {
         targetId,
-        [field]: newValue
+        ...updated
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
+    } catch (e) {
+      console.error(e);
+      // Revert on error
+      updateChatMeta(targetId, current);
+    }
+  };
 
-      updateChatMeta(targetId, { [field]: newValue });
-      setContextMenuTarget(null);
-    } catch (e) {}
+  // Multi-Select Chat Helpers (Android Long-Press & Web)
+  const toggleSelectChat = (id: string) => {
+    setSelectedChatIds(prev =>
+      prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleStartLongPress = (id: string) => {
+    longPressTimerRef.current = setTimeout(() => {
+      setIsSelectionMode(true);
+      setSelectedChatIds(prev => prev.includes(id) ? prev : [...prev, id]);
+      if (typeof window !== 'undefined' && window.navigator?.vibrate) {
+        window.navigator.vibrate(40);
+      }
+    }, 450);
+  };
+
+  const handleCancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleBulkPin = async () => {
+    for (const id of selectedChatIds) {
+      await handleToggleMeta(id, 'isPinned');
+    }
+    setIsSelectionMode(false);
+    setSelectedChatIds([]);
+  };
+
+  const handleBulkMute = async () => {
+    for (const id of selectedChatIds) {
+      await handleToggleMeta(id, 'isMuted');
+    }
+    setIsSelectionMode(false);
+    setSelectedChatIds([]);
+  };
+
+  const handleBulkDelete = async () => {
+    if (!window.confirm(`Permanently remove ${selectedChatIds.length} selected conversation(s) from your list?`)) return;
+    for (const id of selectedChatIds) {
+      socket?.emit('clear_chat', { targetId: id });
+      if (activeContact?.id === id) setActiveContact(null);
+      if (activeGroup?.id === id) setActiveGroup(null);
+    }
+    setIsSelectionMode(false);
+    setSelectedChatIds([]);
   };
 
   // Anti-tamper & inspection prevention for production builds
@@ -1138,6 +1198,63 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
               ))}
             </div>
 
+            {/* Multi-Select Action Bar (Android & Web) */}
+            {isSelectionMode && (
+              <div className="mx-3 my-2 px-3.5 py-2.5 bg-[#17122b]/95 border border-liquid-accent/40 rounded-2xl flex items-center justify-between shadow-[0_0_25px_rgba(0,210,255,0.25)] backdrop-blur-xl z-30 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2.5">
+                  <button
+                    onClick={() => {
+                      setIsSelectionMode(false);
+                      setSelectedChatIds([]);
+                    }}
+                    className="p-1 rounded-lg hover:bg-foreground/10 text-foreground/70 hover:text-foreground cursor-pointer"
+                    title="Cancel Selection"
+                  >
+                    <X size={17} />
+                  </button>
+                  <span className="text-xs font-bold text-foreground font-mono">
+                    {selectedChatIds.length} selected
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => {
+                      if (selectedChatIds.length === unifiedChatList.length) {
+                        setSelectedChatIds([]);
+                      } else {
+                        setSelectedChatIds(unifiedChatList.map(c => c.id));
+                      }
+                    }}
+                    className="px-2.5 py-1 rounded-lg hover:bg-foreground/10 text-[11px] font-bold text-liquid-accent cursor-pointer"
+                  >
+                    {selectedChatIds.length === unifiedChatList.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                  <button
+                    onClick={handleBulkPin}
+                    className="p-2 rounded-lg hover:bg-foreground/10 text-foreground/70 hover:text-foreground cursor-pointer"
+                    title="Pin/Unpin Selected"
+                  >
+                    <Pin size={16} />
+                  </button>
+                  <button
+                    onClick={handleBulkMute}
+                    className="p-2 rounded-lg hover:bg-foreground/10 text-foreground/70 hover:text-foreground cursor-pointer"
+                    title="Mute/Unmute Selected"
+                  >
+                    <BellOff size={16} />
+                  </button>
+                  <button
+                    onClick={handleBulkDelete}
+                    className="p-2 rounded-lg hover:bg-red-500/20 text-rose-400 hover:text-rose-300 cursor-pointer"
+                    title="Delete Selected Chats"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Unified Chats & Groups List */}
             <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-1.5 no-scrollbar">
               {/* WhatsApp-Style Locked Chats Folder Item */}
@@ -1197,13 +1314,21 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                   const isActive = isGroupItem ? activeGroup?.id === item.id : activeContact?.id === item.id;
                   const isPinned = isTargetPinned(item.id);
                   const isMuted = isTargetMuted(item.id);
+                  const isSelected = selectedChatIds.includes(item.id);
 
                   return (
                     <motion.div
                       key={item.id}
                       whileHover={{ scale: 1.01 }}
                       whileTap={{ scale: 0.99 }}
+                      onTouchStart={() => handleStartLongPress(item.id)}
+                      onTouchEnd={handleCancelLongPress}
+                      onTouchMove={handleCancelLongPress}
                       onClick={() => {
+                        if (isSelectionMode) {
+                          toggleSelectChat(item.id);
+                          return;
+                        }
                         if (isGroupItem) {
                           handleSelectGroup(item);
                         } else {
@@ -1212,14 +1337,32 @@ export default function Home({ forceChat = false }: { forceChat?: boolean }) {
                       }}
                       onContextMenu={(e) => {
                         e.preventDefault();
-                        setContextMenuTarget({ id: item.id, type: isGroupItem ? 'group' : 'contact', name: isGroupItem ? item.name : (item as any).username });
+                        if (!isSelectionMode) {
+                          setIsSelectionMode(true);
+                          setSelectedChatIds([item.id]);
+                        } else {
+                          toggleSelectChat(item.id);
+                        }
                       }}
                       className={`flex items-center gap-3.5 p-3 rounded-2xl cursor-pointer relative overflow-hidden transition-all ${
-                        isActive
-                          ? 'bg-gradient-to-r from-liquid-accent/15 via-white/5 to-transparent border border-liquid-accent/30 shadow-[0_0_15px_rgba(0,210,255,0.15)]'
-                          : 'hover:bg-foreground/5 border border-transparent'
+                        isSelected
+                          ? 'bg-liquid-accent/20 border border-liquid-accent/50 shadow-[0_0_15px_rgba(0,210,255,0.2)]'
+                          : isActive
+                            ? 'bg-gradient-to-r from-liquid-accent/15 via-white/5 to-transparent border border-liquid-accent/30 shadow-[0_0_15px_rgba(0,210,255,0.15)]'
+                            : 'hover:bg-foreground/5 border border-transparent'
                       }`}
                     >
+                      {/* Selection Checkbox */}
+                      {isSelectionMode && (
+                        <div className="shrink-0 text-liquid-accent transition-transform scale-105">
+                          {isSelected ? (
+                            <CheckSquare size={20} className="text-liquid-accent" />
+                          ) : (
+                            <Square size={20} className="text-foreground/40" />
+                          )}
+                        </div>
+                      )}
+
                       {/* Avatar */}
                       <div className="relative shrink-0">
                         <div className={`w-12 h-12 rounded-full p-[2px] ${

@@ -66,15 +66,20 @@ function CallbackLogic() {
 
             if (isApp) {
               setIsFromApp(true);
+              const intentUrl = `intent://auth?token=${data.token}&user=${userStr}#Intent;scheme=liquidchat;package=com.liquidchat.app;end`;
               const appUrl = `liquidchat://auth?token=${data.token}&user=${userStr}`;
-              setDeepLinkUrl(appUrl);
-              setStatusMessage("Returning to Liquid Chat App...");
+              setDeepLinkUrl(intentUrl);
+              setStatusMessage("Authentication Successful!");
               
               setTimeout(() => {
                 try {
-                  window.location.href = appUrl;
-                } catch (e) {}
-              }, 300);
+                  window.location.href = intentUrl;
+                } catch (e) {
+                  try {
+                    window.location.href = appUrl;
+                  } catch (e2) {}
+                }
+              }, 200);
             } else {
               setStatusMessage("Login successful! Redirecting to chat...");
               if (returnOrigin && returnOrigin !== window.location.origin) {
@@ -119,14 +124,19 @@ function CallbackLogic() {
 
           if (isApp) {
             setIsFromApp(true);
+            const intentUrl = `intent://auth?token=${token}&user=${safeUserJson}#Intent;scheme=liquidchat;package=com.liquidchat.app;end`;
             const appUrl = `liquidchat://auth?token=${token}&user=${safeUserJson}`;
-            setDeepLinkUrl(appUrl);
-            setStatusMessage("Returning to Liquid Chat App...");
+            setDeepLinkUrl(intentUrl);
+            setStatusMessage("Authentication Successful!");
             setTimeout(() => {
               try {
-                window.location.href = appUrl;
-              } catch (e) {}
-            }, 300);
+                window.location.href = intentUrl;
+              } catch (e) {
+                try {
+                  window.location.href = appUrl;
+                } catch (e2) {}
+              }
+            }, 200);
           } else {
             setStatusMessage("Login successful! Redirecting to chat...");
             if (returnOrigin && returnOrigin !== window.location.origin) {
@@ -149,23 +159,30 @@ function CallbackLogic() {
 
   return (
     <div className="min-h-screen bg-liquid-dark flex flex-col items-center justify-center p-6 text-center">
-      <div className="w-12 h-12 border-4 border-liquid-accent border-t-transparent rounded-full animate-spin mb-6" />
+      <div className="w-14 h-14 border-4 border-liquid-accent border-t-transparent rounded-full animate-spin mb-6 shadow-[0_0_25px_rgba(0,210,255,0.4)]" />
       <h2 className="text-xl font-bold text-foreground mb-2">{statusMessage}</h2>
       
       {isFromApp && deepLinkUrl ? (
         <div className="flex flex-col items-center gap-3 mt-4">
           <p className="text-foreground/70 text-sm max-w-sm mb-2">
-            If the app did not open automatically, please tap the button below:
+            Tap the button below to return to your Liquid Chat Android App:
           </p>
           <a
             href={deepLinkUrl}
-            className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-bold text-sm shadow-[0_0_25px_rgba(0,210,255,0.4)] hover:brightness-110 transition-all"
+            onClick={() => {
+              // Backup scheme attempt on user click
+              setTimeout(() => {
+                const fallback = deepLinkUrl.replace('intent://', 'liquidchat://').split('#Intent')[0];
+                window.location.href = fallback;
+              }, 500);
+            }}
+            className="px-8 py-4 rounded-2xl bg-gradient-to-r from-liquid-accent to-liquid-secondary text-liquid-dark font-extrabold text-base shadow-[0_0_30px_rgba(0,210,255,0.5)] hover:scale-105 active:scale-95 transition-all cursor-pointer animate-pulse"
           >
-            Open Liquid Chat App
+            🚀 Open Liquid Chat App
           </a>
           <button
             onClick={() => { window.location.href = "https://web.liquidchat.online"; }}
-            className="text-xs text-foreground/50 hover:text-foreground mt-3 underline cursor-pointer"
+            className="text-xs text-foreground/50 hover:text-foreground mt-4 underline cursor-pointer"
           >
             Or continue in browser
           </button>

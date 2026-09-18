@@ -486,4 +486,45 @@ router.get('/public/:identifier', async (req, res) => {
   }
 });
 
+// Live usage statistics for active user
+router.get('/stats', authenticate, async (req: any, res) => {
+  const userId = req.userId;
+  try {
+    const [messagesCount, mediaCount, calls] = await Promise.all([
+      prisma.message.count({
+        where: {
+          OR: [{ senderId: userId }, { receiverId: userId }],
+          isDeleted: false
+        }
+      }),
+      prisma.message.count({
+        where: {
+          OR: [{ senderId: userId }, { receiverId: userId }],
+          fileUrl: { not: null },
+          isDeleted: false
+        }
+      }),
+      prisma.callLog.findMany({
+        where: {
+          OR: [{ callerId: userId }, { receiverId: userId }]
+        },
+        select: { duration: true }
+      })
+    ]);
+
+    const totalCallSeconds = calls.reduce((acc: number, c: any) => acc + (c.duration || 0), 0);
+    const callMinutes = Math.floor(totalCallSeconds / 60);
+
+    res.json({
+      messagesCount,
+      mediaCount,
+      totalCallSeconds,
+      callTimeFormatted: callMinutes >= 60 ? `${Math.floor(callMinutes / 60)}h ${callMinutes % 60}m` : `${callMinutes}m`
+    });
+  } catch (error) {
+    console.error('Failed to fetch user stats:', error);
+    res.status(500).json({ error: 'Failed to fetch usage stats' });
+  }
+});
+
 export default router;

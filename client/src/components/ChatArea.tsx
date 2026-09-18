@@ -1945,11 +1945,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                 {/* Attachment Clip Button */}
                 <div className="relative shrink-0 flex items-center mb-0.5">
                   <button 
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      setIsAttachmentMenuOpen(!isAttachmentMenuOpen);
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsAttachmentMenuOpen(prev => !prev);
                     }}
-                    className={`p-1.5 sm:p-2 rounded-full transition-all ${
+                    className={`p-1.5 sm:p-2 rounded-full transition-all cursor-pointer ${
                       isAttachmentMenuOpen 
                         ? 'text-liquid-accent rotate-45' 
                         : 'text-foreground/50 hover:text-liquid-accent'
@@ -1974,11 +1975,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                           initial={{ opacity: 0, scale: 0.85, y: 10 }}
                           animate={{ opacity: 1, scale: 1, y: 0 }}
                           exit={{ opacity: 0, scale: 0.85, y: 10 }}
-                          className="absolute bottom-12 right-0 sm:right-auto sm:left-0 z-30 bg-liquid-base/95 backdrop-blur-2xl p-2.5 rounded-2xl border border-foreground/15 shadow-[0_10px_35px_rgba(0,0,0,0.7)] flex flex-col gap-1.5 min-w-[200px]"
+                          className="absolute bottom-14 right-0 sm:right-auto sm:left-0 z-30 bg-liquid-base/98 backdrop-blur-2xl p-2.5 rounded-2xl border border-foreground/15 shadow-[0_10px_40px_rgba(0,0,0,0.8)] flex flex-col gap-1.5 min-w-[210px]"
                         >
                         <button
-                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('image/*'); }}
-                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                          type="button"
+                          onClick={() => triggerFileInput('image/*')}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors cursor-pointer"
                         >
                           <div className="p-2 rounded-lg bg-purple-500/20 text-purple-400">
                             <ImageIcon size={18} />
@@ -1987,8 +1989,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         </button>
 
                         <button
-                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('video/*'); }}
-                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                          type="button"
+                          onClick={() => triggerFileInput('video/*')}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors cursor-pointer"
                         >
                           <div className="p-2 rounded-lg bg-rose-500/20 text-rose-400">
                             <Film size={18} />
@@ -1997,8 +2000,9 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
                         </button>
 
                         <button
-                          onPointerDown={(e) => { e.preventDefault(); triggerFileInput('*/*'); }}
-                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                          type="button"
+                          onClick={() => triggerFileInput('*/*')}
+                          className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors cursor-pointer"
                         >
                           <div className="p-2 rounded-lg bg-blue-500/20 text-blue-400">
                             <FileText size={18} />
@@ -2008,12 +2012,12 @@ export default function ChatArea({ onStartCall, onOpenProfile, onBack, users }: 
 
                         {isGroup && (
                           <button
-                            onPointerDown={(e) => {
-                              e.preventDefault();
+                            type="button"
+                            onClick={() => {
                               setIsAttachmentMenuOpen(false);
                               setIsPollModalOpen(true);
                             }}
-                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors"
+                            className="flex items-center gap-3 p-2 rounded-xl hover:bg-foreground/10 text-foreground text-xs font-medium transition-colors cursor-pointer"
                           >
                             <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400">
                               <BarChart2 size={18} />

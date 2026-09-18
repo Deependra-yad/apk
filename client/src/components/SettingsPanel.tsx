@@ -91,6 +91,15 @@ export default function SettingsPanel({ onBackToChats }: { onBackToChats?: () =>
   const [isDeletingFiles, setIsDeletingFiles] = useState(false);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [storageToast, setStorageToast] = useState<string | null>(null);
+  const [userStats, setUserStats] = useState<{ messagesCount: number; mediaCount: number; callTimeFormatted: string } | null>(null);
+
+  useEffect(() => {
+    if (activeSection === 'network' && token) {
+      axios.get('/api/users/stats', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => setUserStats(res.data))
+        .catch(() => {});
+    }
+  }, [activeSection, token]);
 
   useEffect(() => {
     if (token) {
@@ -1526,17 +1535,17 @@ export default function SettingsPanel({ onBackToChats }: { onBackToChats?: () =>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="p-3 rounded-xl bg-foreground/5 border border-foreground/5">
                 <MessageSquare size={16} className="mx-auto text-blue-400 mb-1" />
-                <div className="text-sm font-black text-foreground">3,842</div>
+                <div className="text-sm font-black text-foreground">{userStats ? userStats.messagesCount.toLocaleString() : '...'}</div>
                 <div className="text-[9px] text-foreground/50 uppercase">Messages</div>
               </div>
               <div className="p-3 rounded-xl bg-foreground/5 border border-foreground/5">
                 <ImageIcon size={16} className="mx-auto text-purple-400 mb-1" />
-                <div className="text-sm font-black text-foreground">412</div>
+                <div className="text-sm font-black text-foreground">{userStats ? userStats.mediaCount.toLocaleString() : '...'}</div>
                 <div className="text-[9px] text-foreground/50 uppercase">Media Files</div>
               </div>
               <div className="p-3 rounded-xl bg-foreground/5 border border-foreground/5">
                 <Video size={16} className="mx-auto text-pink-400 mb-1" />
-                <div className="text-sm font-black text-foreground">1h 48m</div>
+                <div className="text-sm font-black text-foreground">{userStats ? userStats.callTimeFormatted : '0m'}</div>
                 <div className="text-[9px] text-foreground/50 uppercase">Call Time</div>
               </div>
             </div>

@@ -88,12 +88,17 @@ router.get('/', authenticate, async (req: any, res) => {
 
     const allowedContactIds = Array.from(contactIds).filter(id => !blockedUserIds.has(id));
 
-    // 3. Fetch stories: always include own stories, plus stories from contacts whose statusPrivacy is not 'nobody'
+    // 3. Fetch stories: include own stories, stories from contacts, and public stories (everyone)
     const activeStories = await prisma.story.findMany({
       where: {
         expiresAt: { gt: new Date() },
+        NOT: {
+          userId: { in: Array.from(blockedUserIds) }
+        },
         OR: [
+          // Own stories
           { userId: myId },
+          // Stories from mutual contacts where privacy is not 'nobody'
           {
             userId: { in: allowedContactIds },
             NOT: {
@@ -102,6 +107,15 @@ router.get('/', authenticate, async (req: any, res) => {
                   statusPrivacy: 'nobody'
                 }
               }
+            }
+          },
+          // Stories from any user with statusPrivacy set to 'everyone' or unconfigured
+          {
+            user: {
+              OR: [
+                { settings: null },
+                { settings: { statusPrivacy: 'everyone' } }
+              ]
             }
           }
         ]

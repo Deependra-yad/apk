@@ -215,6 +215,10 @@ class MainActivity : AppCompatActivity() {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 safeBrowsingEnabled = true
             }
+
+            // Customize user-agent to standard Chrome to prevent Google OAuth 403 disallowed_useragent
+            val defaultUA = userAgentString
+            userAgentString = defaultUA.replace("; wv", "").replace("Version/4.0 ", "")
         }
 
         // Anti-modder & reverse engineering protection: disable remote WebView inspection
@@ -1222,7 +1226,7 @@ class MainActivity : AppCompatActivity() {
         val host = data.host ?: ""
 
         // 1. Google or web auth token return
-        if (scheme.equals("liquidchat", ignoreCase = true) && host.equals("auth", ignoreCase = true)) {
+        if (scheme.equals("liquidchat", ignoreCase = true) && (host.equals("auth", ignoreCase = true) || data.path?.contains("auth") == true)) {
             val token = data.getQueryParameter("token")
             val user = data.getQueryParameter("user")
             if (!token.isNullOrEmpty()) {
@@ -1238,9 +1242,10 @@ class MainActivity : AppCompatActivity() {
                         }
                     })();
                 """.trimIndent()
+                webView.evaluateJavascript(js, null)
                 webView.postDelayed({
                     webView.evaluateJavascript(js, null)
-                }, 500)
+                }, 300)
             }
             return
         }

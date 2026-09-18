@@ -90,6 +90,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
       });
 
       socket?.emit('publish_story', res.data);
+      setStories(prev => [res.data, ...prev.filter(s => s.id !== res.data.id)]);
       setIsAddModalOpen(false);
       setNewCaption('');
       setNewFile(null);

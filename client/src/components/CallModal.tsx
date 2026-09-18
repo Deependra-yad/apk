@@ -547,7 +547,7 @@ export default function CallModal({
                         autoPlay
                         playsInline
                         muted
-                        style={{ transform: facingMode === 'user' && !isScreenSharing ? 'scaleX(-1)' : 'none' }}
+                        style={{ transform: facingMode === 'environment' || isScreenSharing ? 'none' : 'scaleX(-1)' }}
                         className="w-full h-full object-cover transition-transform duration-300"
                       />
                     ) : (
