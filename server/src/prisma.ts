@@ -2,8 +2,12 @@ import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 
 function getSanitizedDatabaseUrl(): string {
-  let url = process.env.DATABASE_URL || "postgresql://postgres.lokepaggzgdfxtgmpljm:Deependra081@aws-0-ap-southeast-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1";
+  let url = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL || "";
   
+  if (!url) {
+    console.error('CRITICAL: No DATABASE_URL or DATABASE_PRIVATE_URL provided in environment variables!');
+  }
+
   // If using Supabase pooler, automatically enforce transaction mode (port 6543) and pgbouncer=true
   if (url.includes('pooler.supabase.com')) {
     url = url.replace(':5432/', ':6543/');

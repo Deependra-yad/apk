@@ -18,10 +18,9 @@ COPY . .
 # Build TypeScript
 RUN npm run build
 
-# Expose port and default DB url
+# Expose port
 ENV PORT=5000
-ENV DATABASE_URL="file:./dev.db"
 EXPOSE 5000
 
-# Push DB migrations at startup and launch server
-CMD ["sh", "-c", "npx prisma db push && npm start"]
+# Push DB schema to the PostgreSQL database at startup and launch server
+CMD ["sh", "-c", "npx prisma db push --accept-data-loss && npm start"]

@@ -248,6 +248,42 @@ app.get('/api/ping', (req, res) => {
   res.json({ pong: true, time: Date.now() });
 });
 
+// Database health and connection diagnostics endpoint
+app.get('/api/db-status', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  const rawUrl = process.env.DATABASE_PRIVATE_URL || process.env.DATABASE_URL || '';
+  const maskedUrl = rawUrl ? rawUrl.replace(/:([^:@]+)@/, ':****@') : 'NOT_SET';
+  
+  try {
+    if (!rawUrl) {
+      return res.status(500).json({
+        status: 'error',
+        message: 'DATABASE_URL or DATABASE_PRIVATE_URL is not set in Railway environment variables!',
+        database: 'NOT_SET'
+      });
+    }
+
+    // Test raw query
+    await prisma.$queryRaw`SELECT 1`;
+
+    // Test tables
+    const userCount = await prisma.user.count();
+
+    return res.json({
+      status: 'connected',
+      database: maskedUrl,
+      tablesReady: true,
+      userCount
+    });
+  } catch (err: any) {
+    return res.status(500).json({
+      status: 'error',
+      database: maskedUrl,
+      error: err.message || String(err)
+    });
+  }
+});
+
 // Simple healthcheck route for Railway
 app.get('/', (req, res) => {
   res.status(200).send('Liquid Chat Backend is running successfully.');
