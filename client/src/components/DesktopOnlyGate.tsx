@@ -157,7 +157,7 @@ export default function DesktopOnlyGate({ children }: DesktopOnlyGateProps) {
 
       {/* Footer */}
       <footer className="w-full max-w-md text-center py-3 text-[11px] text-white/40 font-mono">
-        web.liquidchat.online • Desktop Client Engine
+        liquidchat.online • Desktop Client Engine
       </footer>
     </div>
   );

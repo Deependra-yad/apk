@@ -3,24 +3,41 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Sparkles, Image as ImageIcon, Clock, Eye, Trash2, X, Send, ChevronLeft, ChevronRight, Play, Pause } from 'lucide-react';
+import { Plus, Sparkles, Image as ImageIcon, Clock, Eye, Trash2, X, Send, ChevronLeft, ChevronRight, Play, Pause, Volume2, VolumeX } from 'lucide-react';
 import axios from 'axios';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
+import { useStoryStore } from '@/store/storyStore';
 import { format } from 'date-fns';
 import { resolveMediaUrl } from '@/utils/apiUrl';
 
-export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onOpenCreateStory: () => void; onSelectStory: (index: number) => void }) {
+export default function StoriesPanel({ 
+  onOpenCreateStory, 
+  onSelectStory,
+  hidePanel = false
+}: { 
+  onOpenCreateStory?: () => void; 
+  onSelectStory?: (index: number) => void;
+  hidePanel?: boolean;
+}) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
 
   const { user, token } = useAuthStore();
   const { socket } = useChatStore();
-  const [stories, setStories] = useState<any[]>([]);
+  const { 
+    stories, 
+    activeStoryIndex, 
+    isAddModalOpen, 
+    fetchStories, 
+    setActiveStoryIndex, 
+    setIsAddModalOpen, 
+    addStory, 
+    removeStory 
+  } = useStoryStore();
 
-  const [activeStoryIndex, setActiveStoryIndex] = useState<number | null>(null);
   const [isPaused, setIsPaused] = useState(false);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isAudioMuted, setIsAudioMuted] = useState(false);
   const [newCaption, setNewCaption] = useState('');
   const [newFile, setNewFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -90,7 +107,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
       });
 
       socket?.emit('publish_story', res.data);
-      setStories(prev => [res.data, ...prev.filter(s => s.id !== res.data.id)]);
+      addStory(res.data);
       setIsAddModalOpen(false);
       setNewCaption('');
       setNewFile(null);
@@ -102,8 +119,6 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     }
   };
 
-
-
   useEffect(() => {
     if (currentStory && currentStory.user?.id !== user?.id && token) {
       axios.post(`/api/stories/${currentStory.id}/view`, {}, {
@@ -112,27 +127,17 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
     }
   }, [currentStory, user?.id, token]);
 
-
-  const fetchStories = async () => {
-    if (!token) return;
-    try {
-      const res = await axios.get('/api/stories', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setStories(res.data);
-    } catch (e) {}
-  };
-
   const handleDeleteStory = async (storyId: string) => {
     if (!token) return;
     try {
       await axios.delete(`/api/stories/${storyId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+      socket?.emit('delete_story', storyId);
     } catch (e) {
       console.error(e);
     } finally {
-      setStories(prev => prev.filter(s => s.id !== storyId));
+      removeStory(storyId);
       setActiveStoryIndex(null);
     }
   };
@@ -239,25 +244,32 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
   };
 
   useEffect(() => {
-    fetchStories();
-  }, [token]);
+    if (token) fetchStories(token);
+  }, [token, fetchStories]);
 
   useEffect(() => {
     if (!socket) return;
     const handleNewStory = (story: any) => {
-      setStories(prev => [story, ...prev.filter(s => s.id !== story.id)]);
+      addStory(story);
+    };
+    const handleStoryDeleted = (storyId: string) => {
+      removeStory(storyId);
     };
     socket.on('new_story_published', handleNewStory);
+    socket.on('story_deleted', handleStoryDeleted);
     return () => {
       socket.off('new_story_published', handleNewStory);
+      socket.off('story_deleted', handleStoryDeleted);
     };
-  }, [socket]);
+  }, [socket, addStory, removeStory]);
 
   const myStories = stories.filter(s => s.userId === user?.id);
   const otherStories = stories.filter(s => s.userId !== user?.id);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-y-auto p-4 space-y-6 no-scrollbar">
+    <>
+      {!hidePanel && (
+        <div className="flex-1 flex flex-col h-full overflow-y-auto p-4 space-y-6 no-scrollbar">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -347,6 +359,8 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
           })
         )}
       </div>
+        </div>
+      )}
 
       {mounted && createPortal(
         <>
@@ -459,6 +473,15 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                   >
                     {isPaused ? <Play size={20} /> : <Pause size={20} />}
                   </button>
+                  {currentStory.type === 'video' && (
+                    <button
+                      onClick={() => setIsAudioMuted(!isAudioMuted)}
+                      className="p-2 text-foreground/60 hover:text-foreground rounded-full hover:bg-foreground/10"
+                      title={isAudioMuted ? "Unmute" : "Mute"}
+                    >
+                      {isAudioMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+                    </button>
+                  )}
                   {(currentStory.userId === user?.id || currentStory.user?.id === user?.id) && (
                     <button
                       onClick={() => handleDeleteStory(currentStory.id)}
@@ -486,7 +509,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
                       autoPlay={!isPaused}
                       playsInline 
                       controls={false}
-                      muted={true}
+                      muted={isAudioMuted}
                       className="max-w-full max-h-full object-contain rounded-xl"
                       onTimeUpdate={(e) => {
                         const vid = e.currentTarget;
@@ -612,7 +635,7 @@ export default function StoriesPanel({ onOpenCreateStory, onSelectStory }: { onO
         )}
       </AnimatePresence>
       </>, document.body)}
-    </div>
+    </>
   );
 }
 

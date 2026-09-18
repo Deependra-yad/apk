@@ -250,7 +250,7 @@ export default function LinkedDevicesModal({ isOpen, onClose }: LinkedDevicesMod
                 </div>
                 <h3 className="text-sm font-bold text-foreground mb-0.5">Liquid Web & Desktop</h3>
                 <p className="text-[11px] text-foreground/60 max-w-xs leading-relaxed">
-                  Visit <span className="text-[#ff7597] font-semibold">web.liquidchat.online</span> on your PC or Mac and scan the QR code to link sessions.
+                  Visit <span className="text-[#ff7597] font-semibold">liquidchat.online</span> on your PC or Mac and scan the QR code to link sessions.
                 </p>
               </div>
 
@@ -334,12 +334,12 @@ export default function LinkedDevicesModal({ isOpen, onClose }: LinkedDevicesMod
               <span>Zero-Knowledge Session Keys</span>
             </div>
             <a 
-              href="https://web.liquidchat.online" 
+              href="https://liquidchat.online/auth" 
               target="_blank" 
               rel="noreferrer" 
               className="text-[#ff7597] hover:underline flex items-center gap-1"
             >
-              <span>web.liquidchat.online</span>
+              <span>liquidchat.online</span>
               <ExternalLink size={11} />
             </a>
           </div>
@@ -350,7 +350,7 @@ export default function LinkedDevicesModal({ isOpen, onClose }: LinkedDevicesMod
             onClose={() => setIsScannerOpen(false)}
             onScanSuccess={handleScanSuccess}
             title="Scan Web QR Code"
-            description="Point your phone camera at the QR code on web.liquidchat.online"
+            description="Point your phone camera at the QR code on liquidchat.online"
           />
         </motion.div>
       </div>

@@ -5,6 +5,11 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'liquid_super_secret';
 
+let storiesIoInstance: any = null;
+export const setStoriesSocketIo = (io: any) => {
+  storiesIoInstance = io;
+};
+
 const authenticate = (req: any, res: any, next: any) => {
   const token = req.headers.authorization?.split(' ')[1];
   if (!token) return res.status(401).json({ error: 'Unauthorized' });
@@ -40,6 +45,10 @@ router.post('/', authenticate, async (req: any, res) => {
         }
       }
     });
+
+    if (storiesIoInstance) {
+      storiesIoInstance.emit('new_story_published', story);
+    }
 
     res.json(story);
   } catch (error) {
@@ -154,6 +163,9 @@ router.delete('/:id', authenticate, async (req: any, res) => {
     }
 
     await prisma.story.delete({ where: { id } });
+    if (storiesIoInstance) {
+      storiesIoInstance.emit('story_deleted', id);
+    }
     console.log(`[DELETE STORY] Success`);
     res.json({ success: true });
   } catch (error) {

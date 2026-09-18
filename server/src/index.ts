@@ -47,7 +47,7 @@ import authRoutes from './routes/auth';
 import otpAuthRoutes from './routes/otpAuth';
 import messageRoutes from './routes/messages';
 import uploadRoutes from './routes/upload';
-import storyRoutes from './routes/stories';
+import storyRoutes, { setStoriesSocketIo } from './routes/stories';
 import callRoutes from './routes/calls';
 import adminRoutes from './routes/admin';
 import groupRoutes from './routes/groups';
@@ -170,6 +170,7 @@ const io = new Server(server, {
 });
 app.set('io', io);
 setQrSocketIo(io);
+setStoriesSocketIo(io);
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -845,6 +846,10 @@ io.on('connection', (socket) => {
   // --- Status Stories ---
   socket.on('publish_story', (story) => {
     io.emit('new_story_published', story);
+  });
+
+  socket.on('delete_story', (storyId) => {
+    io.emit('story_deleted', storyId);
   });
 
   // --- WebRTC Calling Signaling ---

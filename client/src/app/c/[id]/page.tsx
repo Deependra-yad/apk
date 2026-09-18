@@ -54,7 +54,7 @@ export default function PublicContactSharePage() {
 
           // If inside the Android app already, navigate right away
           if ((window as any).Android) {
-            window.location.href = `https://web.liquidchat.online/?chat=${cleanId}`;
+            window.location.href = `/?chat=${cleanId}`;
             return;
           }
 
@@ -121,8 +121,8 @@ export default function PublicContactSharePage() {
       publicKey: contact.publicKey
     }));
 
-    // Redirect to web.liquidchat.online directly
-    window.location.href = `https://web.liquidchat.online/?chat=${encodeURIComponent(targetIdentifier)}`;
+    // Redirect to web chat directly
+    window.location.href = `/?chat=${encodeURIComponent(targetIdentifier)}`;
   };
 
   const handleCopyLink = () => {

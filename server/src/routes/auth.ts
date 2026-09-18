@@ -108,7 +108,7 @@ router.post('/google', async (req, res) => {
 router.post('/google-redirect', async (req, res) => {
   const credential = req.body.credential;
   if (!credential) {
-    return res.redirect('https://web.liquidchat.online/auth?error=MissingCredential');
+    return res.redirect('https://liquidchat.online/auth?error=MissingCredential');
   }
 
   try {
@@ -118,7 +118,7 @@ router.post('/google-redirect', async (req, res) => {
     });
     
     const payload = ticket.getPayload();
-    if (!payload) return res.redirect('https://web.liquidchat.online/auth?error=InvalidToken');
+    if (!payload) return res.redirect('https://liquidchat.online/auth?error=InvalidToken');
 
     const { sub, email, name, picture } = payload;
     
@@ -168,7 +168,7 @@ router.post('/google-redirect', async (req, res) => {
       }
     }
 
-    if (user.isBanned) return res.redirect('https://web.liquidchat.online/auth?error=AccountBanned');
+    if (user.isBanned) return res.redirect('https://liquidchat.online/auth?error=AccountBanned');
 
     const ip = getClientIp(req);
     const userAgent = req.headers['user-agent'] || 'Unknown';
@@ -192,11 +192,11 @@ router.post('/google-redirect', async (req, res) => {
       isAdmin: user.isAdmin
     }));
     
-    return res.redirect(`https://web.liquidchat.online/auth/callback?token=${token}&user=${userStr}`);
+    return res.redirect(`https://liquidchat.online/auth/callback?token=${token}&user=${userStr}`);
 
   } catch (error) {
     console.error('Google Auth Error:', error);
-    return res.redirect('https://web.liquidchat.online/auth?error=AuthFailed');
+    return res.redirect('https://liquidchat.online/auth?error=AuthFailed');
   }
 });
 

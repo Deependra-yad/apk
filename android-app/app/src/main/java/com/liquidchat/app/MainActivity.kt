@@ -35,9 +35,11 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout
 import android.media.AudioAttributes
+import android.media.AudioManager
 import android.media.MediaPlayer
 import android.media.Ringtone
 import android.media.RingtoneManager
+import android.media.ToneGenerator
 import android.os.Vibrator
 import android.os.VibrationEffect
 import androidx.core.app.NotificationCompat
@@ -47,9 +49,13 @@ import androidx.webkit.WebViewFeature
 class MainActivity : AppCompatActivity() {
 
     private lateinit var webView: WebView
+    private lateinit var swipeRefresh: SwipeRefreshLayout
 
     private var activeRingtone: Ringtone? = null
     private var callMediaPlayer: MediaPlayer? = null
+    private var callToneGenerator: ToneGenerator? = null
+    private var toneGeneratorRunnable: Runnable? = null
+    private val toneHandler = android.os.Handler(android.os.Looper.getMainLooper())
     private var callVibrator: Vibrator? = null
     private var pendingPermissionRequest: PermissionRequest? = null
 
@@ -59,7 +65,7 @@ class MainActivity : AppCompatActivity() {
     private var customViewCallback: WebChromeClient.CustomViewCallback? = null
     private var customView: View? = null
 
-    private val WEB_URL = "https://web.liquidchat.online"
+    private val WEB_URL = "https://liquidchat.online"
  
     // Permission request launcher
     private lateinit var permissionLauncher: ActivityResultLauncher<Array<String>>
@@ -235,12 +241,25 @@ class MainActivity : AppCompatActivity() {
             fun showNotification(title: String, body: String) {
                 runOnUiThread {
                     val nm = getSystemService(NotificationManager::class.java)
-                    val builder = androidx.core.app.NotificationCompat.Builder(this@MainActivity, "liquid_chat_messages")
+                    val intent = Intent(this@MainActivity, MainActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    }
+                    val pendingIntent = android.app.PendingIntent.getActivity(
+                        this@MainActivity,
+                        System.currentTimeMillis().toInt(),
+                        intent,
+                        android.app.PendingIntent.FLAG_UPDATE_CURRENT or android.app.PendingIntent.FLAG_IMMUTABLE
+                    )
+                    val soundUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+                    val builder = androidx.core.app.NotificationCompat.Builder(this@MainActivity, "liquid_chat_messages_v3")
                         .setSmallIcon(android.R.drawable.stat_notify_chat)
                         .setContentTitle(title)
                         .setContentText(body)
                         .setPriority(androidx.core.app.NotificationCompat.PRIORITY_HIGH)
                         .setAutoCancel(true)
+                        .setContentIntent(pendingIntent)
+                        .setSound(soundUri)
+                        .setDefaults(androidx.core.app.NotificationCompat.DEFAULT_ALL)
                     
                     nm.notify(System.currentTimeMillis().toInt(), builder.build())
                 }
@@ -554,8 +573,14 @@ class MainActivity : AppCompatActivity() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val notifSound: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val msgAudioAttrs = AudioAttributes.Builder()
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                .setUsage(AudioAttributes.USAGE_NOTIFICATION_COMMUNICATION_INSTANT)
+                .build()
+
             val channel = NotificationChannel(
-                "liquid_chat_messages",
+                "liquid_chat_messages_v3",
                 "Messages",
                 NotificationManager.IMPORTANCE_HIGH
             ).apply {
@@ -563,10 +588,13 @@ class MainActivity : AppCompatActivity() {
                 enableLights(true)
                 lightColor = Color.parseColor("#00d2ff")
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 200, 100, 200)
+                setSound(notifSound, msgAudioAttrs)
             }
 
             val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
-            val audioAttributes = AudioAttributes.Builder()
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            val callAudioAttrs = AudioAttributes.Builder()
                 .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
                 .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
                 .build()
@@ -581,7 +609,7 @@ class MainActivity : AppCompatActivity() {
                 lightColor = Color.parseColor("#ff7597")
                 enableVibration(true)
                 vibrationPattern = longArrayOf(0, 1000, 1000, 1000, 1000)
-                setSound(ringtoneUri, audioAttributes)
+                setSound(ringtoneUri, callAudioAttrs)
             }
 
             val nm = getSystemService(NotificationManager::class.java)
@@ -1098,36 +1126,79 @@ class MainActivity : AppCompatActivity() {
             stopCallRingtoneInternal()
 
             val ringtoneUri: Uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+
+            var ringtoneStarted = false
+
+            // Tier 1: Try RingtoneManager.getRingtone
             try {
-                callMediaPlayer = MediaPlayer().apply {
-                    setDataSource(applicationContext, ringtoneUri)
-                    setAudioAttributes(
-                        AudioAttributes.Builder()
-                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                            .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
-                            .build()
-                    )
-                    isLooping = true
-                    prepare()
-                    start()
-                }
-            } catch (mediaErr: Exception) {
-                activeRingtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)?.apply {
+                val ringtone = RingtoneManager.getRingtone(applicationContext, ringtoneUri)
+                if (ringtone != null) {
+                    val audioAttrs = AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                        .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                        .build()
+                    ringtone.audioAttributes = audioAttrs
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        isLooping = true
+                        ringtone.isLooping = true
                     }
-                    play()
+                    ringtone.play()
+                    activeRingtone = ringtone
+                    ringtoneStarted = true
+                }
+            } catch (e: Exception) {
+                // Ignore and fall back to Tier 2
+            }
+
+            // Tier 2: Try MediaPlayer if RingtoneManager failed or didn't start
+            if (!ringtoneStarted) {
+                try {
+                    callMediaPlayer = MediaPlayer().apply {
+                        setDataSource(applicationContext, ringtoneUri)
+                        setAudioAttributes(
+                            AudioAttributes.Builder()
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .setUsage(AudioAttributes.USAGE_NOTIFICATION_RINGTONE)
+                                .build()
+                        )
+                        isLooping = true
+                        prepare()
+                        start()
+                    }
+                    ringtoneStarted = true
+                } catch (mediaErr: Exception) {
+                    // Ignore and fall back to Tier 3
                 }
             }
 
-            // Vibrate pattern
-            callVibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                callVibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 1000, 1000, 1000), 0))
-            } else {
-                @Suppress("DEPRECATION")
-                callVibrator?.vibrate(longArrayOf(0, 1000, 1000, 1000, 1000), 0)
+            // Tier 3: Guaranteed ToneGenerator fallback for OEM devices with strict file security
+            if (!ringtoneStarted) {
+                try {
+                    val tg = ToneGenerator(AudioManager.STREAM_RING, 100)
+                    callToneGenerator = tg
+                    val ringRunnable = object : Runnable {
+                        override fun run() {
+                            try {
+                                tg.startTone(ToneGenerator.TONE_SUP_RINGTONE, 2000)
+                                toneHandler.postDelayed(this, 4000)
+                            } catch (e: Exception) {}
+                        }
+                    }
+                    toneGeneratorRunnable = ringRunnable
+                    toneHandler.post(ringRunnable)
+                } catch (e: Exception) {}
             }
+
+            // Vibrate pattern
+            try {
+                callVibrator = getSystemService(android.content.Context.VIBRATOR_SERVICE) as? Vibrator
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    callVibrator?.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 1000, 1000, 1000, 1000), 0))
+                } else {
+                    @Suppress("DEPRECATION")
+                    callVibrator?.vibrate(longArrayOf(0, 1000, 1000, 1000, 1000), 0)
+                }
+            } catch (e: Exception) {}
 
             showCallHeadsUpNotification(callerName, isVideo)
         } catch (e: Exception) {
@@ -1137,15 +1208,26 @@ class MainActivity : AppCompatActivity() {
 
     private fun stopCallRingtoneInternal() {
         try {
+            toneGeneratorRunnable?.let { toneHandler.removeCallbacks(it) }
+            toneGeneratorRunnable = null
+            callToneGenerator?.apply {
+                stopTone()
+                release()
+            }
+            callToneGenerator = null
+
             callMediaPlayer?.apply {
                 if (isPlaying) stop()
                 release()
             }
             callMediaPlayer = null
+
             activeRingtone?.stop()
             activeRingtone = null
+
             callVibrator?.cancel()
             callVibrator = null
+
             val nm = getSystemService(NotificationManager::class.java)
             nm.cancel(9999)
         } catch (e: Exception) {

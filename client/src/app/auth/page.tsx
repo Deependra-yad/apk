@@ -44,11 +44,7 @@ function AuthForm() {
     const token = localStorage.getItem('liquid_token');
     const chatParam = searchParams.get('chat');
     if (token) {
-      if (typeof window !== 'undefined' && (window.location.hostname.includes('liquidchat.online') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-        router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
-      } else {
-        window.location.href = chatParam ? `https://web.liquidchat.online/?chat=${encodeURIComponent(chatParam)}` : 'https://web.liquidchat.online';
-      }
+      router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
       return;
     }
     const urlError = searchParams.get('error');
@@ -66,19 +62,7 @@ function AuthForm() {
 
   const navigateToApp = (token: string, user: any) => {
     const chatParam = searchParams.get('chat');
-    // If staying on the same domain (web.liquidchat.online or localhost or APK), use fast Next.js SPA router replacement
-    if (typeof window !== 'undefined' && (window.location.hostname.includes('liquidchat.online') || window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
-      router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
-      return;
-    }
-    const userStr = encodeURIComponent(JSON.stringify(user));
-    const target = new URL('https://web.liquidchat.online');
-    target.searchParams.set('token', token);
-    target.searchParams.set('user', userStr);
-    if (chatParam) {
-      target.searchParams.set('chat', chatParam);
-    }
-    window.location.href = target.toString();
+    router.replace(chatParam ? `/?chat=${encodeURIComponent(chatParam)}` : '/');
   };
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
@@ -525,13 +509,10 @@ function AuthForm() {
                 type="button"
                 onClick={() => {
                   const isAndroidApp = typeof window !== 'undefined' && !!(window as any).Android;
-                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://web.liquidchat.online';
+                  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://liquidchat.online';
                   
-                  // Use verified authorized redirect URIs from Google Cloud Console
-                  let redirectUri = 'https://web.liquidchat.online/auth/callback';
-                  if (typeof window !== 'undefined' && window.location.hostname === 'liquidchat.online') {
-                    redirectUri = 'https://liquidchat.online/auth/callback';
-                  }
+                  // Verified authorized redirect URI
+                  const redirectUri = 'https://liquidchat.online/auth/callback';
 
                   const statePayload = encodeURIComponent(JSON.stringify({ isApp: isAndroidApp, origin }));
                   const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=email%20profile&state=${statePayload}`;
